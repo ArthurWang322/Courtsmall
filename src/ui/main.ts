@@ -41,8 +41,8 @@ const win = async () => (await import('@tauri-apps/api/window')).getCurrentWindo
 const DECIDE_EVERY_MS = 60_000;
 /** How long a team's schedule is reused, ms. */
 const TEAM_SCHEDULE_TTL_MS = 5 * 60_000;
-/** The window's size while a panel (games, settings) is open. */
-const PANEL_SIZE = { w: 360, h: 420 };
+/** The window's size while a panel is open: the games list is long, the settings are short. */
+const PANEL_SIZE = { games: { w: 360, h: 420 }, settings: { w: 360, h: 250 } } as const;
 
 // One request in flight at a time across the whole app.
 let chain: Promise<unknown> = Promise.resolve();
@@ -301,10 +301,10 @@ async function loadDay(): Promise<void> {
 async function openPanel(kind: 'games' | 'settings'): Promise<void> {
   const was = panel;
   panel = kind;
-  if (!was && shell) {
+  if (shell) {
     const { LogicalSize } = await import('@tauri-apps/api/window');
-    sizeBeforePanel = { w: window.innerWidth, h: window.innerHeight };
-    await (await win()).setSize(new LogicalSize(PANEL_SIZE.w, PANEL_SIZE.h));
+    if (!was) sizeBeforePanel = { w: window.innerWidth, h: window.innerHeight };
+    await (await win()).setSize(new LogicalSize(PANEL_SIZE[kind].w, PANEL_SIZE[kind].h));
   }
   render();
   if (kind === 'games') { gamesDay = 0; await loadDay(); }
@@ -331,7 +331,7 @@ async function setTier(t: Tier): Promise<void> {
 }
 
 app.addEventListener('click', (e) => {
-  const el = (e.target as HTMLElement).closest<HTMLElement>('[data-tier], [data-open], [data-day], [data-game], [data-team], [data-done], [data-notify], [data-theme-toggle], [data-pick-theme]');
+  const el = (e.target as HTMLElement).closest<HTMLElement>('[data-tier], [data-open], [data-day], [data-game], [data-done], [data-notify], [data-theme-toggle], [data-pick-theme]');
   if (!el) return;
   // The toolbar's button flips to the other theme; the settings page offers system, dark, light.
   if (el.dataset.themeToggle !== undefined) { setTheme(resolvedTheme() === 'dark' ? 'light' : 'dark'); return; }
@@ -354,10 +354,13 @@ app.addEventListener('click', (e) => {
     saveSettings(settings);
     return;
   }
-  // One favourite (the maintainer's call, 2026-10-13): a tap picks a team, another replaces it,
-  // the same one again clears it.
-  const team = el.dataset.team ?? '';
-  settings = { ...settings, favourites: settings.favourites.includes(team) ? [] : [team] };
+});
+
+// The favourite team, picked from the drop-down on the settings page (one team, or none).
+app.addEventListener('change', (e) => {
+  const el = e.target as HTMLSelectElement;
+  if (el.dataset.favourite === undefined) return;
+  settings = { ...settings, favourites: el.value ? [el.value] : [] };
   saveSettings(settings);
   render();
   // A new favourite: drop the game on screen unless it is in progress (decide() never leaves one).

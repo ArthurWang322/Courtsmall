@@ -157,7 +157,6 @@ button { font: inherit; color: inherit; border: 0; background: transparent; padd
 .panel .game .who b { font: 800 17px var(--display); letter-spacing: .02em; }
 .panel .game .when { margin-left: auto; font-size: 12px; color: var(--muted); }
 .panel .game.live .when { color: var(--accent); }
-.settings .teams { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 4px; }
 .settings button { display: inline-flex; align-items: center; gap: 5px; padding: 5px 6px; border-radius: 8px; border: 1px solid var(--border);
   background: linear-gradient(180deg, var(--panel), var(--surface)); color: var(--text); font: 600 13px var(--label); letter-spacing: .05em; }
 .settings button:hover { border-color: var(--muted); }
@@ -195,7 +194,16 @@ button { font: inherit; color: inherit; border: 0; background: transparent; padd
 
 /* The favourite team: a star by its name, its games lit in the list (src/ui/views.ts). */
 .star { color: var(--accent); margin-right: 3px; font-size: .9em; }
-.settings .team .star { margin: 0 0 0 auto; }
 .settings .hint { font-size: 12px; line-height: 1.4; }
 .panel .game.fav { border-color: color-mix(in srgb, var(--accent) 55%, var(--border));
   background: linear-gradient(90deg, color-mix(in srgb, var(--accent) 10%, var(--panel)), var(--surface)); }
+
+/* The favourite team's drop-down: the team's colour beside it. */
+.settings .favourite { display: flex; align-items: center; gap: 8px; padding: 6px 10px; border-radius: 8px; border: 1px solid var(--border);
+  background: linear-gradient(180deg, var(--panel), var(--surface)); }
+.settings .favourite .dot.none { background: transparent; box-shadow: 0 0 0 1.5px var(--muted); }
+.settings select { flex: 1; min-width: 0; appearance: none; -webkit-appearance: none; border: 0; outline: none; background: transparent;
+  color: var(--text); font: 600 14px var(--label); letter-spacing: .04em; cursor: pointer; padding-right: 16px;
+  background-image: linear-gradient(45deg, transparent 50%, var(--muted) 50%), linear-gradient(135deg, var(--muted) 50%, transparent 50%);
+  background-position: calc(100% - 9px) 55%, calc(100% - 4px) 55%; background-size: 5px 5px; background-repeat: no-repeat; }
+.settings select option { color: #1d1b20; background: #fff; }

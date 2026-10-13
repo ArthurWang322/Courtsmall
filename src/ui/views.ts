@@ -193,16 +193,17 @@ export function pregameView(teams: GameCard['teams'], start: number, when: strin
 
 /** Choosing a team and the notices. Buttons carry data-* attributes; src/ui/main.ts handles clicks. */
 export function settingsView(teams: readonly TeamRef[], s: Settings, T: Strings): string {
-  const team = (t: TeamRef) => {
-    const fav = s.favourites.includes(t.id);
-    return `<button class="team${fav ? ' on' : ''}" data-team="${esc(t.id)}" title="${esc(t.name)}">${cardDot(t)}${esc(t.abbr)}<span class="star">${fav ? '★' : ''}</span></button>`;
-  };
+  // The favourite, from a drop-down: none first (follow the closest game), then the teams.
+  const fav = teams.find((t) => s.favourites.includes(t.id));
+  const option = (value: string, label: string, on: boolean) => `<option value="${esc(value)}"${on ? ' selected' : ''}>${esc(label)}</option>`;
+  const picker = `<div class="favourite">${fav ? cardDot(fav) : '<i class="dot none"></i>'}<select data-favourite aria-label="${esc(T.chooseTeam)}">`
+    + option('', T.noFavourite, !fav) + teams.map((t) => option(t.id, `${t.abbr}　${t.name}`, t.id === fav?.id)).join('') + '</select></div>';
   const check = (key: keyof Settings['notify'], label: string) =>
     `<label class="check"><input type="checkbox" data-notify="${key}"${s.notify[key] ? ' checked' : ''}> ${esc(label)}</label>`;
   return `<div class="settings">
       <div class="head"><b>${esc(T.chooseTeam)}</b><button class="done" data-done>${esc(T.done)}</button></div>
-      <span class="hint muted">${esc(s.favourites.length ? T.favouritesHint : T.noTeam)}</span>
-      <div class="teams">${teams.map(team).join('')}</div>
+      ${picker}
+      <span class="hint muted">${esc(fav ? T.favouritesHint : T.noTeam)}</span>
       ${check('start', T.notifyStart)}${check('final', T.notifyFinal)}${check('clutch', T.notifyClutch)}
       <div class="themes"><span class="muted">${esc(T.theme)}</span>${(['system', 'dark', 'light'] as const).map((t) =>
         `<button class="${s.theme === t ? 'on' : ''}" data-pick-theme="${t}">${esc(T.themeName(t))}</button>`).join('')}</div>

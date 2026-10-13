@@ -2,7 +2,7 @@
 
 import { describe, expect, it } from 'vitest';
 import { STRINGS } from '../src/i18n/index.ts';
-import { barView, clockText, controlsView, countdownParts, dotView, gamesView, JUMP_MS, leadersTable, playLines, pregameView, RUN_MIN, whenText } from '../src/ui/views.ts';
+import { barView, clockText, controlsView, countdownParts, dotView, gamesView, JUMP_MS, leadersTable, playLines, pregameView, RUN_MIN, settingsView, whenText } from '../src/ui/views.ts';
 import type { GameCard, GameState, PlayLine } from '../src/model/types.ts';
 
 const en = STRINGS.en, zh = STRINGS['zh-TW'];
@@ -236,6 +236,20 @@ describe('favourite team', () => {
     const html = barView(base, en, 1, undefined, [base.teams.home.id]);
     expect(html).toMatch(/<span class="abbr"><span class="star">★<\/span>UTAH<\/span>/);
     expect(barView(base, en, 1)).not.toContain('★');
+  });
+});
+
+describe('settings page', () => {
+  const teams = [{ id: '7', abbr: 'DEN', name: 'Denver Nuggets', color: 'fec524' }, { id: '20', abbr: 'PHI', name: 'Philadelphia 76ers', color: 'ed174c' }];
+  const settings = { favourites: [] as string[], notify: { start: true, final: true, clutch: true }, theme: 'system' as const };
+
+  // One favourite, picked from a drop-down whose first choice is none.
+  it('offers none and every team in the favourite drop-down, with the favourite selected', () => {
+    const none = settingsView(teams, settings, zh);
+    expect([...none.matchAll(/<option value="(\d*)"( selected)?>/g)].map((m) => `${m[1]}${m[2] ? '*' : ''}`)).toEqual(['*', '7', '20']);
+    const den = settingsView(teams, { ...settings, favourites: ['7'] }, zh);
+    expect(den).toContain('<option value="7" selected>DEN　Denver Nuggets</option>');
+    expect(den).toContain('background:#fec524');
   });
 });
 
