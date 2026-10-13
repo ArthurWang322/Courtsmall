@@ -34,9 +34,8 @@ button { font: inherit; color: inherit; border: 0; background: transparent; padd
     linear-gradient(180deg, var(--surface), var(--background));
   background-blend-mode: overlay, normal, normal;
   border: 1px solid var(--border); box-shadow: inset 0 1px 0 var(--edge); }
-#app[data-tier='dot'] { border-radius: 999px; padding: 0 14px; }
-/* Bar and court: the view, then the toolbar's row along the bottom. */
-#app:not([data-tier='dot']) { flex-direction: column; align-items: stretch; padding-bottom: 4px; }
+/* The view, then the toolbar's row along the bottom. */
+#app { flex-direction: column; align-items: stretch; padding-bottom: 4px; }
 .content { flex: 1; min-height: 0; display: flex; align-items: center; width: 100%; }
 /* Clicks land on #app, which moves the window (src/ui/main.ts). */
 #app * { pointer-events: none; }
@@ -56,15 +55,6 @@ button { font: inherit; color: inherit; border: 0; background: transparent; padd
   35% { transform: translateY(-5px) scale(1.12); color: var(--accent); }
   100% { transform: translateY(0); }
 }
-
-/* ---- Dot ---------------------------------------------------------------------------------------- */
-.pill { display: flex; align-items: center; gap: 10px; width: 100%; white-space: nowrap; }
-.sc { display: inline-flex; align-items: center; gap: 6px; padding: 0 4px; }
-.pill .sc b { font: 800 18px/1 var(--display); letter-spacing: .02em; }
-.pill .when { margin-left: auto; font-size: 13px; color: var(--muted); }
-.pill .tag { margin: 0; letter-spacing: 0; }
-/* The team with the ball: a triangle in its colour beside its dot. */
-.arrow { font-size: 9px; width: 9px; text-align: center; line-height: 1; }
 
 /* ---- Bar ---------------------------------------------------------------------------------------- */
 .bar { display: flex; flex-direction: column; gap: 5px; width: 100%; min-width: 0; }
@@ -123,14 +113,9 @@ button { font: inherit; color: inherit; border: 0; background: transparent; padd
 .court .points { font-family: var(--display); font-weight: 800; text-anchor: middle; paint-order: stroke; stroke: var(--points-stroke); stroke-width: 0.9; }
 
 /* ---- Toolbar: sizes, theme, games, settings -----------------------------------------------------
-   Its own row along the bottom of the bar and the court (src/render/tiers.ts TOOLBAR_H); in the dot,
-   where there is no room, it shows on hover over the right end. */
+   Its own row along the bottom of the window (src/render/tiers.ts TOOLBAR_H). */
 .controls { display: flex; align-items: center; justify-content: flex-end; gap: 2px; height: 22px; margin-top: 4px;
   border-top: 1px solid color-mix(in srgb, var(--border) 70%, transparent); padding-top: 2px; }
-#app[data-tier='dot'] .controls { position: absolute; top: 50%; right: 4px; margin: 0; height: auto; padding: 2px; border: 1px solid var(--border);
-  border-radius: 999px; background: var(--surface); box-shadow: 0 4px 14px rgba(0, 0, 0, .45);
-  opacity: 0; transform: translateY(-50%); transition: opacity .16s; }
-#app[data-tier='dot']:hover .controls { opacity: 1; }
 .controls .icon, .panel .icon { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 20px;
   border-radius: 6px; color: var(--muted); cursor: pointer; transition: color .12s, background .12s; }
 .controls .icon:hover, .panel .icon:hover { color: var(--text); background: var(--panel); }

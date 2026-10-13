@@ -2,7 +2,7 @@
 
 import { describe, expect, it } from 'vitest';
 import { STRINGS } from '../src/i18n/index.ts';
-import { barView, clockText, controlsView, countdownParts, dotView, gamesView, JUMP_MS, leadersTable, playLines, pregameView, RUN_MIN, settingsView, whenText } from '../src/ui/views.ts';
+import { barView, clockText, controlsView, countdownParts, gamesView, JUMP_MS, leadersTable, playLines, pregameView, RUN_MIN, settingsView, whenText } from '../src/ui/views.ts';
 import type { GameCard, GameState, PlayLine } from '../src/model/types.ts';
 
 const en = STRINGS.en, zh = STRINGS['zh-TW'];
@@ -115,17 +115,6 @@ describe('last line', () => {
 });
 
 describe('possession', () => {
-  // The triangle marks who has the ball; between periods nobody does, so it must not linger.
-  it('puts a triangle on the outer side of the team with the ball while live, and none during a break', () => {
-    const away = dotView({ ...base, possession: 'away' }, en);
-    expect(away.match(/[▶◀]/g)).toEqual(['▶']);
-    expect(away.indexOf('▶')).toBeLessThan(away.indexOf('85'));
-    const home = dotView({ ...base, possession: 'home' }, en);
-    expect(home.match(/[▶◀]/g)).toEqual(['◀']);
-    expect(home.indexOf('◀')).toBeGreaterThan(home.indexOf('112'));
-    expect(dotView({ ...base, status: 'break', possession: 'away' }, en)).not.toMatch(/[▶◀]/);
-  });
-
   // In the bar the team with the ball has its whole cell framed in its colour, and a triangle.
   it("frames the cell of the team with the ball in the bar's score bug, and nobody's during a break", () => {
     const html = barView({ ...base, possession: 'home' }, en, 1);
@@ -141,19 +130,13 @@ describe('possession', () => {
     expect(html).toContain('[SA] &lt;b&gt; foul');
   });
 
-  // A replay that looks live misleads; the pill has no room for the word, so it gets a mark.
-  it('marks a replay in the dot without the word that would not fit', () => {
-    const html = dotView(base, en, 'Replay');
-    expect(html).toContain('↺');
-    expect(html).toContain('title="Replay"');
-  });
 });
 
 describe('toolbar and games list', () => {
   it('lights the current size in the toolbar and offers the others', () => {
     const html = controlsView('bar', zh);
     expect(html.match(/class="icon on" data-tier="(\w+)"/)![1]).toBe('bar');
-    for (const t of ['dot', 'bar', 'court']) expect(html).toContain(`data-tier="${t}"`);
+    expect([...html.matchAll(/data-tier="(\w+)"/g)].map((m) => m[1])).toEqual(['bar', 'court']);
     expect(html).toContain('data-open="games"');
     expect(html).toContain('data-open="settings"');
   });
@@ -213,7 +196,7 @@ describe('countdown', () => {
     const units = [...html.matchAll(/<div class="unit"><b>(\d+)<\/b><span>(.)<\/span>/g)].map((m) => `${m[1]}${m[2]}`);
     expect(units).toEqual(['00天', '03時', '00分', '05秒']);
     expect(pregameView(base.teams, start, '', start + 1000, zh, 'bar')).toContain('即將開賽');
-    expect(pregameView(base.teams, start, '09:30', start - 1000, zh, 'dot')).not.toContain('countdown');
+    expect(pregameView(base.teams, start, '09:30', start - 1000, zh, 'court')).toContain('countdown big');
   });
 });
 

@@ -52,17 +52,6 @@ export const favIn = (teams: Record<Side, TeamRef>, favs: readonly string[]) => 
 /** A star before a favourite team's abbreviation. */
 const star = (t: TeamRef, favs: readonly string[]) => (favs.includes(t.id) ? '<span class="star">★</span>' : '');
 
-/**
- * The dot's score: team dots and the two numbers. The team with the ball gets a triangle in its
- * colour on its outer side, pointing in: "▶● 98 – 101 ●" or "● 98 – 101 ●◀".
- * `favs`: the favourite teams; in a colour clash a favourite keeps its colour.
- */
-function scoreHtml(s: GameState, favs: readonly string[] = [], ages: ScoreAges = {}): string {
-  const c = gameColours(s.teams, favIn(s.teams, favs));
-  const dot = (side: Side) => `<i class="dot" style="background:#${esc(c[side])}"></i>`;
-  const arrow = (side: Side) => `<span class="arrow" style="color:#${esc(c[side])}">${hasBall(s, side) ? (side === 'away' ? '▶' : '◀') : ''}</span>`;
-  return `${arrow('away')}${dot('away')}${scoreNum(s.score.away, ages.away)}<span class="muted">–</span>${scoreNum(s.score.home, ages.home)}${dot('home')}${arrow('home')}`;
-}
 
 /**
  * The bar's score, laid out like a broadcast score bug: one cell per team (a stripe in its colour,
@@ -107,13 +96,6 @@ export function playLines(s: GameState, T: Strings, count: number): string[] {
   return lines;
 }
 
-/**
- * Dot tier: a pill with the score and the period. The team with the ball has a triangle by its dot.
- * A replay is marked with "↺" (the word does not fit): a replay mistaken for a live game misleads.
- */
-export function dotView(s: GameState, T: Strings, tag?: string, favs: readonly string[] = [], ages: ScoreAges = {}): string {
-  return `<div class="pill"><span class="sc">${scoreHtml(s, favs, ages)}</span><span class="when mono">${esc(whenText(s, T))}</span>${tag ? `<span class="tag" title="${esc(tag)}">↺</span>` : ''}</div>`;
-}
 
 /**
  * Bar tier: the score bug on top; below, the newest play, and under a divider the one before it,
@@ -174,12 +156,10 @@ export function countdownParts(ms: number): { d: number; h: number; m: number; s
 /**
  * A game not started yet: the score bug with the teams and, in the clock's place, the tip-off
  * (`when`); under it the time left in days, hours, minutes and seconds, or "tip-off soon" once
- * that has run out. The dot has room for the teams and the tip-off only. `big`: the court's size.
+ * that has run out; larger in the court's size.
  */
 export function pregameView(teams: GameCard['teams'], start: number, when: string, now: number, T: Strings, tier: Tier, favs: readonly string[] = []): string {
   const c = gameColours(teams, favIn(teams, favs));
-  if (tier === 'dot')
-    return `<div class="pill"><span class="sc">${colourDot(c.away)}<span class="abbr">${esc(teams.away.abbr)}</span><span class="muted">@</span><span class="abbr">${esc(teams.home.abbr)}</span>${colourDot(c.home)}</span><span class="when mono">${esc(when)}</span></div>`;
   const cell = (side: Side) => `<div class="cell team" style="--team:#${esc(c[side])}"><i class="stripe"></i><span class="abbr">${star(teams[side], favs)}${esc(teams[side].abbr)}</span><b class="muted">–</b><span class="ball-mark"></span></div>`;
   const bug = `<div class="bug">${cell('away')}${cell('home')}<span class="grow"></span><div class="cell clock mono">${esc(when)}</div></div>`;
   const left = start - now;
@@ -222,7 +202,6 @@ export function settingsView(teams: readonly TeamRef[], s: Settings, T: Strings,
 
 /** Icons in basic shapes, 14 px, drawn in the current text colour. */
 const ICON: Record<Tier | 'games' | 'settings' | 'theme', string> = {
-  dot: '<rect x="1.5" y="5" width="11" height="4" rx="2"/>',
   bar: '<rect x="1.5" y="3" width="11" height="8" rx="1.5"/><path d="M3.5 6.5h7"/>',
   court: '<path d="M3 3.5h8l1.5 7.5h-11z"/><path d="M5.2 3.5v3h3.6v-3"/>',
   games: '<path d="M2.5 4h9M2.5 7h9M2.5 10h9"/>',
@@ -233,12 +212,12 @@ const ICON: Record<Tier | 'games' | 'settings' | 'theme', string> = {
 const icon = (k: keyof typeof ICON) => `<svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true">${ICON[k]}</svg>`;
 
 /**
- * The toolbar that shows while the pointer is over the window: the three sizes (the current one
+ * The toolbar along the bottom of the window: the two sizes (the current one
  * lit), dark or light, the games list and the settings. Buttons carry data-* attributes; src/ui/main.ts handles them.
  */
 export function controlsView(tier: Tier, T: Strings): string {
   const size = (t: Tier) => `<button class="icon${t === tier ? ' on' : ''}" data-tier="${t}" title="${esc(T.tierName(t))}">${icon(t)}</button>`;
-  return `<div class="controls">${size('dot')}${size('bar')}${size('court')}<span class="sep"></span>`
+  return `<div class="controls">${size('bar')}${size('court')}<span class="sep"></span>`
     + `<button class="icon" data-theme-toggle title="${esc(T.switchTheme)}">${icon('theme')}</button>`
     + `<button class="icon" data-open="games" title="${esc(T.games)}">${icon('games')}</button>`
     + `<button class="icon" data-open="settings" title="${esc(T.settings)}">${icon('settings')}</button></div>`;

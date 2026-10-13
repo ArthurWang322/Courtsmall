@@ -27,7 +27,7 @@ import { playLinesAt, TIER_PRESET, tierOf, TOOLBAR_H, type Tier } from '../rende
 import { drawFlights, shotSeconds } from '../render/court.ts';
 import { gameColours, useTheme, type Theme } from '../render/colour.ts';
 import { loadSettings, saveSettings, type Settings, type ThemeChoice } from '../settings/store.ts';
-import { barView, controlsView, courtView, dotView, favIn, gamesView, JUMP_MS, messageView, pregameView, settingsView, type ScoreAges } from './views.ts';
+import { barView, controlsView, courtView, favIn, gamesView, JUMP_MS, messageView, pregameView, settingsView, type ScoreAges } from './views.ts';
 
 // In `npm run dev`, VITE_PARAMS fills in for the URL, which the desktop window does not have:
 // VITE_PARAMS='game=401898721&replay' npx tauri dev
@@ -167,8 +167,8 @@ function render(): void {
   }
   if (panel === 'games') { app.innerHTML = gamesView(dayLabel(gamesDay), dayList, T, tipOff, currentId, settings.favourites); return; }
   const tag = replaying ? T.replay : undefined;
-  // Below the dot the toolbar has a row of its own; the dot has no room, so there it shows on hover.
-  const contentHeight = tier === 'dot' ? app.clientHeight : app.clientHeight - TOOLBAR_H;
+  // The toolbar has a row of its own along the bottom.
+  const contentHeight = app.clientHeight - TOOLBAR_H;
   let body: string;
   // A game not started yet: the tip-off and a countdown, whether it is followed or the team's next.
   const pre = state?.status === 'scheduled' && state.start !== undefined ? { teams: state.teams, start: state.start }
@@ -178,13 +178,12 @@ function render(): void {
     const now = Date.now();
     const ages: ScoreAges = {};
     for (const side of ['away', 'home'] as const) { const at = scoreChangedAt[side]; if (at !== undefined && now - at < JUMP_MS) ages[side] = now - at; }
-    body = tier === 'dot' ? dotView(state, T, tag, settings.favourites, ages)
-      // A finished game picked from the list is its result: no court, whatever the size.
-      : tier === 'court' && !resultOnly ? courtView(state, T, landed, tag, settings.favourites, ages)
+    // A finished game picked from the list is its result: no court, whatever the size.
+    body = tier === 'court' && !resultOnly ? courtView(state, T, landed, tag, settings.favourites, ages)
       : barView(state, T, playLinesAt(contentHeight), tag, settings.favourites, resultOnly, ages, tier === 'court');
   }
   else body = messageView(message, tier === 'bar' ? messageSub : undefined);
-  app.innerHTML = tier === 'dot' ? body + controlsView(tier, T) : `<div class="content">${body}</div>${controlsView(tier, T)}`;
+  app.innerHTML = `<div class="content">${body}</div>${controlsView(tier, T)}`;
   if (state && tier === 'court' && !resultOnly && !frame) frame = requestAnimationFrame(animate);
 }
 
@@ -393,7 +392,7 @@ app.addEventListener('click', (e) => {
 
 
 // The window has no title bar or border: press and drag moves it; the toolbar along the bottom
-// (on hover, in the dot) switches the size and opens the panels. Outside the desktop shell (npm run dev in a browser)
+// switches the size and opens the panels. Outside the desktop shell (npm run dev in a browser)
 // there is no window to move or resize.
 app.addEventListener('mousedown', async (e) => {
   if ((e.target as HTMLElement).closest('button, input, label')) return;
