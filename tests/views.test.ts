@@ -68,16 +68,20 @@ describe('last line', () => {
   });
 
   // The maintainer asked for this (2026-10-13): who missed and who got the rebound, read together.
-  it('stacks the two latest plays, older above, the run after the newer', () => {
+  // The newest play stays in one place on top; the one before it moves under the divider.
+  it('puts the newest play on top and the one before it under the divider', () => {
     const miss = { type: 'miss' as const, points: 3 as const, side: 'away' as const, player: embiid };
     const reb = { type: 'rebound' as const, offensive: false, side: 'home' as const, player: collier };
     const s = { ...base, recentPlays: [miss, reb], run: { side: 'home' as const, points: 8 } };
-    expect(playLines(s, zh, 2)).toEqual(['[SA] J. Embiid 三分不進', '[UTAH] I. Collier 防守籃板 · UTAH 連得 8 分']);
-    // A window too short for two lines keeps the newer one.
+    expect(playLines(s, zh, 2)).toEqual(['[UTAH] I. Collier 防守籃板 · UTAH 連得 8 分', '[SA] J. Embiid 三分不進']);
+    const html = barView(s, zh, 2);
+    expect(html.indexOf('play new')).toBeLessThan(html.indexOf('divider'));
+    expect(html.indexOf('divider')).toBeLessThan(html.indexOf('play old'));
+    expect(html.slice(html.indexOf('play new'), html.indexOf('divider'))).toContain('防守籃板');
+    expect(html.slice(html.indexOf('play old'))).toContain('三分不進');
+    // A window too short for two lines keeps the newest and drops the divider.
     expect(playLines(s, zh, 1)).toEqual(['[UTAH] I. Collier 防守籃板 · UTAH 連得 8 分']);
-    // The first play of a game fills the lower line, so the newest play is always in the same place.
-    const html = barView({ ...base, recentPlays: [reb] }, zh, 2);
-    expect(html.indexOf('<div class="row last muted"></div>')).toBeLessThan(html.indexOf('防守籃板'));
+    expect(barView(s, zh, 1)).not.toContain('divider');
   });
 
   // A 2-0 "run" is every basket; the line only calls out a run once it means momentum.

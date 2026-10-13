@@ -55,14 +55,15 @@ export function playText(s: GameState, ev: PlayLine, T: Strings): string {
 }
 
 /**
- * The play lines under the score, oldest first: the latest `count` plays, the run (when it is long
- * enough) after the newest. Two lines put a miss and its rebound, or a foul and its free throw, together.
+ * The play lines under the score, newest first: the latest `count` plays, the run (when it is long
+ * enough) after the newest. The newest stays in one place and the one before it moves below, so
+ * a miss and its rebound can be read together.
  */
 export function playLines(s: GameState, T: Strings, count: number): string[] {
-  const lines = (s.recentPlays ?? []).slice(-count).map((p) => esc(playText(s, p, T)));
+  const lines = (s.recentPlays ?? []).slice(-count).reverse().map((p) => esc(playText(s, p, T)));
   if (s.run && s.run.points >= RUN_MIN && s.status !== 'final') {
     const run = esc(T.run(s.teams[s.run.side].abbr, s.run.points));
-    if (lines.length) lines[lines.length - 1] += ` · ${run}`; else lines.push(run);
+    if (lines.length) lines[0] += ` · ${run}`; else lines.push(run);
   }
   return lines;
 }
@@ -75,12 +76,16 @@ export function dotView(s: GameState, T: Strings, tag?: string): string {
   return `<div class="pill"><span class="sc">${scoreHtml(s, false)}</span><span class="when mono">${esc(whenText(s, T))}</span>${tag ? `<span class="tag" title="${esc(tag)}">↺</span>` : ''}</div>`;
 }
 
-/** Bar tier: score with team abbreviations and the period on top, the latest plays below. */
+/**
+ * Bar tier: score with team abbreviations and the period on top; below, the newest play, and
+ * under a divider the one before it, quieter.
+ */
 export function barView(s: GameState, T: Strings, lines: number, tag?: string): string {
-  const plays = playLines(s, T, lines);
+  const [newest = '', older = ''] = playLines(s, T, lines);
   return `<div class="bar">
       <div class="row"><span class="sc">${scoreHtml(s, true)}</span><span class="grow"></span>${tag ? `<span class="tag">${esc(tag)}</span>` : ''}<span class="when mono">${esc(whenText(s, T))}</span></div>
-      ${Array.from({ length: lines }, (_, i) => `<div class="row last muted">${plays[i - (lines - plays.length)] ?? ''}</div>`).join('')}
+      <div class="row play new">${newest}</div>${lines > 1 ? `
+      <hr class="divider"><div class="row play old">${older}</div>` : ''}
     </div>`;
 }
 
