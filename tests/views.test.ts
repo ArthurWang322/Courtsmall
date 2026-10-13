@@ -44,19 +44,23 @@ describe('period', () => {
 describe('last line', () => {
   const basket = { side: 'home' as const, points: 2 as const, period: 4, clock: 422, player: { id: 'p', name: 'Isaiah Collier', short: 'I. Collier' } };
 
-  it('names the last scorer and the points', () => {
-    expect(lastLine({ ...base, lastBasket: basket }, en)).toBe('I. Collier +2');
+  // The team comes first: a glance at a name alone does not say which side just scored.
+  it('names the team, the scorer and the points', () => {
+    expect(lastLine({ ...base, lastBasket: basket }, en)).toBe('UTAH I. Collier +2');
+    expect(lastLine({ ...base, lastBasket: basket }, zh)).toBe('UTAH I. Collier 得 2 分');
+    const { player: _, ...noShooter } = basket;
+    expect(lastLine({ ...base, lastBasket: noShooter }, zh)).toBe('UTAH 得 2 分');
   });
 
   // A 2-0 "run" is every basket; the line only calls out a run once it means momentum.
   it(`mentions a run from ${RUN_MIN} unanswered points, not before`, () => {
-    expect(lastLine({ ...base, lastBasket: basket, run: { side: 'home', points: RUN_MIN - 1 } }, en)).toBe('I. Collier +2');
-    expect(lastLine({ ...base, lastBasket: basket, run: { side: 'home', points: 8 } }, en)).toBe('I. Collier +2 · UTAH 8-0 run');
-    expect(lastLine({ ...base, lastBasket: basket, run: { side: 'home', points: 8 } }, zh)).toBe('I. Collier +2 · UTAH 連得 8 分');
+    expect(lastLine({ ...base, lastBasket: basket, run: { side: 'home', points: RUN_MIN - 1 } }, en)).toBe('UTAH I. Collier +2');
+    expect(lastLine({ ...base, lastBasket: basket, run: { side: 'home', points: 8 } }, en)).toBe('UTAH I. Collier +2 · UTAH 8-0 run');
+    expect(lastLine({ ...base, lastBasket: basket, run: { side: 'home', points: 8 } }, zh)).toBe('UTAH I. Collier 得 2 分 · UTAH 連得 8 分');
   });
 
   it('drops the run once the game is over', () => {
-    expect(lastLine({ ...base, status: 'final', lastBasket: basket, run: { side: 'home', points: 8 } }, en)).toBe('I. Collier +2');
+    expect(lastLine({ ...base, status: 'final', lastBasket: basket, run: { side: 'home', points: 8 } }, en)).toBe('UTAH I. Collier +2');
   });
 });
 
@@ -71,7 +75,7 @@ describe('possession', () => {
 
   it('escapes names from the feed', () => {
     const html = barView({ ...base, lastBasket: { side: 'away', points: 3, period: 4, clock: 1, player: { id: 'x', name: '<b>', short: '<b>' } } }, en);
-    expect(html).toContain('&lt;b&gt; +3');
+    expect(html).toContain('SA &lt;b&gt; +3');
   });
 
   // A replay that looks live misleads; the pill has no room for the word, so it gets a mark.

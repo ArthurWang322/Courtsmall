@@ -11,6 +11,8 @@ export interface Strings {
   postponed: string;
   cancelled: string;
   delayed: string;
+  /** The last basket: "UTAH I. Collier +2". `name` is absent when the league names no shooter. */
+  basket(abbr: string, name: string | undefined, points: number): string;
   /** "BOS 10-0 run". */
   run(abbr: string, points: number): string;
   replay: string;
@@ -29,6 +31,7 @@ export const STRINGS: Record<Lang, Strings> = {
     postponed: 'Postponed',
     cancelled: 'Cancelled',
     delayed: 'Delayed',
+    basket: (abbr, name, points) => `${abbr}${name ? ` ${name}` : ''} +${points}`,
     run: (abbr, points) => `${abbr} ${points}-0 run`,
     replay: 'Replay',
     loading: 'Loading…',
@@ -44,6 +47,7 @@ export const STRINGS: Record<Lang, Strings> = {
     postponed: '延賽',
     cancelled: '取消',
     delayed: '暫停比賽',
+    basket: (abbr, name, points) => `${abbr}${name ? ` ${name}` : ''} 得 ${points} 分`,
     run: (abbr, points) => `${abbr} 連得 ${points} 分`,
     replay: '重播',
     loading: '載入中…',

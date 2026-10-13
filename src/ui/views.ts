@@ -42,7 +42,7 @@ function scoreHtml(s: GameState, withAbbr: boolean): string {
 export function lastLine(s: GameState, T: Strings): string {
   const parts: string[] = [];
   const b = s.lastBasket;
-  if (b) parts.push(`${b.player ? esc(b.player.short) : esc(s.teams[b.side].abbr)} +${b.points}`);
+  if (b) parts.push(esc(T.basket(s.teams[b.side].abbr, b.player?.short, b.points)));
   if (s.run && s.run.points >= RUN_MIN && s.status !== 'final') parts.push(esc(T.run(s.teams[s.run.side].abbr, s.run.points)));
   return parts.join(' · ');
 }

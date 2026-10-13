@@ -15,7 +15,9 @@ import { langOf, STRINGS } from '../i18n/index.ts';
 import { TIER_PRESET, tierOf } from '../render/tiers.ts';
 import { barView, dotView, messageView } from './views.ts';
 
-const params = new URLSearchParams(location.search);
+// In `npm run dev`, VITE_PARAMS fills in for the URL, which the desktop window does not have:
+// VITE_PARAMS='game=401898721&replay' npx tauri dev
+const params = new URLSearchParams(location.search || (import.meta.env.DEV ? (import.meta.env.VITE_PARAMS as string | undefined) ?? '' : ''));
 const T = STRINGS[langOf(params.get('lang') ?? navigator.language)];
 const app = document.getElementById('app')!;
 
@@ -96,6 +98,8 @@ app.addEventListener('dblclick', async () => {
   await (await win()).setSize(new LogicalSize(next.w, next.h));
 });
 
-new ResizeObserver(render).observe(app);
+// Redraw only when the tier changes: redrawing on every resize notification feeds the observer
+// its own changes ("ResizeObserver loop completed with undelivered notifications").
+new ResizeObserver(() => { if (tierOf(app.clientHeight) !== app.dataset.tier) render(); }).observe(app);
 render();
 start().catch((e: unknown) => { console.warn(e); message = T.offline; render(); });
