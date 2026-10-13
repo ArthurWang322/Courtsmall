@@ -66,7 +66,7 @@ export interface Shot {
 export const BASKET = { x: 25, y: 1 } as const;
 
 /** How many shots the state keeps for the court view. */
-export const RECENT_SHOTS = 8;
+export const RECENT_SHOTS = 4;
 
 /** Points one side has scored since the other side last scored. */
 export interface Run {
