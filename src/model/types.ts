@@ -1,0 +1,92 @@
+// Normalized game model. Everything downstream of the adapter (store, animation, renderers,
+// notifications) sees only these types, never ESPN's raw JSON.
+// The fields are what a one-second glance needs (docs/PLAN.md Q3): score, period, clock,
+// possession, the last basket, and the current run.
+
+export type Side = 'away' | 'home';
+
+export type GameStatus =
+  | 'scheduled'
+  | 'live'
+  /** Between periods, halftime included. */
+  | 'break'
+  | 'delayed'
+  | 'postponed'
+  | 'cancelled'
+  | 'final'
+  | 'unknown';
+
+export interface PlayerRef {
+  id: string;
+  /** Full name as the league spells it. Player names are not translated. */
+  name: string;
+  /** Short form for tight layouts, e.g. "D. Holmes II". */
+  short: string;
+}
+
+export interface TeamRef {
+  id: string;
+  abbr: string;
+  name: string;
+}
+
+/** 1 free throw, 2 two-pointer (goaltending included), 3 three-pointer. */
+export type Points = 1 | 2 | 3;
+
+export interface Basket {
+  side: Side;
+  points: Points;
+  /** The shooter, when the league names one. */
+  player?: PlayerRef;
+  period: number;
+  /** Seconds left in the period when it happened. */
+  clock: number;
+}
+
+/** Points one side has scored since the other side last scored. */
+export interface Run {
+  side: Side;
+  points: number;
+}
+
+export type GameEvent =
+  | { type: 'periodStart'; period: number }
+  | { type: 'basket'; basket: Basket; score: Record<Side, number> }
+  | { type: 'periodEnd'; period: number }
+  | { type: 'gameEnd'; winner: Side | 'tie'; score: Record<Side, number> };
+
+export interface GameState {
+  gameId: string;
+  /** "2026" for the 2025-26 season, as ESPN numbers it. */
+  season?: number;
+  postseason?: boolean;
+  status: GameStatus;
+  teams: Record<Side, TeamRef>;
+  /** 1-4, then 5 for the first overtime and so on. 0 before tip-off. */
+  period: number;
+  /** Seconds left in the period. */
+  clock: number;
+  score: Record<Side, number>;
+  /** Points per period, index 0 = first quarter. */
+  periodScores: Record<Side, number[]>;
+  /** The side the league says has the ball in the latest play. Absent when it does not say. */
+  possession?: Side;
+  lastBasket?: Basket;
+  run?: Run;
+  /** Epoch ms of the moment this state describes. */
+  at?: number;
+}
+
+/**
+ * One step of a game: the events of one play, in order, and the state after them.
+ * Plays that change nothing the glance shows (a missed shot, a rebound) still get an entry,
+ * with no events, because clock and possession move.
+ */
+export interface TimelineEntry {
+  /** Epoch ms of the play (ESPN `wallclock`). */
+  t: number;
+  /** ESPN play id. */
+  id: string;
+  events: GameEvent[];
+  state: GameState;
+}

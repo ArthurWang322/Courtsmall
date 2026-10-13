@@ -1,0 +1,18 @@
+{
+  "name": "small-nba",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Unofficial desktop companion for following live NBA games, after Basesmall.",
+  "license": "Apache-2.0",
+  "type": "module",
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit -p ."
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.4",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.4",
+    "vitest": "^5.0.3"
+  }
+}
