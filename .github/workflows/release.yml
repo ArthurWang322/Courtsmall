@@ -1,6 +1,6 @@
 # A version tag (v0.1.0) builds Windows and macOS into a DRAFT release: nothing is public until the
 # maintainer reads it and presses Publish. Windows: an NSIS installer (per user, no admin). macOS: a
-# universal app and dmg, ad-hoc signed (not notarized: open it with right-click, Open, the first
+# universal dmg, ad-hoc signed (not notarized: open it with right-click, Open, the first
 # time). Based on Basesmall's release workflow.
 name: Release
 
@@ -20,8 +20,10 @@ jobs:
           - os: windows-latest
             args: --bundles nsis
             rust_targets: ''
+          # dmg only: with app too, the action also uploads the app as a .tar.gz, which only an
+          # in-app updater would read, and Courtsmall has none.
           - os: macos-latest
-            args: --target universal-apple-darwin --bundles app,dmg
+            args: --target universal-apple-darwin --bundles dmg
             rust_targets: aarch64-apple-darwin,x86_64-apple-darwin
     runs-on: ${{ matrix.os }}
     steps:
