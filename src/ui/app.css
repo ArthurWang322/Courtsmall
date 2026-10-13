@@ -93,7 +93,7 @@ button { font: inherit; color: inherit; border: 0; background: transparent; padd
 .msg span:first-child { font: 600 15px var(--label); letter-spacing: .04em; }
 
 /* A finished game's points per period (src/ui/views.ts periodTable). */
-.periods { display: flex; flex-direction: column; align-items: center; gap: 1px; margin-top: 2px; }
+.periods { display: flex; flex-direction: column; align-items: center; gap: 1px; margin-top: 8px; }
 .periods .period { gap: 0; justify-content: center; color: var(--muted); }
 .periods .abbr { width: 56px; font: 600 14px/1.1 var(--label); letter-spacing: .08em; }
 .periods .mono { width: 36px; text-align: right; font: 600 18px/1.1 var(--label); color: var(--text); }
