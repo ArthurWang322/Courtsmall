@@ -59,9 +59,9 @@ const ground = (x: number, y: number): P3 => ({ x, y, z: 0 });
 const arcPts = (cx: number, cy: number, r: number, a0: number, a1: number, z = 0, n = 28): P3[] =>
   Array.from({ length: n + 1 }, (_, i) => { const a = a0 + ((a1 - a0) * i) / n; return { x: cx + r * Math.cos(a), y: cy + r * Math.sin(a), z }; });
 
-/** The view box: the floor, the backboard, and air above the rim for the ball's arc. */
+/** The view box: the floor, the backboard, and a little air above it (the arc may rise past it; app.css lets it). */
 export function viewBox(): string {
-  const pts = [ground(0, FAR), ground(50, FAR), ground(0, NEAR), ground(50, NEAR), { x: 25, y: BOARD_Y, z: RIM_Z + 9 }].map(project);
+  const pts = [ground(0, FAR), ground(50, FAR), ground(0, NEAR), ground(50, NEAR), { x: 25, y: BOARD_Y, z: RIM_Z + 5 }].map(project);
   const xs = pts.map((p) => p.x), ys = pts.map((p) => p.y);
   const pad = 2;
   const x0 = Math.min(...xs) - pad, y0 = Math.min(...ys) - pad;
@@ -126,7 +126,7 @@ export function ballAt(s: Shot, t: number): { phase: Phase; ball?: P3; v?: numbe
   const u = (t - WINDUP_SECONDS) / T;
   if (u < 1) {
     // A parabola from the release to the rim, its top higher for a longer shot.
-    const apex = RIM_Z + 3 + 0.22 * Math.hypot(s.x - BASKET.x, s.y - BASKET.y);
+    const apex = RIM_Z + 2.5 + 0.15 * Math.hypot(s.x - BASKET.x, s.y - BASKET.y);
     const z = release.z + (RIM_Z - release.z) * u + 4 * (apex - (release.z + RIM_Z) / 2) * u * (1 - u);
     return { phase: 'flight', ball: { x: release.x + (BASKET.x - release.x) * u, y: release.y + (BASKET.y - release.y) * u, z }, v: u };
   }
