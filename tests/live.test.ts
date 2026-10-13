@@ -99,6 +99,24 @@ describe.skipIf(!hasFixture(ID))('EspnLiveSource on 401810362', () => {
     expect(r.events).toEqual([]);
   });
 
+  // Seen live on 401898721: a made free throw at 8:53 was published 50 s after two substitutions at
+  // 8:53, yet listed before them. Same moment of the game, so it is news, not a correction.
+  it('a basket listed before plays at the same game clock is still delivered', async () => {
+    const j = feed.plays.findIndex((p, i) => i > 250 && p.scoringPlay && p.scoreValue === 1
+      && feed.plays[i + 1]!.clock.value === p.clock.value && feed.plays[i + 1]!.period.number === p.period.number);
+    const ft = feed.plays[j]!;
+    const withheld = feed.plays.filter((_, i) => i !== j);
+    const r = run({ joinAt: j, step: 0 });
+    r.server.plays = withheld;
+    await flush();
+    r.server.shown = j + 1; // the play after the free throw, at the same clock, arrives first
+    await r.poll();
+    r.server.plays = [...feed.plays];
+    r.server.shown = j + 2; // now the free throw, listed before it
+    await r.poll();
+    expect(r.events).toContainEqual(expect.objectContaining({ type: 'basket', basket: expect.objectContaining({ points: 1, clock: ft.clock.value }) }));
+  });
+
   it('backs off after failures, then returns to the normal pace', async () => {
     const r = run({ joinAt: 200, step: 0 });
     await flush();

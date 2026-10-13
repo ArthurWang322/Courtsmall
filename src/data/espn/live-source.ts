@@ -58,6 +58,8 @@ interface CoreStatus {
 
 const DONE = new Set(['final', 'postponed', 'cancelled']);
 const signature = (e: TimelineEntry) => JSON.stringify(e.events);
+/** How far into the game a state is: later periods first, then less time on the clock. */
+const moment = (s: GameState) => s.period * 10_000 - s.clock;
 
 /** Replace the plays from `start` on with `window`, dropping any earlier copy of a play in it. */
 export function mergeTail(old: readonly CorePlay[], window: readonly CorePlay[], start: number): CorePlay[] {
@@ -179,17 +181,19 @@ class LiveGame {
     let revised = false;
     const fresh: TimelineEntry[] = [];
     const present = new Set<string>();
-    // A new play listed before one we already delivered was inserted late: a correction, because
-    // playing its events now (a basket from minutes ago) would show it at the wrong moment.
-    let lastSeen = -1;
-    timeline.forEach((e, i) => { if (this.delivered.has(e.id)) lastSeen = i; });
-    timeline.forEach((e, i) => {
+    // A new play from earlier in the game than the latest one we delivered was inserted late: a
+    // correction, because playing its events now (a basket from minutes ago) would show it at the
+    // wrong moment. A play at the same game clock is news: ESPN often publishes a free throw after
+    // the substitutions at the same stoppage, yet lists it before them (docs/PROBE_REPORT.md §9.3).
+    let latest = -Infinity;
+    for (const e of timeline) if (this.delivered.has(e.id)) latest = Math.max(latest, moment(e.state));
+    for (const e of timeline) {
       present.add(e.id);
       const seen = this.delivered.get(e.id);
-      if (seen === undefined && i > lastSeen) fresh.push(e);
+      if (seen === undefined && moment(e.state) >= latest) fresh.push(e);
       else if (seen !== signature(e)) revised = true;
       this.delivered.set(e.id, signature(e));
-    });
+    }
     for (const k of [...this.delivered.keys()]) {
       if (present.has(k)) continue;
       this.delivered.delete(k);
