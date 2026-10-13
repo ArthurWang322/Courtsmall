@@ -168,7 +168,7 @@ export function shotMarks(shots: readonly Shot[], colours: Record<Side, string>,
 }
 
 /**
- * One shot, `t` seconds after it appeared: the shooter's dot, the ball with a short trail and its
+ * One shot, `t` seconds after it appeared: the shooter's dot, the ball with a dashed arc behind it and its
  * shadow, the net swishing on a make or the rim shaking on a miss, and on a make the points rising
  * from the spot with a ring spreading on the floor (bigger for three).
  */
@@ -203,17 +203,20 @@ export function flightSvg(s: Shot, t: number, colour: string): string {
     out.push(`<path class="rim hit" d="${path(arcPts(BASKET.x + shake, BASKET.y, RIM_R, 0, 2 * Math.PI, RIM_Z + shake * 0.5), true)}"/>`);
   }
 
+  // The ball's path as a dashed arc in the team's colour: drawn out behind the ball while it flies,
+  // then the whole arc, fading as the shot ends.
+  const T = flightSeconds(s);
+  const flown = Math.min(1, Math.max(0, (t - WINDUP_SECONDS) / T));
+  if (flown > 0) {
+    const pts: P3[] = [];
+    for (let i = 0; i <= 24; i++) pts.push(ballAt(s, WINDUP_SECONDS + (T * flown * i) / 24).ball!);
+    const fade = flown < 1 ? 0.75 : 0.75 * Math.max(0, 1 - (t - WINDUP_SECONDS - T) / (shotSeconds(s) - WINDUP_SECONDS - T));
+    out.push(`<path class="arc" d="${path(pts)}" stroke="#${colour}" opacity="${f(fade)}"/>`);
+  }
+
   if (ball) {
     // The shadow sits on the floor under the ball, smaller and fainter the higher the ball is.
     out.push(disc({ ...ball, z: 0 }, Math.max(0.35, 0.85 - ball.z * 0.03), `class="shadow" opacity="${f(Math.max(0.12, 0.5 - ball.z * 0.022))}"`));
-    // A short trail behind the ball in the air: where it was a few frames ago.
-    if (phase === 'flight' || phase === 'bounce')
-      for (let k = 4; k >= 1; k--) {
-        const g = ballAt(s, t - k * 0.035).ball;
-        if (!g) continue;
-        const p = project(g);
-        out.push(`<circle class="trail" cx="${f(p.x)}" cy="${f(p.y)}" r="${f((1.2 - k * 0.15) * footAt(g))}" opacity="${f(0.32 - k * 0.07)}"/>`);
-      }
     const b = project(ball);
     // The ball is drawn larger than life (1.2 ft, not 0.4) so a glance finds it.
     out.push(`<circle class="ball" cx="${f(b.x)}" cy="${f(b.y)}" r="${f(1.2 * footAt(ball))}"/>`);

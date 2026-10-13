@@ -93,6 +93,14 @@ describe('shotMarks', () => {
     expect(op.at(-1)).toBe(1);
   });
 
+  // The shot's path stays visible as a dashed arc, drawn out as the ball flies.
+  it('draws the path flown so far as a dashed arc in the team colour', () => {
+    const s = shot();
+    const mid = flightSvg(s, WINDUP_SECONDS + flightSeconds(s) / 2, 'c8102e');
+    expect(mid).toMatch(/<path class="arc" d="M[^"]+" stroke="#c8102e"/);
+    expect(flightSvg(s, WINDUP_SECONDS / 2, 'c8102e')).not.toContain('class="arc"');
+  });
+
   // Every free throw comes from the same spot; marks there would pile up and push real shots off.
   it('leaves no mark for a free throw', () => {
     expect(shotMarks([shot({ id: '1', points: 1, x: 25, y: 14.75 })], colours, always)).toBe('');
