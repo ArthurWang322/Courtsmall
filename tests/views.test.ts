@@ -244,11 +244,11 @@ describe('settings page', () => {
   const settings = { favourites: [] as string[], notify: { start: true, final: true, clutch: true }, theme: 'system' as const };
 
   // One favourite, picked from a drop-down whose first choice is none.
-  it('offers none and every team in the favourite drop-down, with the favourite selected', () => {
+  it('offers none and every team by full name in the favourite drop-down, with the favourite selected', () => {
     const none = settingsView(teams, settings, zh);
     expect([...none.matchAll(/<option value="(\d*)"( selected)?>/g)].map((m) => `${m[1]}${m[2] ? '*' : ''}`)).toEqual(['*', '7', '20']);
     const den = settingsView(teams, { ...settings, favourites: ['7'] }, zh);
-    expect(den).toContain('<option value="7" selected>DEN　Denver Nuggets</option>');
+    expect(den).toContain('<option value="7" selected>Denver Nuggets</option>');
     expect(den).toContain('background:#fec524');
   });
 });

@@ -193,11 +193,11 @@ export function pregameView(teams: GameCard['teams'], start: number, when: strin
 
 /** Choosing a team and the notices. Buttons carry data-* attributes; src/ui/main.ts handles clicks. */
 export function settingsView(teams: readonly TeamRef[], s: Settings, T: Strings): string {
-  // The favourite, from a drop-down: none first (follow the closest game), then the teams.
+  // The favourite, from a drop-down: none first (follow the closest game), then the teams by full name.
   const fav = teams.find((t) => s.favourites.includes(t.id));
   const option = (value: string, label: string, on: boolean) => `<option value="${esc(value)}"${on ? ' selected' : ''}>${esc(label)}</option>`;
   const picker = `<div class="favourite">${fav ? cardDot(fav) : '<i class="dot none"></i>'}<select data-favourite aria-label="${esc(T.chooseTeam)}">`
-    + option('', T.noFavourite, !fav) + teams.map((t) => option(t.id, `${t.abbr}　${t.name}`, t.id === fav?.id)).join('') + '</select></div>';
+    + option('', T.noFavourite, !fav) + [...teams].sort((a, b) => a.name.localeCompare(b.name)).map((t) => option(t.id, t.name, t.id === fav?.id)).join('') + '</select></div>';
   const check = (key: keyof Settings['notify'], label: string) =>
     `<label class="check"><input type="checkbox" data-notify="${key}"${s.notify[key] ? ' checked' : ''}> ${esc(label)}</label>`;
   return `<div class="settings">
