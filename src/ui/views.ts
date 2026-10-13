@@ -193,7 +193,6 @@ export function settingsView(teams: readonly TeamRef[], s: Settings, T: Strings,
       ${picker}
       <span class="hint muted">${esc(fav ? T.favouritesHint : T.noTeam)}</span>
       ${check('start', T.notifyStart)}${check('final', T.notifyFinal)}${check('clutch', T.notifyClutch)}
-      <button class="test-notice" data-test-notice>${esc(T.testNotice)}</button>
     </div>`;
 }
 

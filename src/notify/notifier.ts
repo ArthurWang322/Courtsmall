@@ -40,11 +40,6 @@ export class Notifier {
 
   constructor(T: Strings) { this.T = T; }
 
-  /** A notice that says it is a test, from the settings page: to see that notices get through. */
-  test(): void {
-    show(this.T.testNoticeTitle, this.T.testNoticeBody).catch((e: unknown) => console.warn('notice not shown', e));
-  }
-
   send(notices: readonly Notice[]): void {
     for (const n of notices) {
       const key = `${n.state.gameId}:${n.key}`;
