@@ -8,6 +8,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit -p . && vite build",
+    "tauri": "tauri",
     "test": "vitest run",
     "typecheck": "tsc --noEmit -p ."
   },
