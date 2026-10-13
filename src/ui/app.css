@@ -1,15 +1,25 @@
 /* Courtsmall: an arena scoreboard in a corner of the screen. The score is set in a condensed
    athletic display face; everything else stays quiet so the score is what the eye finds.
-   --background must match BACKGROUND in src/render/colour.ts (team colours are checked against it). */
+   Two themes, on <html data-theme> (src/ui/main.ts). --background must match BACKGROUNDS in
+   src/render/colour.ts: team colours are checked against it. */
 :root {
   --background: #141317; --surface: #1c1b20; --panel: #222127; --border: #2e2d34; --edge: rgba(255, 255, 255, .07);
-  --text: #f3efe7; --muted: #9b98a2; --faint: #6c6973; --accent: #f2b544; --wood: #2b2119; --wood-hi: #3a2c20;
+  --text: #f3efe7; --muted: #9b98a2; --faint: #6c6973; --accent: #f2b544; --glow: rgba(242, 181, 68, .07);
+  --wood: #2b2119; --wood-hi: #3a2c20; --court-line: rgba(243, 239, 231, .42); --court-edge: rgba(243, 239, 231, .18);
+  --board-fill: rgba(243, 239, 231, .08); --board-line: rgba(243, 239, 231, .55); --points-stroke: rgba(0, 0, 0, .6);
   --display: 'Big Shoulders Display', 'Barlow Condensed', 'PingFang TC', system-ui, sans-serif;
   --label: 'Barlow Condensed', 'PingFang TC', 'Microsoft JhengHei UI', system-ui, sans-serif;
   --font: 'Segoe UI Variable', 'Segoe UI', 'PingFang TC', 'Microsoft JhengHei UI', system-ui, sans-serif;
   --mono: var(--label);
   /* A fine grain over the panel, so it reads as a surface rather than a flat fill. */
   --grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 .5 0'/%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23n)' opacity='.6'/%3E%3C/svg%3E");
+}
+:root[data-theme='light'] {
+  /* Paper and ink; a maple floor. */
+  --background: #f4f1ea; --surface: #fbf9f4; --panel: #ffffff; --border: #dcd5c9; --edge: rgba(255, 255, 255, .9);
+  --text: #1d1b20; --muted: #6d6873; --faint: #a39ea8; --accent: #b07408; --glow: rgba(176, 116, 8, .06);
+  --wood: #d6b287; --wood-hi: #ead0a8; --court-line: rgba(70, 45, 20, .55); --court-edge: rgba(70, 45, 20, .3);
+  --board-fill: rgba(255, 255, 255, .55); --board-line: rgba(70, 45, 20, .6); --points-stroke: rgba(255, 255, 255, .85);
 }
 * { box-sizing: border-box; }
 html, body { margin: 0; height: 100%; background: transparent; overflow: hidden; }
@@ -20,7 +30,7 @@ button { font: inherit; color: inherit; border: 0; background: transparent; padd
 #app { position: absolute; inset: 0; display: flex; align-items: center; overflow: hidden; border-radius: 14px; padding: 10px 16px; cursor: default;
   background:
     var(--grain),
-    radial-gradient(120% 90% at 0% 0%, rgba(242, 181, 68, .07), transparent 55%),
+    radial-gradient(120% 90% at 0% 0%, var(--glow), transparent 55%),
     linear-gradient(180deg, var(--surface), var(--background));
   background-blend-mode: overlay, normal, normal;
   border: 1px solid var(--border); box-shadow: inset 0 1px 0 var(--edge); }
@@ -92,21 +102,21 @@ button { font: inherit; color: inherit; border: 0; background: transparent; padd
 #app[data-tier='court'] { align-items: stretch; }
 .courtwrap { display: flex; flex-direction: column; gap: 6px; width: 100%; min-width: 0; }
 .court { flex: 1; min-height: 0; width: 100%; filter: drop-shadow(0 6px 10px rgba(0, 0, 0, .45)); }
-.court .floor { fill: url(#wood); stroke: rgba(243, 239, 231, .18); stroke-width: 0.6; }
+.court .floor { fill: url(#wood); stroke: var(--court-edge); stroke-width: 0.6; }
 .court .paint { fill: rgba(0, 0, 0, .22); }
-.court .lines path { fill: none; stroke: rgba(243, 239, 231, .42); stroke-width: 0.6; }
+.court .lines path { fill: none; stroke: var(--court-line); stroke-width: 0.6; }
 .court .post { fill: none; stroke: var(--muted); stroke-width: 0.9; }
-.court .board { fill: rgba(243, 239, 231, .08); stroke: rgba(243, 239, 231, .55); stroke-width: 0.6; }
+.court .board { fill: var(--board-fill); stroke: var(--board-line); stroke-width: 0.6; }
 .court .rim { fill: none; stroke: #ef7d33; stroke-width: 1; }
 .court .rim-shadow { fill: rgba(0, 0, 0, .35); stroke: none; }
 .court .mark.miss { stroke-width: 0.8; }
 .court .shadow { fill: #000; }
 .court .ball { fill: #ef7d33; stroke: rgba(0, 0, 0, .4); stroke-width: 0.3; }
-.court .net { fill: none; stroke: rgba(243, 239, 231, .5); stroke-width: 0.25; }
+.court .net { fill: none; stroke: var(--court-line); stroke-width: 0.25; }
 .court .rim.hit { stroke: #ffb27a; stroke-width: 1.2; }
 .court .arc { fill: none; stroke-width: 0.45; stroke-dasharray: 1.2 1; stroke-linecap: round; }
 .court .burst { stroke-width: 1.1; }
-.court .points { font-family: var(--display); font-weight: 800; text-anchor: middle; paint-order: stroke; stroke: rgba(0, 0, 0, .6); stroke-width: 0.9; }
+.court .points { font-family: var(--display); font-weight: 800; text-anchor: middle; paint-order: stroke; stroke: var(--points-stroke); stroke-width: 0.9; }
 
 /* ---- Toolbar: sizes, games, settings ------------------------------------------------------------
    Out of the way until the pointer is over the window, and then bottom right, over the quietest
@@ -153,3 +163,7 @@ button { font: inherit; color: inherit; border: 0; background: transparent; padd
 .settings .check input { accent-color: var(--accent); }
 
 @media (prefers-reduced-motion: reduce) { .jump { animation: none; } .controls, .panel .game { transition: none; } }
+
+/* The theme row on the settings page. */
+.settings .themes { display: flex; align-items: center; gap: 4px; font-size: 12px; }
+.settings .themes .muted { margin-right: 4px; }

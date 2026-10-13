@@ -1,16 +1,26 @@
 // Team colours that can be seen: against the window's background, and against each other.
 // ESPN gives each team a colour and a second one; some first colours (BKN black, NO navy) vanish
-// on a dark background, and some pairs (ATL and CHI reds) cannot be told apart.
+// on the dark background, some (GS, IND gold) on the light one, and some pairs (ATL and CHI reds)
+// cannot be told apart.
 
 import type { Side, TeamRef } from '../model/types.ts';
 
-/** The window background, `--background` in src/ui/app.css. */
-export const BACKGROUND = '141317';
+/** The window backgrounds, `--background` in src/ui/app.css for each theme. */
+export const BACKGROUNDS = { dark: '141317', light: 'f4f1ea' } as const;
+export type Theme = keyof typeof BACKGROUNDS;
+/** The dark background, the default. */
+export const BACKGROUND = BACKGROUNDS.dark;
+
+/** The background the colours are checked against: the theme on screen (src/ui/main.ts sets it). */
+let current: string = BACKGROUND;
+export function useTheme(theme: Theme): void { current = BACKGROUNDS[theme]; }
 /** Least contrast a team dot needs against the background (WCAG ratio; 3 is "large text"). */
 export const MIN_CONTRAST = 2.2;
 /** Below this OKLab distance two team colours read as the same. */
 export const CLASH_DISTANCE = 0.12;
-const FALLBACK: Record<Side, string> = { away: '9aa3b2', home: 'e8b04a' };
+const isDark = (background: string) => luminance(background) < 0.5;
+const fallback = (side: Side, background: string) =>
+  isDark(background) ? { away: '9aa3b2', home: 'e8b04a' }[side] : { away: '6d6873', home: 'b07408' }[side];
 
 const rgb = (hex: string): [number, number, number] => {
   const n = parseInt(hex.replace('#', '').padEnd(6, '0').slice(0, 6), 16);
@@ -42,32 +52,33 @@ export function oklabDistance(a: string, b: string): number {
   return Math.hypot(x[0]! - y[0]!, x[1]! - y[1]!, x[2]! - y[2]!);
 }
 
-/** Mix toward white until the colour stands out from the background. */
-function lighten(hex: string, background: string): string {
-  const c = rgb(hex);
+/** Mix away from the background (toward white on dark, black on light) until the colour stands out. */
+function separate(hex: string, background: string): string {
+  const c = rgb(hex), to = isDark(background) ? 255 : 0;
   for (let t = 0.1; t <= 1; t += 0.1) {
-    const mixed = toHex(c.map((v) => v + (255 - v) * t) as [number, number, number]);
+    const mixed = toHex(c.map((v) => v + (to - v) * t) as [number, number, number]);
     if (contrast(mixed, background) >= MIN_CONTRAST) return mixed;
   }
-  return 'ffffff';
+  return isDark(background) ? 'ffffff' : '000000';
 }
 
-/** A team's colour that shows on the background: its first colour, its second, or the first lightened. */
-export function visibleColour(t: Pick<TeamRef, 'color' | 'alternateColor'>, background = BACKGROUND, fallback = FALLBACK.home): string {
+/** A team's colour that shows on the background: its first colour, its second, or the first moved away from it. */
+export function visibleColour(t: Pick<TeamRef, 'color' | 'alternateColor'>, background = current, side: Side = 'home'): string {
   for (const c of [t.color, t.alternateColor]) if (c && contrast(c, background) >= MIN_CONTRAST) return c;
-  return lighten(t.color ?? fallback, background);
+  return separate(t.color ?? fallback(side, background), background);
 }
 
 /**
  * Both sides' colours for one game. When they clash, one side changes to the other of its own
  * colours: the favourite keeps its look; otherwise the home team does.
  */
-export function gameColours(teams: Record<Side, TeamRef>, favourite?: string, background = BACKGROUND): Record<Side, string> {
-  const own = { away: visibleColour(teams.away, background, FALLBACK.away), home: visibleColour(teams.home, background, FALLBACK.home) };
+export function gameColours(teams: Record<Side, TeamRef>, favourite?: string, background = current): Record<Side, string> {
+  const own = { away: visibleColour(teams.away, background, 'away'), home: visibleColour(teams.home, background, 'home') };
   if (oklabDistance(own.away, own.home) >= CLASH_DISTANCE) return own;
   const changes: Side = favourite === teams.away.id ? 'home' : 'away';
   const keeps: Side = changes === 'away' ? 'home' : 'away';
   const t = teams[changes];
   const other = [t.alternateColor, t.color].find((c) => c && c !== own[changes] && contrast(c, background) >= MIN_CONTRAST && oklabDistance(c, own[keeps]) >= CLASH_DISTANCE);
-  return { ...own, [changes]: other ?? (oklabDistance(FALLBACK[changes], own[keeps]) >= CLASH_DISTANCE ? FALLBACK[changes] : 'ffffff') };
+  const spare = fallback(changes, background);
+  return { ...own, [changes]: other ?? (oklabDistance(spare, own[keeps]) >= CLASH_DISTANCE ? spare : isDark(background) ? 'ffffff' : '000000') };
 }

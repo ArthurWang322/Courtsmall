@@ -53,6 +53,10 @@ export interface Strings {
   noGames: string;
   prevDay: string;
   nextDay: string;
+  theme: string;
+  themeName(t: 'system' | 'dark' | 'light'): string;
+  /** The toolbar button: switch to the other theme. */
+  switchTheme: string;
 }
 
 export const STRINGS: Record<Lang, Strings> = {
@@ -94,6 +98,9 @@ export const STRINGS: Record<Lang, Strings> = {
     noGames: 'No games this day',
     prevDay: 'Previous day',
     nextDay: 'Next day',
+    theme: 'Theme',
+    themeName: (t) => ({ system: 'System', dark: 'Dark', light: 'Light' })[t],
+    switchTheme: 'Dark / light',
   },
   'zh-TW': {
     period: (n) => (n <= 4 ? `第${n}節` : n === 5 ? '延長' : `第${n - 4}延長`),
@@ -133,6 +140,9 @@ export const STRINGS: Record<Lang, Strings> = {
     noGames: '這天沒有比賽',
     prevDay: '前一天',
     nextDay: '後一天',
+    theme: '外觀',
+    themeName: (t) => ({ system: '跟隨系統', dark: '深色', light: '淺色' })[t],
+    switchTheme: '深色／淺色',
   },
 };
 

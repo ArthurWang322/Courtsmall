@@ -43,7 +43,9 @@ describe('notices', () => {
 describe('settings', () => {
   it('falls back to the defaults for anything missing or malformed', () => {
     expect(normalize(null)).toEqual(DEFAULTS);
-    expect(normalize({ team: 7, notify: { start: 'yes', final: false } })).toEqual({ notify: { start: true, final: false, clutch: true } });
+    expect(normalize({ team: 7, notify: { start: 'yes', final: false } })).toEqual({ notify: { start: true, final: false, clutch: true }, theme: 'system' });
     expect(normalize({ team: '7' }).team).toBe('7');
+    expect(normalize({ theme: 'light' }).theme).toBe('light');
+    expect(normalize({ theme: 'sepia' }).theme).toBe('system');
   });
 });

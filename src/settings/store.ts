@@ -6,9 +6,14 @@ export interface Settings {
   team?: string;
   /** Each notice is its own switch (CLAUDE.md: every feature is a switch). */
   notify: { start: boolean; final: boolean; clutch: boolean };
+  /** Dark or light, or whatever the system uses. */
+  theme: ThemeChoice;
 }
 
-export const DEFAULTS: Settings = { notify: { start: true, final: true, clutch: true } };
+export type ThemeChoice = 'system' | 'dark' | 'light';
+const THEMES: readonly ThemeChoice[] = ['system', 'dark', 'light'];
+
+export const DEFAULTS: Settings = { notify: { start: true, final: true, clutch: true }, theme: 'system' };
 const KEY = 'courtsmall.settings';
 
 /** Fill in what a stored object lacks, drop what it should not have. */
@@ -19,6 +24,7 @@ export function normalize(raw: unknown): Settings {
   return {
     ...(typeof o.team === 'string' && o.team ? { team: o.team } : {}),
     notify: { start: flag(n.start, DEFAULTS.notify.start), final: flag(n.final, DEFAULTS.notify.final), clutch: flag(n.clutch, DEFAULTS.notify.clutch) },
+    theme: THEMES.includes(o.theme as ThemeChoice) ? (o.theme as ThemeChoice) : DEFAULTS.theme,
   };
 }
 

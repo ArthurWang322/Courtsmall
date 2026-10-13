@@ -4,7 +4,7 @@
 //
 // URL parameters, for development: ?game=<ESPN event id> (skip following), &replay (replay even
 // if live), &pace=real|compact|results, &speed=<n>, &lang=en|zh-TW, &settings or &games (open
-// that panel).
+// that panel), &theme=dark|light (dev only).
 // In `npm run dev` only, &fixture replays fixtures/nba/game-<id>.json and reads the team list from
 // fixtures/nba/teams.json instead of asking ESPN (node scripts/probe/06-fixtures.mjs).
 
@@ -25,8 +25,8 @@ import { Notifier } from '../notify/notifier.ts';
 import { notices } from '../notify/rules.ts';
 import { playLinesAt, TIER_PRESET, tierOf, type Tier } from '../render/tiers.ts';
 import { drawFlights, shotSeconds } from '../render/court.ts';
-import { gameColours } from '../render/colour.ts';
-import { loadSettings, saveSettings, type Settings } from '../settings/store.ts';
+import { gameColours, useTheme, type Theme } from '../render/colour.ts';
+import { loadSettings, saveSettings, type Settings, type ThemeChoice } from '../settings/store.ts';
 import { barView, controlsView, courtView, dotView, gamesView, JUMP_MS, messageView, settingsView, upcomingView, type ScoreAges } from './views.ts';
 
 // In `npm run dev`, VITE_PARAMS fills in for the URL, which the desktop window does not have:
@@ -42,7 +42,7 @@ const DECIDE_EVERY_MS = 60_000;
 /** How long a team's schedule is reused, ms. */
 const TEAM_SCHEDULE_TTL_MS = 5 * 60_000;
 /** The window's size while a panel (games, settings) is open. */
-const PANEL_SIZE = { w: 360, h: 380 };
+const PANEL_SIZE = { w: 360, h: 420 };
 
 // One request in flight at a time across the whole app.
 let chain: Promise<unknown> = Promise.resolve();
@@ -58,6 +58,28 @@ const fetchJson: FetchJson = (url) => {
 };
 
 let settings: Settings = loadSettings();
+
+// ---- Theme --------------------------------------------------------------------------------------
+// The page's colours come from CSS tokens keyed on <html data-theme>; team colours are checked
+// against the same background (src/render/colour.ts useTheme).
+
+const systemDark = window.matchMedia('(prefers-color-scheme: dark)');
+// Under `npm run dev`, &theme=dark|light overrides the setting for this page only (screenshots).
+const devTheme = import.meta.env.DEV ? (params.get('theme') as Theme | null) : null;
+const resolvedTheme = (): Theme => devTheme ?? (settings.theme === 'system' ? (systemDark.matches ? 'dark' : 'light') : settings.theme);
+function applyTheme(): void {
+  const theme = resolvedTheme();
+  document.documentElement.dataset.theme = theme;
+  useTheme(theme);
+}
+function setTheme(choice: ThemeChoice): void {
+  settings = { ...settings, theme: choice };
+  saveSettings(settings);
+  applyTheme();
+  render();
+}
+applyTheme();
+systemDark.addEventListener('change', () => { if (settings.theme === 'system') { applyTheme(); render(); } });
 let teams: TeamRef[] = [];
 
 // What is on screen.
@@ -294,8 +316,11 @@ async function setTier(t: Tier): Promise<void> {
 }
 
 app.addEventListener('click', (e) => {
-  const el = (e.target as HTMLElement).closest<HTMLElement>('[data-tier], [data-open], [data-day], [data-game], [data-team], [data-done], [data-notify]');
+  const el = (e.target as HTMLElement).closest<HTMLElement>('[data-tier], [data-open], [data-day], [data-game], [data-team], [data-done], [data-notify], [data-theme-toggle], [data-pick-theme]');
   if (!el) return;
+  // The toolbar's button flips to the other theme; the settings page offers system, dark, light.
+  if (el.dataset.themeToggle !== undefined) { setTheme(resolvedTheme() === 'dark' ? 'light' : 'dark'); return; }
+  if (el.dataset.pickTheme) { setTheme(el.dataset.pickTheme as ThemeChoice); return; }
   if (el.dataset.tier) { void setTier(el.dataset.tier as Tier); return; }
   if (el.dataset.open) { void openPanel(el.dataset.open as 'games' | 'settings'); return; }
   if (el.dataset.done !== undefined) { void closePanel(); return; }

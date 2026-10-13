@@ -164,28 +164,33 @@ export function settingsView(teams: readonly TeamRef[], s: Settings, T: Strings)
       <button class="team none${s.team ? '' : ' on'}" data-team="">${esc(T.noTeam)}</button>
       <div class="teams">${teams.map(team).join('')}</div>
       ${check('start', T.notifyStart)}${check('final', T.notifyFinal)}${check('clutch', T.notifyClutch)}
+      <div class="themes"><span class="muted">${esc(T.theme)}</span>${(['system', 'dark', 'light'] as const).map((t) =>
+        `<button class="${s.theme === t ? 'on' : ''}" data-pick-theme="${t}">${esc(T.themeName(t))}</button>`).join('')}</div>
     </div>`;
 }
 
 // ---- Hover toolbar and the games list ------------------------------------------------------------
 
 /** Icons in basic shapes, 14 px, drawn in the current text colour. */
-const ICON: Record<Tier | 'games' | 'settings', string> = {
+const ICON: Record<Tier | 'games' | 'settings' | 'theme', string> = {
   dot: '<rect x="1.5" y="5" width="11" height="4" rx="2"/>',
   bar: '<rect x="1.5" y="3" width="11" height="8" rx="1.5"/><path d="M3.5 6.5h7"/>',
   court: '<path d="M3 3.5h8l1.5 7.5h-11z"/><path d="M5.2 3.5v3h3.6v-3"/>',
   games: '<path d="M2.5 4h9M2.5 7h9M2.5 10h9"/>',
+  // Half a disc filled: dark and light at once.
+  theme: '<circle cx="7" cy="7" r="5"/><path d="M7 2a5 5 0 0 1 0 10z" fill="currentColor"/>',
   settings: '<circle cx="7" cy="7" r="2"/><path d="M7 1.5v2M7 10.5v2M1.5 7h2M10.5 7h2M3.1 3.1l1.4 1.4M9.5 9.5l1.4 1.4M3.1 10.9l1.4-1.4M9.5 4.5l1.4-1.4"/>',
 };
 const icon = (k: keyof typeof ICON) => `<svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true">${ICON[k]}</svg>`;
 
 /**
  * The toolbar that shows while the pointer is over the window: the three sizes (the current one
- * lit), the games list and the settings. Buttons carry data-* attributes; src/ui/main.ts handles them.
+ * lit), dark or light, the games list and the settings. Buttons carry data-* attributes; src/ui/main.ts handles them.
  */
 export function controlsView(tier: Tier, T: Strings): string {
   const size = (t: Tier) => `<button class="icon${t === tier ? ' on' : ''}" data-tier="${t}" title="${esc(T.tierName(t))}">${icon(t)}</button>`;
   return `<div class="controls">${size('dot')}${size('bar')}${size('court')}<span class="sep"></span>`
+    + `<button class="icon" data-theme-toggle title="${esc(T.switchTheme)}">${icon('theme')}</button>`
     + `<button class="icon" data-open="games" title="${esc(T.games)}">${icon('games')}</button>`
     + `<button class="icon" data-open="settings" title="${esc(T.settings)}">${icon('settings')}</button></div>`;
 }
