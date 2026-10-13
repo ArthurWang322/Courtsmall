@@ -35,6 +35,9 @@ button { font: inherit; color: inherit; border: 0; background: transparent; padd
   background-blend-mode: overlay, normal, normal;
   border: 1px solid var(--border); box-shadow: inset 0 1px 0 var(--edge); }
 #app[data-tier='dot'] { border-radius: 999px; padding: 0 14px; }
+/* Bar and court: the view, then the toolbar's row along the bottom. */
+#app:not([data-tier='dot']) { flex-direction: column; align-items: stretch; padding-bottom: 4px; }
+.content { flex: 1; min-height: 0; display: flex; align-items: center; width: 100%; }
 /* Clicks land on #app, which moves the window (src/ui/main.ts). */
 #app * { pointer-events: none; }
 /* Except what is for clicking: the panels and the hover toolbar. */
@@ -99,7 +102,7 @@ button { font: inherit; color: inherit; border: 0; background: transparent; padd
 .periods .mono { width: 36px; text-align: right; font: 600 18px/1.1 var(--label); color: var(--text); }
 
 /* ---- Court (src/render/court.ts): a half court in 3D, the basket at the far end ------------------ */
-#app[data-tier='court'] { align-items: stretch; }
+#app[data-tier='court'] .content { align-items: stretch; }
 .courtwrap { display: flex; flex-direction: column; gap: 6px; width: 100%; min-width: 0; }
 .court { flex: 1; min-height: 0; width: 100%; filter: drop-shadow(0 6px 10px rgba(0, 0, 0, .45)); }
 .court .floor { fill: url(#wood); stroke: var(--court-edge); stroke-width: 0.6; }
@@ -119,15 +122,15 @@ button { font: inherit; color: inherit; border: 0; background: transparent; padd
 .court .burst { stroke-width: 1.1; }
 .court .points { font-family: var(--display); font-weight: 800; text-anchor: middle; paint-order: stroke; stroke: var(--points-stroke); stroke-width: 0.9; }
 
-/* ---- Toolbar: sizes, games, settings ------------------------------------------------------------
-   Out of the way until the pointer is over the window, and then bottom right, over the quietest
-   line (the older play), not the score or the clock. */
-.controls { position: absolute; bottom: 5px; right: 7px; display: flex; align-items: center; gap: 2px; padding: 2px;
-  border-radius: 9px; background: color-mix(in srgb, var(--background) 88%, transparent); border: 1px solid var(--border);
-  box-shadow: 0 4px 14px rgba(0, 0, 0, .45), inset 0 1px 0 var(--edge); backdrop-filter: blur(6px);
-  opacity: 0; transform: translateY(3px); transition: opacity .16s, transform .16s; }
-#app:hover .controls { opacity: 1; transform: none; }
-#app[data-tier='dot'] .controls { bottom: auto; top: 50%; transform: translateY(-50%); right: 4px; border-radius: 999px; }
+/* ---- Toolbar: sizes, theme, games, settings -----------------------------------------------------
+   Its own row along the bottom of the bar and the court (src/render/tiers.ts TOOLBAR_H); in the dot,
+   where there is no room, it shows on hover over the right end. */
+.controls { display: flex; align-items: center; justify-content: flex-end; gap: 2px; height: 22px; margin-top: 4px;
+  border-top: 1px solid color-mix(in srgb, var(--border) 70%, transparent); padding-top: 2px; }
+#app[data-tier='dot'] .controls { position: absolute; top: 50%; right: 4px; margin: 0; height: auto; padding: 2px; border: 1px solid var(--border);
+  border-radius: 999px; background: var(--surface); box-shadow: 0 4px 14px rgba(0, 0, 0, .45);
+  opacity: 0; transform: translateY(-50%); transition: opacity .16s; }
+#app[data-tier='dot']:hover .controls { opacity: 1; }
 .controls .icon, .panel .icon { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 20px;
   border-radius: 6px; color: var(--muted); cursor: pointer; transition: color .12s, background .12s; }
 .controls .icon:hover, .panel .icon:hover { color: var(--text); background: var(--panel); }

@@ -23,7 +23,7 @@ import { decide, STAY_AFTER_FINAL_MS, type Decision } from '../follow/decide.ts'
 import { langOf, STRINGS } from '../i18n/index.ts';
 import { Notifier } from '../notify/notifier.ts';
 import { notices } from '../notify/rules.ts';
-import { playLinesAt, TIER_PRESET, tierOf, type Tier } from '../render/tiers.ts';
+import { playLinesAt, TIER_PRESET, tierOf, TOOLBAR_H, type Tier } from '../render/tiers.ts';
 import { drawFlights, shotSeconds } from '../render/court.ts';
 import { gameColours, useTheme, type Theme } from '../render/colour.ts';
 import { loadSettings, saveSettings, type Settings, type ThemeChoice } from '../settings/store.ts';
@@ -150,24 +150,28 @@ function animate(): void {
 
 function render(): void {
   const tier = tierOf(app.clientHeight);
-  // A result in a court-sized window is laid out as the bar: centred, since there is no court.
-  app.dataset.tier = panel ? 'panel' : tier === 'court' && resultOnly && state ? 'bar' : tier;
+  // A result in a court-sized window keeps the court's layout: the score where it always is, the
+  // points per period and the leaders where the court would be.
+  app.dataset.tier = panel ? 'panel' : tier;
   if (panel === 'settings') { app.innerHTML = settingsView(teams, settings, T); return; }
   if (panel === 'games') { app.innerHTML = gamesView(dayLabel(gamesDay), dayList, T, tipOff, currentId); return; }
   const tag = replaying ? T.replay : undefined;
+  // Below the dot the toolbar has a row of its own; the dot has no room, so there it shows on hover.
+  const contentHeight = tier === 'dot' ? app.clientHeight : app.clientHeight - TOOLBAR_H;
+  let body: string;
   if (state) {
     const now = Date.now();
     const ages: ScoreAges = {};
     for (const side of ['away', 'home'] as const) { const at = scoreChangedAt[side]; if (at !== undefined && now - at < JUMP_MS) ages[side] = now - at; }
-    app.innerHTML = tier === 'dot' ? dotView(state, T, tag, settings.team, ages)
+    body = tier === 'dot' ? dotView(state, T, tag, settings.team, ages)
       // A finished game picked from the list is its result: no court, whatever the size.
       : tier === 'court' && !resultOnly ? courtView(state, T, landed, tag, settings.team, ages)
-      : barView(state, T, playLinesAt(app.clientHeight), tag, settings.team, resultOnly, ages, tier === 'court');
-    if (tier === 'court' && !resultOnly && !frame) frame = requestAnimationFrame(animate);
+      : barView(state, T, playLinesAt(contentHeight), tag, settings.team, resultOnly, ages, tier === 'court');
   }
-  else if (upcoming) app.innerHTML = upcomingView(upcoming, whenOf(upcoming), tier === 'dot');
-  else app.innerHTML = messageView(message, tier === 'bar' ? messageSub : undefined);
-  app.insertAdjacentHTML('beforeend', controlsView(tier, T));
+  else if (upcoming) body = upcomingView(upcoming, whenOf(upcoming), tier === 'dot');
+  else body = messageView(message, tier === 'bar' ? messageSub : undefined);
+  app.innerHTML = tier === 'dot' ? body + controlsView(tier, T) : `<div class="content">${body}</div>${controlsView(tier, T)}`;
+  if (state && tier === 'court' && !resultOnly && !frame) frame = requestAnimationFrame(animate);
 }
 
 const live = new EspnLiveSource(fetchJson);
@@ -351,8 +355,8 @@ app.addEventListener('click', (e) => {
   if (changed && !params.has('game')) { teamCache = undefined; void decideNow(); }
 });
 
-// The window has no title bar or border: press and drag moves it; the toolbar that shows on hover
-// switches the size and opens the panels. Outside the desktop shell (npm run dev in a browser)
+// The window has no title bar or border: press and drag moves it; the toolbar along the bottom
+// (on hover, in the dot) switches the size and opens the panels. Outside the desktop shell (npm run dev in a browser)
 // there is no window to move or resize.
 app.addEventListener('mousedown', async (e) => {
   if ((e.target as HTMLElement).closest('button, input, label')) return;
@@ -367,7 +371,7 @@ if (shell) void import('@tauri-apps/api/event').then(({ listen }) => {
 // callback feeds it its own changes ("ResizeObserver loop completed with undelivered notifications").
 let lastLayout = '';
 new ResizeObserver(() => requestAnimationFrame(() => {
-  const layout = `${panel}:${tierOf(app.clientHeight)}:${playLinesAt(app.clientHeight)}`;
+  const layout = `${panel}:${tierOf(app.clientHeight)}:${playLinesAt(app.clientHeight - TOOLBAR_H)}`;
   if (layout !== lastLayout) { lastLayout = layout; render(); }
 })).observe(app);
 
