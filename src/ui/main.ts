@@ -150,7 +150,8 @@ function animate(): void {
 
 function render(): void {
   const tier = tierOf(app.clientHeight);
-  app.dataset.tier = panel ? 'panel' : tier;
+  // A result in a court-sized window is laid out as the bar: centred, since there is no court.
+  app.dataset.tier = panel ? 'panel' : tier === 'court' && resultOnly && state ? 'bar' : tier;
   if (panel === 'settings') { app.innerHTML = settingsView(teams, settings, T); return; }
   if (panel === 'games') { app.innerHTML = gamesView(dayLabel(gamesDay), dayList, T, tipOff, currentId); return; }
   const tag = replaying ? T.replay : undefined;
@@ -159,9 +160,10 @@ function render(): void {
     const ages: ScoreAges = {};
     for (const side of ['away', 'home'] as const) { const at = scoreChangedAt[side]; if (at !== undefined && now - at < JUMP_MS) ages[side] = now - at; }
     app.innerHTML = tier === 'dot' ? dotView(state, T, tag, settings.team, ages)
-      : tier === 'court' ? courtView(state, T, landed, tag, settings.team, resultOnly, ages)
+      // A finished game picked from the list is its result: no court, whatever the size.
+      : tier === 'court' && !resultOnly ? courtView(state, T, landed, tag, settings.team, ages)
       : barView(state, T, playLinesAt(app.clientHeight), tag, settings.team, resultOnly, ages);
-    if (tier === 'court' && !frame) frame = requestAnimationFrame(animate);
+    if (tier === 'court' && !resultOnly && !frame) frame = requestAnimationFrame(animate);
   }
   else if (upcoming) app.innerHTML = upcomingView(upcoming, whenOf(upcoming), tier === 'dot');
   else app.innerHTML = messageView(message, tier === 'bar' ? messageSub : undefined);

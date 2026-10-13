@@ -134,8 +134,8 @@ export function periodTable(s: GameState): string {
  * Court tier: the bar on top, the half court in 3D below. `landed`: whether a shot's flight is
  * over, so its mark is on the floor (src/render/court.ts draws the flights every frame).
  */
-export function courtView(s: GameState, T: Strings, landed: (id: string) => boolean, tag?: string, favourite?: string, result = false, ages: ScoreAges = {}): string {
-  return `<div class="courtwrap">${barView(s, T, 2, tag, favourite, result, ages)}${courtSvg(s, gameColours(s.teams, favourite), landed)}</div>`;
+export function courtView(s: GameState, T: Strings, landed: (id: string) => boolean, tag?: string, favourite?: string, ages: ScoreAges = {}): string {
+  return `<div class="courtwrap">${barView(s, T, 2, tag, favourite, false, ages)}${courtSvg(s, gameColours(s.teams, favourite), landed)}</div>`;
 }
 
 /** No game to show: a message, and when the next one tips off. */
