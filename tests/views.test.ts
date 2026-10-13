@@ -2,7 +2,7 @@
 
 import { describe, expect, it } from 'vitest';
 import { STRINGS } from '../src/i18n/index.ts';
-import { barView, clockText, controlsView, dotView, gamesView, JUMP_MS, playLines, RUN_MIN, whenText } from '../src/ui/views.ts';
+import { barView, clockText, controlsView, dotView, gamesView, JUMP_MS, leadersTable, playLines, RUN_MIN, whenText } from '../src/ui/views.ts';
 import type { GameCard, GameState, PlayLine } from '../src/model/types.ts';
 
 const en = STRINGS.en, zh = STRINGS['zh-TW'];
@@ -177,6 +177,25 @@ describe('score jump', () => {
     expect(html).toContain('<b class="jump" style="animation-delay:-200ms">112</b>');
     expect(html).toContain('<b>85</b>');
     expect(barView(base, en, 1, undefined, undefined, false, { home: JUMP_MS })).not.toContain('jump');
+  });
+});
+
+describe('leaders', () => {
+  // Each side keeps its side of the table: the away leader left of the stat, the home leader right.
+  it("lists each side's leader per stat, away on the left and home on the right, a dash where there is none", () => {
+    const p = (id: string, short: string) => ({ id, name: short, short });
+    const s = { ...base, status: 'final' as const, leaders: { away: { pts: { player: p('1', 'D. Fox'), value: 31 } }, home: { pts: { player: p('2', 'L. Markkanen'), value: 28 } } } };
+    const html = leadersTable(s, zh);
+    const row = html.match(/<div class="leader">(.*?)<\/div>/)![1]!.replace(/<[^>]+>/g, ' ').trim().split(/\s+/);
+    expect(row).toEqual(['D.', 'Fox', '31', '得分', '28', 'L.', 'Markkanen']);
+    expect(html.match(/<div class="leader">/g)).toHaveLength(6);
+    expect(html).toContain('<span class="who muted">–</span>');
+  });
+
+  it('shows them under the result only when asked (a tall window)', () => {
+    const fin = { ...base, status: 'final' as const };
+    expect(barView(fin, zh, 2, undefined, undefined, true)).not.toContain('class="leaders"');
+    expect(barView(fin, zh, 2, undefined, undefined, true, {}, true)).toContain('class="leaders"');
   });
 });
 

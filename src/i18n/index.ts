@@ -53,6 +53,8 @@ export interface Strings {
   noGames: string;
   prevDay: string;
   nextDay: string;
+  /** Short names of the leader stats. */
+  stat(key: 'pts' | 'reb' | 'ast' | 'stl' | 'blk' | 'to'): string;
   theme: string;
   themeName(t: 'system' | 'dark' | 'light'): string;
   /** The toolbar button: switch to the other theme. */
@@ -98,6 +100,7 @@ export const STRINGS: Record<Lang, Strings> = {
     noGames: 'No games this day',
     prevDay: 'Previous day',
     nextDay: 'Next day',
+    stat: (k) => ({ pts: 'PTS', reb: 'REB', ast: 'AST', stl: 'STL', blk: 'BLK', to: 'TO' })[k],
     theme: 'Theme',
     themeName: (t) => ({ system: 'System', dark: 'Dark', light: 'Light' })[t],
     switchTheme: 'Dark / light',
@@ -140,6 +143,7 @@ export const STRINGS: Record<Lang, Strings> = {
     noGames: '這天沒有比賽',
     prevDay: '前一天',
     nextDay: '後一天',
+    stat: (k) => ({ pts: '得分', reb: '籃板', ast: '助攻', stl: '抄截', blk: '火鍋', to: '失誤' })[k],
     theme: '外觀',
     themeName: (t) => ({ system: '跟隨系統', dark: '深色', light: '淺色' })[t],
     switchTheme: '深色／淺色',

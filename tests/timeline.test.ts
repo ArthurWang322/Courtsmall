@@ -118,6 +118,25 @@ for (const fx of FIXTURES) {
       expect(mine).toEqual(box);
     });
 
+    // The result names each side's best in six stats: the right number, and a player who has it.
+    it("each side's leaders are the box score's best, by a player who has that number", () => {
+      const COLUMN = { pts: 'PTS', reb: 'REB', ast: 'AST', stl: 'STL', blk: 'BLK', to: 'TO' } as const;
+      const sideOf = new Map(competitors.map((c) => [c.team.id, c.homeAway]));
+      for (const team of feed!.summary.boxscore.players ?? []) {
+        const side = sideOf.get(team.team.id)!;
+        for (const [key, col] of Object.entries(COLUMN) as [keyof typeof COLUMN, string][]) {
+          const g = team.statistics[0]!;
+          const best = Math.max(0, ...g.athletes.map((a) => Number(a.stats[g.names.indexOf(col)]) || 0));
+          const lead = final!.leaders?.[side][key];
+          expect({ side, key, value: lead?.value ?? 0 }).toEqual({ side, key, value: best });
+          if (lead) {
+            const theirs = g.athletes.find((a) => a.athlete.id === lead.player.id)!;
+            expect(Number(theirs.stats[g.names.indexOf(col)])).toBe(best);
+          }
+        }
+      }
+    });
+
     it('every basket event agrees with the score change it came from', () => {
       let prev = { away: 0, home: 0 };
       for (const e of timeline) {
@@ -172,6 +191,17 @@ describe('run', () => {
     const typed = (text: string, away: number, home: number): CorePlay => ({ ...play(away, home), type: { id: '0', text } });
     const t = buildTimeline(feed([typed('Full Timeout', 0, 0), typed('Substitution', 0, 0), typed('Substitution', 0, 0), typed('Jump Shot', 0, 0)]));
     expect(t.map((e) => e.state.stoppage)).toEqual(['timeout', 'timeout', 'timeout', undefined]);
+  });
+
+  // Seen in 401810723: "Victor Wembanyama traveling turnover" names him once, with no role. He is the
+  // one who lost the ball; reading him as the stealer too credited him steals the box score does not.
+  it('an untyped turnover is credited to its one player, and nobody steals it', () => {
+    const p = play(0, 0, 'A');
+    const travel: CorePlay = { ...p, type: { id: '64', text: 'Traveling' }, participants: [{ athlete: { $ref: 'http://x/athletes/99?lang=en' } }] };
+    const box = feed([travel]);
+    box.summary.boxscore = { players: [{ team: { id: 'A' }, statistics: [{ names: [], athletes: [{ athlete: { id: '99', displayName: 'Victor Wembanyama', shortName: 'V. Wembanyama' }, stats: [] }] }] }] };
+    const ev = buildTimeline(box)[0]!.events.find((e) => e.type === 'turnover');
+    expect(ev).toEqual({ type: 'turnover', side: 'away', player: { id: '99', name: 'Victor Wembanyama', short: 'V. Wembanyama' } });
   });
 });
 

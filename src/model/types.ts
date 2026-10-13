@@ -74,6 +74,12 @@ export const FREE_THROW_SPOT = { x: 25, y: 1 + 13.75 } as const;
 /** How many free throws the state keeps: for their flight only, they leave no mark on the floor. */
 export const RECENT_FREE_THROWS = 3;
 
+/** The stats a side's leaders are shown for. */
+export type StatKey = 'pts' | 'reb' | 'ast' | 'stl' | 'blk' | 'to';
+export const STAT_KEYS: readonly StatKey[] = ['pts', 'reb', 'ast', 'stl', 'blk', 'to'];
+/** One side's leader in each stat: on a tie, whoever the box score lists first. */
+export type Leaders = Partial<Record<StatKey, { player: PlayerRef; value: number }>>;
+
 /** Points one side has scored since the other side last scored. */
 export interface Run {
   side: Side;
@@ -137,6 +143,8 @@ export interface GameState {
   /** The latest free throws, oldest first, at most `RECENT_FREE_THROWS`: flown, never marked. */
   recentFreeThrows?: readonly Shot[];
   run?: Run;
+  /** Each side's leaders, from the box score (official for a finished game; src/data/espn/timeline.ts boxLeaders). */
+  leaders?: Record<Side, Leaders>;
   /** Epoch ms of the moment this state describes. */
   at?: number;
 }

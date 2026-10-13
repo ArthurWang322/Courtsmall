@@ -2,7 +2,7 @@
 // What a glance needs (docs/PLAN.md Q3): score, period and clock, possession, the last basket,
 // and a run once it is worth noticing.
 
-import type { GameCard, GameState, PlayLine, Side, TeamRef } from '../model/types.ts';
+import { STAT_KEYS, type GameCard, type GameState, type PlayLine, type Side, type TeamRef } from '../model/types.ts';
 import type { Settings } from '../settings/store.ts';
 import type { Tier } from '../render/tiers.ts';
 import { gameColours, visibleColour } from '../render/colour.ts';
@@ -112,10 +112,11 @@ export function dotView(s: GameState, T: Strings, tag?: string, favourite?: stri
 
 /**
  * Bar tier: the score bug on top; below, the newest play, and under a divider the one before it,
- * quieter. `result`: a finished game picked from the list, shown as its points per period instead.
+ * quieter. `result`: a finished game picked from the list, shown as its points per period instead,
+ * and with `withLeaders` (a window tall enough) each side's leaders under them.
  */
-export function barView(s: GameState, T: Strings, lines: number, tag?: string, favourite?: string, result = false, ages: ScoreAges = {}): string {
-  if (result) return `<div class="bar">${scoreBug(s, T, tag, favourite)}${periodTable(s)}</div>`;
+export function barView(s: GameState, T: Strings, lines: number, tag?: string, favourite?: string, result = false, ages: ScoreAges = {}, withLeaders = false): string {
+  if (result) return `<div class="bar">${scoreBug(s, T, tag, favourite)}${periodTable(s)}${withLeaders ? leadersTable(s, T) : ''}</div>`;
   const [newest = '', older = ''] = playLines(s, T, lines);
   return `<div class="bar">
       ${scoreBug(s, T, tag, favourite, ages)}
@@ -128,6 +129,20 @@ export function barView(s: GameState, T: Strings, lines: number, tag?: string, f
 export function periodTable(s: GameState): string {
   const row = (side: Side) => `<div class="row period"><span class="abbr">${esc(s.teams[side].abbr)}</span>${s.periodScores[side].map((n) => `<span class="mono">${n}</span>`).join('')}</div>`;
   return `<div class="periods">${row('away')}${row('home')}</div>`;
+}
+
+/**
+ * Each side's leader in points, rebounds, assists, steals, blocks and turnovers: the stat in the
+ * middle, the away leader to its left and the home leader to its right, so each side keeps its side.
+ */
+export function leadersTable(s: GameState, T: Strings): string {
+  const cell = (side: Side, k: (typeof STAT_KEYS)[number]) => {
+    const l = s.leaders?.[side][k];
+    if (!l) return '<span class="who muted">–</span>';
+    const name = `<span class="name">${esc(l.player.short)}</span>`, n = `<b>${l.value}</b>`;
+    return `<span class="who ${side}">${side === 'away' ? name + n : n + name}</span>`;
+  };
+  return `<div class="leaders">${STAT_KEYS.map((k) => `<div class="leader">${cell('away', k)}<span class="stat">${esc(T.stat(k))}</span>${cell('home', k)}</div>`).join('')}</div>`;
 }
 
 /**

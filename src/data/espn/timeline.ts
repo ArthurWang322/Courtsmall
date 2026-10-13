@@ -1,7 +1,7 @@
 // ESPN plays -> normalized timeline. The score always comes from the plays' running
 // `awayScore` / `homeScore`, never from adding up points ourselves.
 
-import { FREE_THROW_SPOT, RECENT_FREE_THROWS, RECENT_PLAYS, RECENT_SHOTS, type Basket, type FoulKind, type GameEvent, type GameState, type GameStatus, type PlayerRef, type PlayLine, type Points, type Side, type StoppageKind, type TeamRef, type TimelineEntry } from '../../model/types.ts';
+import { FREE_THROW_SPOT, RECENT_FREE_THROWS, RECENT_PLAYS, RECENT_SHOTS, type Basket, type Leaders, type StatKey, type FoulKind, type GameEvent, type GameState, type GameStatus, type PlayerRef, type PlayLine, type Points, type Side, type StoppageKind, type TeamRef, type TimelineEntry } from '../../model/types.ts';
 import { refId, type CorePlay, type GameFeed } from './feed-types.ts';
 
 const END_PERIOD = '412';
@@ -40,7 +40,36 @@ export function initialState(feed: GameFeed): GameState {
     clock: 0,
     score: { away: 0, home: 0 },
     periodScores: { away: [], home: [] },
+    leaders: boxLeaders(feed),
   };
+}
+
+const BOX_COLUMN: Record<StatKey, string> = { pts: 'PTS', reb: 'REB', ast: 'AST', stl: 'STL', blk: 'BLK', to: 'TO' };
+
+/**
+ * Each side's leaders from the box score, which is the official count: for a finished game, the
+ * plays can disagree with it (a steal credited to another player after the game, 401810380). Live,
+ * the box score is the one fetched when following began; the app shows leaders for finished games only.
+ */
+export function boxLeaders(feed: GameFeed): Record<Side, Leaders> {
+  const out: Record<Side, Leaders> = { away: {}, home: {} };
+  const sideOf = new Map(feed.summary.header.competitions[0]!.competitors.map((c) => [c.team.id, c.homeAway]));
+  for (const team of feed.summary.boxscore.players ?? []) {
+    const side = sideOf.get(team.team.id);
+    const g = team.statistics[0];
+    if (!side || !g) continue;
+    for (const [key, col] of Object.entries(BOX_COLUMN) as [StatKey, string][]) {
+      const i = g.names.indexOf(col);
+      if (i < 0) continue;
+      for (const a of g.athletes) {
+        const value = Number(a.stats[i]);
+        // A tie goes to whoever the box score lists first (starters come first).
+        if (value > 0 && value > (out[side][key]?.value ?? 0))
+          out[side][key] = { player: { id: a.athlete.id, name: a.athlete.displayName, short: a.athlete.shortName }, value };
+      }
+    }
+  }
+  return out;
 }
 
 interface Rostered { player: PlayerRef; teamId: string }
@@ -97,10 +126,16 @@ export function buildTimeline(feed: GameFeed): TimelineEntry[] {
     // A stoppage lasts until play resumes; the substitutions made during a timeout do not end it.
     if (playKind(play.type.text)?.kind !== 'substitution') delete next.stoppage;
 
-    /** The participant with this role, or the n-th one when ESPN gives no roles. */
+    /**
+     * The participant with this role. When ESPN gives no roles, a play's main role (the shooter, the
+     * fouler, the player who lost the ball, the rebounder, the player coming in) is its n-th player;
+     * a second role (a passer, a stealer, a blocker, the player going out) must be named, or a
+     * "traveling turnover" naming one player would read as that player stealing from himself.
+     */
     const parts = (play.participants ?? []).filter((x) => x !== null);
     const who = (role: string, n = 0): Rostered | undefined => {
-      const p = parts.find((x) => x.type === role) ?? (parts.some((x) => x.type) ? undefined : parts[n]);
+      const untyped = !parts.some((x) => x.type) && MAIN_ROLES.has(role);
+      const p = parts.find((x) => x.type === role) ?? (untyped ? parts[n] : undefined);
       return roster.get(refId(p?.athlete, 'athletes') ?? '');
     };
     const remember = (ev: PlayLine) => { next.recentPlays = [...(next.recentPlays ?? []), ev].slice(-RECENT_PLAYS); };
@@ -166,6 +201,9 @@ export function buildTimeline(feed: GameFeed): TimelineEntry[] {
 }
 
 type Who = (role: string, n?: number) => Rostered | undefined;
+
+/** Roles a play's unnamed participants stand for, by position ('' is a double foul's two players). */
+const MAIN_ROLES = new Set(['shooter', 'fouler', 'offense', 'rebounder', 'subin', '']);
 
 type PlayEvent = Extract<GameEvent, { type: 'miss' | 'foul' | 'turnover' | 'rebound' | 'substitution' | 'stoppage' }>;
 

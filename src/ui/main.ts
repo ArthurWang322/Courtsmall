@@ -162,7 +162,7 @@ function render(): void {
     app.innerHTML = tier === 'dot' ? dotView(state, T, tag, settings.team, ages)
       // A finished game picked from the list is its result: no court, whatever the size.
       : tier === 'court' && !resultOnly ? courtView(state, T, landed, tag, settings.team, ages)
-      : barView(state, T, playLinesAt(app.clientHeight), tag, settings.team, resultOnly, ages);
+      : barView(state, T, playLinesAt(app.clientHeight), tag, settings.team, resultOnly, ages, tier === 'court');
     if (tier === 'court' && !resultOnly && !frame) frame = requestAnimationFrame(animate);
   }
   else if (upcoming) app.innerHTML = upcomingView(upcoming, whenOf(upcoming), tier === 'dot');
