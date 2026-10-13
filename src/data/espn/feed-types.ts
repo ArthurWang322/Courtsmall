@@ -18,6 +18,10 @@ export interface CorePlay {
   clock: { value: number; displayValue: string };
   scoringPlay: boolean;
   scoreValue: number;
+  /** A shot or free throw, made or missed. */
+  shootingPlay?: boolean;
+  /** What the shot was worth: 1 free throw, 2, or 3. */
+  pointsAttempted?: number;
   /** ISO time the play happened. */
   wallclock: string;
   /** ISO time, minute precision, of the last correction. */

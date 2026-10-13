@@ -155,13 +155,18 @@ export function buildTimeline(feed: GameFeed): TimelineEntry[] {
 
 type Who = (role: string, n?: number) => Rostered | undefined;
 
-/** The fouls, turnovers, rebounds, substitutions and stoppages in one play. */
-type PlayEvent = Extract<GameEvent, { type: 'foul' | 'turnover' | 'rebound' | 'substitution' | 'stoppage' }>;
+type PlayEvent = Extract<GameEvent, { type: 'miss' | 'foul' | 'turnover' | 'rebound' | 'substitution' | 'stoppage' }>;
 
+/** The misses, fouls, turnovers, rebounds, substitutions and stoppages in one play. */
 function playEvents(play: CorePlay, who: Who, sideFor: (r?: Rostered) => Side | undefined): PlayEvent[] {
+  const opt = <T extends object>(o: T) => Object.fromEntries(Object.entries(o).filter(([, v]) => v !== undefined)) as T;
+  const pts = play.pointsAttempted;
+  if (play.shootingPlay && !play.scoringPlay && (pts === 1 || pts === 2 || pts === 3)) {
+    const r = who('shooter');
+    return [opt({ type: 'miss' as const, points: pts as Points, side: sideFor(r), player: r?.player, blockedBy: who('blocker')?.player, heave: /heave/i.test(play.type.text) ? true as const : undefined })];
+  }
   const k = playKind(play.type.text);
   if (!k) return [];
-  const opt = <T extends object>(o: T) => Object.fromEntries(Object.entries(o).filter(([, v]) => v !== undefined)) as T;
   switch (k.kind) {
     case 'foul': {
       // A double foul names both players, one from each side: one foul each.

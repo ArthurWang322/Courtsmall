@@ -14,6 +14,10 @@ export interface Strings {
   cancelled: string;
   delayed: string;
   /** After "[UTAH] I. Collier": the points of a basket, "+2" in every language. */
+  /** A missed shot worth `points`: free throw, two, three. */
+  miss(points: number): string;
+  /** Appended to a miss that was blocked. */
+  block(name: string): string;
   foul(kind: FoulKind): string;
   turnover: string;
   /** Appended to a turnover, with its own leading space where the language uses one. */
@@ -40,6 +44,8 @@ export const STRINGS: Record<Lang, Strings> = {
     postponed: 'Postponed',
     cancelled: 'Cancelled',
     delayed: 'Delayed',
+    miss: (p) => (p === 1 ? 'missed free throw' : p === 3 ? 'missed 3' : 'missed shot'),
+    block: (n) => ` (${n} block)`,
     foul: (k) => ({ personal: 'foul', shooting: 'shooting foul', offensive: 'offensive foul', technical: 'technical foul', flagrant: 'flagrant foul' })[k],
     turnover: 'turnover',
     steal: (n) => ` (${n} steal)`,
@@ -61,6 +67,8 @@ export const STRINGS: Record<Lang, Strings> = {
     postponed: '延賽',
     cancelled: '取消',
     delayed: '暫停比賽',
+    miss: (p) => (p === 1 ? '罰球不進' : p === 3 ? '三分不進' : '投籃不進'),
+    block: (n) => `（${n} 火鍋）`,
     foul: (k) => ({ personal: '犯規', shooting: '投籃犯規', offensive: '進攻犯規', technical: '技術犯規', flagrant: '惡意犯規' })[k],
     turnover: '失誤',
     steal: (n) => `（${n} 抄截）`,

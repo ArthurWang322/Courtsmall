@@ -169,4 +169,6 @@ ESPN core API（`sports.core.api.espn.com/v2/sports/basketball/leagues/nba/event
 - **驗收**：14 場的每位球員，犯規（不含技術犯規）、失誤、進攻籃板、防守籃板的事件數，都等於 boxscore 的 PF、TO、OREB、DREB（`tests/timeline.test.ts`）。
 - **參與者可能是 `null`**：401810405 有一筆「Technical Foul」的 `participants` 裡有 `null`，可能是吹給不在名單上的人（教練、板凳）。轉換層會先濾掉。
 - **暫停會持續到比賽恢復**：暫停期間記錄的換人不會清掉「暫停」，下一筆非換人的事件才會。
+- **沒進的出手**：投籃事件有 `shootingPlay: true`、`scoringPlay: false`、`pointsAttempted`（1、2、3），出手者是 `shooter`，被蓋火鍋時另有 `blocker`。14 場的每位球員，進球事件加上沒進的事件，都等於 boxscore 的 FG、3PT、FT 出手數，被蓋的次數也等於 BLK。
+- **節末拋投不算出手**：14 場共有 19 次「282 Heave Jump Shot」，都在節末最後 0.7 秒以內，全都不進。boxscore 的出手數不計入它們，但被蓋火鍋時，阻攻數照樣計入。畫面照樣顯示「三分不進」，只在統計時排除。為什麼不計入，可能是 NBA 近年對節末拋投的統計規則【未驗證】。
 

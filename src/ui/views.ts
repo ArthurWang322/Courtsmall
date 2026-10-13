@@ -48,6 +48,7 @@ export function playText(s: GameState, ev: Line, T: Strings): string {
   const join = (...xs: (string | undefined)[]) => xs.filter(Boolean).join(' ');
   switch (ev.type) {
     case 'basket': return join(team(ev.basket.side), ev.basket.player?.short, `+${ev.basket.points}`);
+    case 'miss': return join(team(ev.side), ev.player?.short, T.miss(ev.points)) + (ev.blockedBy ? T.block(ev.blockedBy.short) : '');
     case 'foul': return join(team(ev.side), ev.player?.short, T.foul(ev.kind));
     case 'turnover': return join(team(ev.side), ev.player?.short, T.turnover) + (ev.stolenBy ? T.steal(ev.stolenBy.short) : '');
     case 'rebound': return join(team(ev.side), ev.player?.short, T.rebound(ev.offensive));

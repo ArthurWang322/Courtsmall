@@ -65,6 +65,28 @@ for (const fx of FIXTURES) {
       for (const col of Object.keys(box)) expect({ col, counts: mine[col] }).toEqual({ col, counts: box[col] });
     });
 
+    // "Who missed" is only right if every shot, made or missed, lands on its shooter: per player,
+    // baskets plus misses must give the box score's attempts, and blocked misses its blocks.
+    // Last-second heaves are not attempts in the box score.
+    it("each player's shot attempts and blocks from events match the box score", () => {
+      const cols = ['FGA', '3PA', 'FTA', 'BLK'];
+      const mine: Record<string, Record<string, number>> = Object.fromEntries(cols.map((c) => [c, {}]));
+      const add = (col: string, id?: string) => { if (id) mine[col]![id] = (mine[col]![id] ?? 0) + 1; };
+      for (const e of timeline) for (const ev of e.events) {
+        const shot = ev.type === 'basket' ? { points: ev.basket.points, id: ev.basket.player?.id } : ev.type === 'miss' && !ev.heave ? { points: ev.points, id: ev.player?.id } : undefined;
+        if (shot) { add(shot.points === 1 ? 'FTA' : 'FGA', shot.id); if (shot.points === 3) add('3PA', shot.id); }
+        if (ev.type === 'miss') add('BLK', ev.blockedBy?.id);
+      }
+      const box: Record<string, Record<string, number>> = Object.fromEntries(cols.map((c) => [c, {}]));
+      for (const team of feed!.summary.boxscore.players ?? []) for (const g of team.statistics) for (const a of g.athletes) {
+        const stat = (name: string) => a.stats[g.names.indexOf(name)] ?? '';
+        const attempts = (name: string) => Number(stat(name).split('-')[1]);
+        const put = (col: string, n: number) => { if (n > 0) box[col]![a.athlete.id] = n; };
+        put('FGA', attempts('FG')); put('3PA', attempts('3PT')); put('FTA', attempts('FT')); put('BLK', Number(stat('BLK')));
+      }
+      for (const col of cols) expect({ col, counts: mine[col] }).toEqual({ col, counts: box[col] });
+    });
+
     it('every basket event agrees with the score change it came from', () => {
       let prev = { away: 0, home: 0 };
       for (const e of timeline) {

@@ -60,6 +60,11 @@ export type GameEvent =
   /** `side` and `player` are absent when the league does not name them (a team foul, a shot-clock turnover). */
   | { type: 'foul'; kind: FoulKind; side?: Side; player?: PlayerRef }
   | { type: 'turnover'; side?: Side; player?: PlayerRef; stolenBy?: PlayerRef }
+  /**
+   * A missed shot or free throw; `points` is what it was worth (1 free throw, 2, 3). `heave`: a
+   * last-second heave, which the box score does not count as an attempt (docs/PROBE_REPORT.md §10).
+   */
+  | { type: 'miss'; points: Points; side?: Side; player?: PlayerRef; blockedBy?: PlayerRef; heave?: true }
   /** No `player`: a team rebound. */
   | { type: 'rebound'; offensive: boolean; side?: Side; player?: PlayerRef }
   | { type: 'substitution'; side?: Side; in?: PlayerRef; out?: PlayerRef }
@@ -85,8 +90,8 @@ export interface GameState {
   /** The side the league says has the ball in the latest play. Absent when it does not say. */
   possession?: Side;
   lastBasket?: Basket;
-  /** The latest play worth a line on the bar: a basket, foul, turnover, rebound or substitution. */
-  lastPlay?: Extract<GameEvent, { type: 'basket' | 'foul' | 'turnover' | 'rebound' | 'substitution' }>;
+  /** The latest play worth a line on the bar: a basket, miss, foul, turnover, rebound or substitution. */
+  lastPlay?: Extract<GameEvent, { type: 'basket' | 'miss' | 'foul' | 'turnover' | 'rebound' | 'substitution' }>;
   /** A timeout or review is the latest play: the clock is stopped for it. Cleared by the next play. */
   stoppage?: StoppageKind;
   run?: Run;
