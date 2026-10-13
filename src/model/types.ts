@@ -90,3 +90,16 @@ export interface TimelineEntry {
   events: GameEvent[];
   state: GameState;
 }
+
+export type Unsubscribe = () => void;
+
+export interface GameHandlers {
+  onEvent(event: GameEvent, entry: TimelineEntry): void;
+  onState(state: GameState, entry: TimelineEntry): void;
+  onError?(error: unknown): void;
+}
+
+/** A source of one game's events: the live feed, or a replay of a finished game. */
+export interface GameSource {
+  subscribe(gameId: string, handlers: GameHandlers): Unsubscribe;
+}
