@@ -6,7 +6,7 @@
 import type { Side, TeamRef } from '../model/types.ts';
 
 /** The window backgrounds, `--background` in src/ui/app.css for each theme. */
-export const BACKGROUNDS = { dark: '141317', light: 'f4f1ea' } as const;
+export const BACKGROUNDS = { dark: '141317', light: 'f4f5f7' } as const;
 export type Theme = keyof typeof BACKGROUNDS;
 /** The dark background, the default. */
 export const BACKGROUND = BACKGROUNDS.dark;
@@ -20,7 +20,7 @@ export const MIN_CONTRAST = 2.2;
 export const CLASH_DISTANCE = 0.12;
 const isDark = (background: string) => luminance(background) < 0.5;
 const fallback = (side: Side, background: string) =>
-  isDark(background) ? { away: '9aa3b2', home: 'e8b04a' }[side] : { away: '6d6873', home: 'b07408' }[side];
+  isDark(background) ? { away: '9aa3b2', home: 'e8b04a' }[side] : { away: '646a78', home: 'c2410c' }[side];
 
 const rgb = (hex: string): [number, number, number] => {
   const n = parseInt(hex.replace('#', '').padEnd(6, '0').slice(0, 6), 16);
