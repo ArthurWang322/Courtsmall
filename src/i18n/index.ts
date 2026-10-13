@@ -33,6 +33,19 @@ export interface Strings {
   noGame: string;
   nextGame(when: string): string;
   offline: string;
+  /** Notices. `line` is "SA 100 – 97 UTAH". */
+  tipOff: string;
+  finalNotice(line: string): string;
+  clutchNotice(when: string, line: string): string;
+  /** The team's next game: "Today 19:30", "Fri 10/23 09:30". */
+  today: string;
+  /** Settings. */
+  chooseTeam: string;
+  noTeam: string;
+  notifyStart: string;
+  notifyFinal: string;
+  notifyClutch: string;
+  done: string;
 }
 
 export const STRINGS: Record<Lang, Strings> = {
@@ -58,6 +71,16 @@ export const STRINGS: Record<Lang, Strings> = {
     noGame: 'No game right now',
     nextGame: (when) => `Next: ${when}`,
     offline: 'Reconnecting…',
+    tipOff: 'Tip-off',
+    finalNotice: (l) => `Final: ${l}`,
+    clutchNotice: (w, l) => `${w}, ${l}`,
+    today: 'Today',
+    chooseTeam: 'Your team',
+    noTeam: 'None: follow the closest game',
+    notifyStart: 'Notify at tip-off',
+    notifyFinal: 'Notify at the final',
+    notifyClutch: 'Notify in a close finish (last 2 min, within 5)',
+    done: 'Done',
   },
   'zh-TW': {
     period: (n) => (n <= 4 ? `第${n}節` : n === 5 ? '延長' : `第${n - 4}延長`),
@@ -81,6 +104,16 @@ export const STRINGS: Record<Lang, Strings> = {
     noGame: '現在沒有比賽',
     nextGame: (when) => `下一場：${when}`,
     offline: '重新連線中…',
+    tipOff: '開賽了',
+    finalNotice: (l) => `終場 ${l}`,
+    clutchNotice: (w, l) => `${w} ${l}`,
+    today: '今天',
+    chooseTeam: '主隊',
+    noTeam: '不選：跟最緊張的比賽',
+    notifyStart: '開賽時通知',
+    notifyFinal: '終場時通知',
+    notifyClutch: '關鍵時刻通知（最後 2 分鐘、差距 5 分內）',
+    done: '完成',
   },
 };
 

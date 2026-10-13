@@ -82,6 +82,27 @@ export interface Scoreboard {
   }[];
 }
 
+/** The site API's `teams/{id}/schedule`. Status sits inside the competition, and the score is an object. */
+export interface TeamSchedule {
+  events: {
+    id: string;
+    date: string;
+    competitions: {
+      status: { clock: number; period: number; type: { name: string } };
+      competitors: {
+        homeAway: 'home' | 'away';
+        team: { id: string; abbreviation: string; displayName: string };
+        score?: { value: number } | string;
+      }[];
+    }[];
+  }[];
+}
+
+/** The site API's `teams`. */
+export interface TeamList {
+  sports: { leagues: { teams: { team: { id: string; abbreviation: string; displayName: string; color?: string; alternateColor?: string } }[] }[] }[];
+}
+
 /** What the adapter needs for one game: the summary once, plus the core API's plays. */
 export interface GameFeed {
   summary: Summary;

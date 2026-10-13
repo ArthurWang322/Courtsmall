@@ -19,8 +19,8 @@ const STATUS: Record<string, GameStatus> = {
   STATUS_FINAL: 'final',
 };
 
-export const teamRef = (t: { id: string; abbreviation: string; displayName: string; color?: string }): TeamRef =>
-  ({ id: t.id, abbr: t.abbreviation, name: t.displayName, ...(t.color ? { color: t.color } : {}) });
+export const teamRef = (t: { id: string; abbreviation: string; displayName: string; color?: string; alternateColor?: string }): TeamRef =>
+  ({ id: t.id, abbr: t.abbreviation, name: t.displayName, ...(t.color ? { color: t.color } : {}), ...(t.alternateColor ? { alternateColor: t.alternateColor } : {}) });
 
 /** ESPN's status name, e.g. STATUS_HALFTIME, as a GameStatus. */
 export const gameStatus = (name: string): GameStatus => STATUS[name] ?? 'unknown';

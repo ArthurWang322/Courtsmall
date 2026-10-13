@@ -30,6 +30,8 @@ export interface TeamRef {
   name: string;
   /** The league's team colour, "rrggbb". */
   color?: string;
+  /** The league's second colour, used when the first one does not stand out (src/render/colour.ts). */
+  alternateColor?: string;
 }
 
 /** 1 free throw, 2 two-pointer (goaltending included), 3 three-pointer. */

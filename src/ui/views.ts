@@ -2,7 +2,8 @@
 // What a glance needs (docs/PLAN.md Q3): score, period and clock, possession, the last basket,
 // and a run once it is worth noticing.
 
-import type { GameState, PlayLine, Side } from '../model/types.ts';
+import type { GameCard, GameState, PlayLine, Side, TeamRef } from '../model/types.ts';
+import type { Settings } from '../settings/store.ts';
 import type { Strings } from '../i18n/index.ts';
 
 /** A run is shown from this many unanswered points. 【建議】 */
@@ -92,3 +93,28 @@ export function barView(s: GameState, T: Strings, lines: number, tag?: string): 
 /** No game to show: a message, and when the next one tips off. */
 export const messageView = (text: string, sub?: string) =>
   `<div class="msg"><span>${esc(text)}</span>${sub ? `<span class="muted">${esc(sub)}</span>` : ''}</div>`;
+
+const cardDot = (t: TeamRef) => `<i class="dot" style="background:#${esc(t.color ?? '888888')}"></i>`;
+
+/** The team's next game: who, and when ("Today 19:30" or "Fri 10/23 09:30"). */
+export function upcomingView(g: GameCard, when: string, dot: boolean): string {
+  const who = `${cardDot(g.teams.away)}<span>${esc(g.teams.away.abbr)}</span><span class="muted">@</span><span>${esc(g.teams.home.abbr)}</span>${cardDot(g.teams.home)}`;
+  return dot
+    ? `<div class="pill"><span class="sc">${who}</span><span class="when mono">${esc(when)}</span></div>`
+    : `<div class="bar"><div class="row"><span class="sc">${who}</span></div><div class="row play new">${esc(when)}</div></div>`;
+}
+
+/** Choosing a team and the notices. Buttons carry data-* attributes; src/ui/main.ts handles clicks. */
+export function settingsView(teams: readonly TeamRef[], s: Settings, T: Strings): string {
+  const team = (t: TeamRef) =>
+    `<button class="team${s.team === t.id ? ' on' : ''}" data-team="${esc(t.id)}" title="${esc(t.name)}">${cardDot(t)}${esc(t.abbr)}</button>`;
+  const check = (key: keyof Settings['notify'], label: string) =>
+    `<label class="check"><input type="checkbox" data-notify="${key}"${s.notify[key] ? ' checked' : ''}> ${esc(label)}</label>`;
+  return `<div class="settings">
+      <div class="head"><b>${esc(T.chooseTeam)}</b><button class="done" data-done>${esc(T.done)}</button></div>
+      <button class="team none${s.team ? '' : ' on'}" data-team="">${esc(T.noTeam)}</button>
+      <div class="teams">${teams.map(team).join('')}</div>
+      ${check('start', T.notifyStart)}${check('final', T.notifyFinal)}${check('clutch', T.notifyClutch)}
+    </div>`;
+}
+
