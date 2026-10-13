@@ -4,6 +4,7 @@
 
 import type { GameCard, GameState, PlayLine, Side, TeamRef } from '../model/types.ts';
 import type { Settings } from '../settings/store.ts';
+import type { Tier } from '../render/tiers.ts';
 import { gameColours, visibleColour } from '../render/colour.ts';
 import { courtSvg } from '../render/court.ts';
 import type { Strings } from '../i18n/index.ts';
@@ -123,7 +124,8 @@ export function courtView(s: GameState, T: Strings, landed: (id: string) => bool
 export const messageView = (text: string, sub?: string) =>
   `<div class="msg"><span>${esc(text)}</span>${sub ? `<span class="muted">${esc(sub)}</span>` : ''}</div>`;
 
-const cardDot = (t: TeamRef) => `<i class="dot" style="background:#${esc(visibleColour(t))}"></i>`;
+const colourDot = (hex: string) => `<i class="dot" style="background:#${esc(hex)}"></i>`;
+const cardDot = (t: TeamRef) => colourDot(visibleColour(t));
 
 /** The team's next game: who, and when ("Today 19:30" or "Fri 10/23 09:30"). */
 export function upcomingView(g: GameCard, when: string, dot: boolean): string {
@@ -144,6 +146,66 @@ export function settingsView(teams: readonly TeamRef[], s: Settings, T: Strings)
       <button class="team none${s.team ? '' : ' on'}" data-team="">${esc(T.noTeam)}</button>
       <div class="teams">${teams.map(team).join('')}</div>
       ${check('start', T.notifyStart)}${check('final', T.notifyFinal)}${check('clutch', T.notifyClutch)}
+    </div>`;
+}
+
+// ---- Hover toolbar and the games list ------------------------------------------------------------
+
+/** Icons in basic shapes, 14 px, drawn in the current text colour. */
+const ICON: Record<Tier | 'games' | 'settings', string> = {
+  dot: '<rect x="1.5" y="5" width="11" height="4" rx="2"/>',
+  bar: '<rect x="1.5" y="3" width="11" height="8" rx="1.5"/><path d="M3.5 6.5h7"/>',
+  court: '<path d="M3 3.5h8l1.5 7.5h-11z"/><path d="M5.2 3.5v3h3.6v-3"/>',
+  games: '<path d="M2.5 4h9M2.5 7h9M2.5 10h9"/>',
+  settings: '<circle cx="7" cy="7" r="2"/><path d="M7 1.5v2M7 10.5v2M1.5 7h2M10.5 7h2M3.1 3.1l1.4 1.4M9.5 9.5l1.4 1.4M3.1 10.9l1.4-1.4M9.5 4.5l1.4-1.4"/>',
+};
+const icon = (k: keyof typeof ICON) => `<svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true">${ICON[k]}</svg>`;
+
+/**
+ * The toolbar that shows while the pointer is over the window: the three sizes (the current one
+ * lit), the games list and the settings. Buttons carry data-* attributes; src/ui/main.ts handles them.
+ */
+export function controlsView(tier: Tier, T: Strings): string {
+  const size = (t: Tier) => `<button class="icon${t === tier ? ' on' : ''}" data-tier="${t}" title="${esc(T.tierName(t))}">${icon(t)}</button>`;
+  return `<div class="controls">${size('dot')}${size('bar')}${size('court')}<span class="sep"></span>`
+    + `<button class="icon" data-open="games" title="${esc(T.games)}">${icon('games')}</button>`
+    + `<button class="icon" data-open="settings" title="${esc(T.settings)}">${icon('settings')}</button></div>`;
+}
+
+/** Where a listed game is: "Q4 2:31", "Final", or its tip-off time. */
+function cardWhen(g: GameCard, T: Strings, tipOff: (g: GameCard) => string): string {
+  switch (g.status) {
+    case 'scheduled': return tipOff(g);
+    case 'final': return T.final;
+    case 'postponed': return T.postponed;
+    case 'cancelled': return T.cancelled;
+    case 'break': return g.period === 2 ? T.half : T.endOf(T.period(g.period));
+    default: return g.period > 0 ? `${T.period(g.period)} ${clockText(g.clock)}` : '';
+  }
+}
+
+const ORDER: Partial<Record<GameCard['status'], number>> = { live: 0, break: 0, delayed: 0, scheduled: 1, final: 2 };
+
+/**
+ * A day's games: the ones on first, then the ones still to come, then the finished ones. A game on
+ * or to come is followed live; a finished one is replayed. `current`: the game on screen.
+ */
+export function gamesView(day: string, games: readonly GameCard[], T: Strings, tipOff: (g: GameCard) => string, current?: string): string {
+  const sorted = [...games].sort((a, b) => (ORDER[a.status] ?? 3) - (ORDER[b.status] ?? 3) || a.start - b.start);
+  const row = (g: GameCard) => {
+    const how = g.status === 'final' ? 'replay' : 'live';
+    const showScore = g.status !== 'scheduled' && g.status !== 'postponed' && g.status !== 'cancelled';
+    const abbr = (sd: Side) => `<span>${esc(g.teams[sd].abbr)}</span>`;
+    // Two teams in one row: the same clash rule as on the score (src/render/colour.ts).
+    const c = gameColours(g.teams);
+    const mid = showScore ? `<b>${g.score.away}</b><span class="muted">–</span><b>${g.score.home}</b>` : '<span class="muted">@</span>';
+    return `<button class="game${g.id === current ? ' on' : ''}${how === 'live' && g.status !== 'scheduled' ? ' live' : ''}" data-game="${esc(g.id)}" data-how="${how}">`
+      + `<span class="who">${colourDot(c.away)}${abbr('away')}${mid}${abbr('home')}${colourDot(c.home)}</span>`
+      + `<span class="when mono">${esc(cardWhen(g, T, tipOff))}</span></button>`;
+  };
+  return `<div class="panel games">
+      <div class="head"><button class="icon" data-day="-1" title="${esc(T.prevDay)}">‹</button><b>${esc(day)}</b><button class="icon" data-day="1" title="${esc(T.nextDay)}">›</button><span class="grow"></span><button class="done" data-done>${esc(T.done)}</button></div>
+      <div class="list">${sorted.length ? sorted.map(row).join('') : `<span class="muted">${esc(T.noGames)}</span>`}</div>
     </div>`;
 }
 

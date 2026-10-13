@@ -1,5 +1,5 @@
 // The desktop shell: one borderless, always-on-top window, its position remembered, system
-// notifications, and a tray menu to show, hide, choose a team and quit (the window has no title
+// notifications, and a tray menu to show, hide, pick a game, choose a team and quit (the window has no title
 // bar to close it from).
 
 use tauri::menu::{Menu, MenuItem, PredefinedMenuItem};
@@ -14,10 +14,11 @@ pub fn run() {
         .plugin(tauri_plugin_notification::init())
         .setup(|app| {
             let toggle = MenuItem::with_id(app, "toggle", "Show / hide", true, None::<&str>)?;
+            let games = MenuItem::with_id(app, "games", "Games…", true, None::<&str>)?;
             let settings = MenuItem::with_id(app, "settings", "Team and notices…", true, None::<&str>)?;
             let quit = MenuItem::with_id(app, "quit", "Quit Courtsmall", true, None::<&str>)?;
             let separator = PredefinedMenuItem::separator(app)?;
-            let menu = Menu::with_items(app, &[&toggle, &settings, &separator, &quit])?;
+            let menu = Menu::with_items(app, &[&toggle, &games, &settings, &separator, &quit])?;
             TrayIconBuilder::with_id("main")
                 .icon(app.default_window_icon().cloned().expect("bundled icon"))
                 .tooltip("Courtsmall")
@@ -33,7 +34,11 @@ pub fn run() {
                                 let _ = window.show();
                             }
                         }
-                        // The web view opens its settings page (src/ui/main.ts).
+                        // The web view opens its panels (src/ui/main.ts).
+                        "games" => {
+                            let _ = window.show();
+                            let _ = window.emit("open-games", ());
+                        }
                         "settings" => {
                             let _ = window.show();
                             let _ = window.emit("open-settings", ());

@@ -46,6 +46,13 @@ export interface Strings {
   notifyFinal: string;
   notifyClutch: string;
   done: string;
+  /** The hover toolbar and the games list. */
+  tierName(tier: 'dot' | 'bar' | 'court'): string;
+  games: string;
+  settings: string;
+  noGames: string;
+  prevDay: string;
+  nextDay: string;
 }
 
 export const STRINGS: Record<Lang, Strings> = {
@@ -81,6 +88,12 @@ export const STRINGS: Record<Lang, Strings> = {
     notifyFinal: 'Notify at the final',
     notifyClutch: 'Notify in a close finish (last 2 min, within 5)',
     done: 'Done',
+    tierName: (t) => ({ dot: 'Dot', bar: 'Bar', court: 'Court' })[t],
+    games: 'Games',
+    settings: 'Team and notices',
+    noGames: 'No games this day',
+    prevDay: 'Previous day',
+    nextDay: 'Next day',
   },
   'zh-TW': {
     period: (n) => (n <= 4 ? `第${n}節` : n === 5 ? '延長' : `第${n - 4}延長`),
@@ -114,6 +127,12 @@ export const STRINGS: Record<Lang, Strings> = {
     notifyFinal: '終場時通知',
     notifyClutch: '關鍵時刻通知（最後 2 分鐘、差距 5 分內）',
     done: '完成',
+    tierName: (t) => ({ dot: '點', bar: '條', court: '球場' })[t],
+    games: '比賽',
+    settings: '主隊與通知',
+    noGames: '這天沒有比賽',
+    prevDay: '前一天',
+    nextDay: '後一天',
   },
 };
 

@@ -14,5 +14,3 @@ export const playLinesAt = (height: number): number => (height >= 88 ? 2 : 1);
 
 export const tierOf = (height: number): Tier => (height < BAR_AT ? 'dot' : height < COURT_AT ? 'bar' : 'court');
 
-/** The tier a double-click switches to: dot, bar, court, and round again. */
-export const nextTier = (t: Tier): Tier => ({ dot: 'bar', bar: 'court', court: 'dot' } as const)[t];

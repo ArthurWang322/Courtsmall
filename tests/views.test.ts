@@ -2,8 +2,8 @@
 
 import { describe, expect, it } from 'vitest';
 import { STRINGS } from '../src/i18n/index.ts';
-import { barView, clockText, dotView, playLines, RUN_MIN, whenText } from '../src/ui/views.ts';
-import type { GameState, PlayLine } from '../src/model/types.ts';
+import { barView, clockText, controlsView, dotView, gamesView, playLines, RUN_MIN, whenText } from '../src/ui/views.ts';
+import type { GameCard, GameState, PlayLine } from '../src/model/types.ts';
 
 const en = STRINGS.en, zh = STRINGS['zh-TW'];
 /** The newest play line alone, as a one-line bar shows it. */
@@ -134,5 +134,26 @@ describe('possession', () => {
     const html = dotView(base, en, 'Replay');
     expect(html).toContain('↺');
     expect(html).toContain('title="Replay"');
+  });
+});
+
+describe('toolbar and games list', () => {
+  it('lights the current size in the toolbar and offers the others', () => {
+    const html = controlsView('bar', zh);
+    expect(html.match(/class="icon on" data-tier="(\w+)"/)![1]).toBe('bar');
+    for (const t of ['dot', 'bar', 'court']) expect(html).toContain(`data-tier="${t}"`);
+    expect(html).toContain('data-open="games"');
+    expect(html).toContain('data-open="settings"');
+  });
+
+  // The list answers "what can I watch now": games on first; a finished game can only be replayed.
+  it('lists the games on first, then those to come, then the finished ones, which open as replays', () => {
+    const card = (id: string, status: GameCard['status'], start: number): GameCard => ({
+      id, status, start, period: status === 'live' ? 4 : 0, clock: 151, score: { away: 98, home: 101 }, teams: base.teams,
+    });
+    const html = gamesView('10/13', [card('f', 'final', 1), card('s', 'scheduled', 3), card('l', 'live', 2)], zh, () => '09:30', 'l');
+    expect([...html.matchAll(/data-game="(\w)" data-how="(\w+)"/g)].map((m) => `${m[1]}:${m[2]}`)).toEqual(['l:live', 's:live', 'f:replay']);
+    expect(html).toContain('class="game on live" data-game="l"');
+    expect(gamesView('10/13', [], zh, () => '')).toContain('這天沒有比賽');
   });
 });

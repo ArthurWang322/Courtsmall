@@ -3,7 +3,8 @@
 // through the DevTools protocol instead. Output goes to fixtures/shots/ (not committed).
 //
 // Usage (with `npm run dev` or `npx tauri dev` running):
-//   node scripts/screenshot.mjs "<path and query>" <width> <height> <waitMs> <name>
+//   node scripts/screenshot.mjs "<path and query>" <width> <height> <waitMs> <name> [hover]
+// `hover`: move the pointer over the window first (the toolbar shows on hover).
 //   node scripts/screenshot.mjs "/?game=401810362&replay&fixture&lang=zh-TW" 360 96 5000 bar
 
 import { spawn } from 'node:child_process';
@@ -11,7 +12,7 @@ import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-const [path, w, h, wait, name] = process.argv.slice(2);
+const [path, w, h, wait, name, hover] = process.argv.slice(2);
 if (!name) throw new Error('usage: node scripts/screenshot.mjs "<path>" <width> <height> <waitMs> <name>');
 const CHROME = '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
 const port = 9335;
@@ -31,6 +32,10 @@ try {
   await send('Emulation.setDeviceMetricsOverride', { width: Number(w), height: Number(h), deviceScaleFactor: 2, mobile: false });
   await send('Page.navigate', { url: `http://localhost:1420${path}` });
   await new Promise((r) => setTimeout(r, Number(wait)));
+  if (hover) {
+    await send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: Number(w) / 2, y: Number(h) / 2 });
+    await new Promise((r) => setTimeout(r, 400));
+  }
   const { data } = await send('Page.captureScreenshot', { format: 'png' });
   mkdirSync('fixtures/shots', { recursive: true });
   writeFileSync(`fixtures/shots/${name}.png`, Buffer.from(data, 'base64'));

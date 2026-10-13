@@ -12,9 +12,10 @@ body { color: var(--text); font: 13px/1.35 var(--font); user-select: none; -webk
 #app[data-tier='dot'] { border-radius: 999px; padding: 0 14px; }
 /* Clicks land on #app, which moves the window (src/ui/main.ts). */
 #app * { pointer-events: none; }
-/* Except the settings page, which is for clicking. */
-#app .settings, #app .settings * { pointer-events: auto; }
+/* Except what is for clicking: the panels and the hover toolbar. */
+#app .settings, #app .settings *, #app .panel, #app .panel *, #app .controls, #app .controls * { pointer-events: auto; }
 
+button { font: inherit; color: inherit; border: 0; background: transparent; padding: 0; cursor: pointer; }
 .muted { color: var(--muted); }
 .mono { font-family: var(--mono); font-variant-numeric: tabular-nums; }
 .grow { flex: 1; }
@@ -53,7 +54,7 @@ body { color: var(--text); font: 13px/1.35 var(--font); user-select: none; -webk
 .bar .play.old { color: var(--muted); font-weight: 400; opacity: .7; }
 .bar .divider { border: 0; border-top: 1px solid var(--border); margin: 1px 0; }
 .msg { display: flex; flex-direction: column; gap: 2px; white-space: nowrap; }
-#app[data-tier='settings'] { align-items: stretch; }
+#app[data-tier='panel'] { align-items: stretch; }
 .settings { display: flex; flex-direction: column; gap: 8px; width: 100%; min-width: 0; height: 100%; overflow: auto; padding: 4px 0; }
 .settings .head { display: flex; align-items: center; justify-content: space-between; }
 .settings .teams { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 4px; }
@@ -79,3 +80,30 @@ body { color: var(--text); font: 13px/1.35 var(--font); user-select: none; -webk
 .court .ball { fill: #e8823a; stroke: rgba(0, 0, 0, .35); stroke-width: 0.3; }
 .court .shooter .cap { filter: brightness(1.25); }
 .court .swish { stroke-width: 0.8; }
+
+/* The toolbar: sizes, games, settings. Out of the way until the pointer is over the window. */
+.controls { position: absolute; top: 4px; right: 6px; display: flex; align-items: center; gap: 2px; padding: 2px;
+  border-radius: 8px; background: color-mix(in srgb, var(--background) 92%, transparent); border: 1px solid var(--border);
+  opacity: 0; transition: opacity .15s; }
+#app:hover .controls { opacity: 1; }
+#app[data-tier='dot'] .controls { top: 50%; transform: translateY(-50%); right: 4px; border-radius: 999px; }
+.controls .icon, .panel .icon { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 20px;
+  border-radius: 6px; color: var(--muted); cursor: pointer; }
+.controls .icon:hover, .panel .icon:hover { color: var(--text); background: var(--panel); }
+.controls .icon.on { color: var(--accent); }
+.controls svg { fill: none; stroke: currentColor; stroke-width: 1.4; stroke-linecap: round; stroke-linejoin: round; }
+.controls .sep { width: 1px; height: 14px; background: var(--border); margin: 0 2px; }
+
+/* The games list (src/ui/views.ts gamesView). */
+.panel { display: flex; flex-direction: column; gap: 8px; width: 100%; min-width: 0; height: 100%; padding: 4px 0; }
+.panel .head { display: flex; align-items: center; gap: 4px; }
+.panel .head .icon { font-size: 16px; }
+.panel .done { padding: 4px 8px; border-radius: 8px; border: 1px solid var(--accent); color: var(--accent); background: var(--panel); font: 12px var(--font); cursor: pointer; }
+.panel .list { display: flex; flex-direction: column; gap: 4px; overflow: auto; min-height: 0; }
+.panel .game { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-radius: 8px; border: 1px solid var(--border);
+  background: var(--panel); color: var(--text); font: 13px var(--font); cursor: pointer; text-align: left; }
+.panel .game:hover { border-color: var(--muted); }
+.panel .game.on { border-color: var(--accent); }
+.panel .game .who { display: inline-flex; align-items: center; gap: 6px; font-variant-numeric: tabular-nums; }
+.panel .game .when { margin-left: auto; font-size: 11px; color: var(--muted); }
+.panel .game.live .when { color: var(--accent); }

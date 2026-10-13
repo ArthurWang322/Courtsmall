@@ -1,9 +1,10 @@
 // The main window. Decides what to show (src/follow/decide.ts), subscribes to that game, sends the
 // notices for it, and draws the tier the window's height asks for. The settings page (team and
-// notices) opens from the tray menu.
+// notices) and the games list open from the toolbar that shows on hover, or from the tray menu.
 //
 // URL parameters, for development: ?game=<ESPN event id> (skip following), &replay (replay even
-// if live), &pace=real|compact|results, &speed=<n>, &lang=en|zh-TW, &settings (open settings).
+// if live), &pace=real|compact|results, &speed=<n>, &lang=en|zh-TW, &settings or &games (open
+// that panel).
 // In `npm run dev` only, &fixture replays fixtures/nba/game-<id>.json and reads the team list from
 // fixtures/nba/teams.json instead of asking ESPN (node scripts/probe/06-fixtures.mjs).
 
@@ -13,15 +14,15 @@ import { allTeams, dayGames, loadFeed, teamGames, type FetchJson } from '../data
 import { EspnLiveSource } from '../data/espn/live-source.ts';
 import { EspnReplaySource } from '../data/replay/espn-replay-source.ts';
 import type { PaceMode } from '../data/replay/pacing.ts';
-import { decide, type Decision } from '../follow/decide.ts';
+import { decide, STAY_AFTER_FINAL_MS, type Decision } from '../follow/decide.ts';
 import { langOf, STRINGS } from '../i18n/index.ts';
 import { Notifier } from '../notify/notifier.ts';
 import { notices } from '../notify/rules.ts';
-import { nextTier, playLinesAt, TIER_PRESET, tierOf } from '../render/tiers.ts';
+import { playLinesAt, TIER_PRESET, tierOf, type Tier } from '../render/tiers.ts';
 import { drawFlights, shotSeconds } from '../render/court.ts';
 import { gameColours } from '../render/colour.ts';
 import { loadSettings, saveSettings, type Settings } from '../settings/store.ts';
-import { barView, courtView, dotView, messageView, settingsView, upcomingView } from './views.ts';
+import { barView, controlsView, courtView, dotView, gamesView, messageView, settingsView, upcomingView } from './views.ts';
 
 // In `npm run dev`, VITE_PARAMS fills in for the URL, which the desktop window does not have:
 // VITE_PARAMS='game=401898721&replay' npx tauri dev
@@ -35,7 +36,8 @@ const win = async () => (await import('@tauri-apps/api/window')).getCurrentWindo
 const DECIDE_EVERY_MS = 60_000;
 /** How long a team's schedule is reused, ms. */
 const TEAM_SCHEDULE_TTL_MS = 5 * 60_000;
-const SETTINGS_SIZE = { w: 360, h: 380 };
+/** The window's size while a panel (games, settings) is open. */
+const PANEL_SIZE = { w: 360, h: 380 };
 
 // One request in flight at a time across the whole app.
 let chain: Promise<unknown> = Promise.resolve();
@@ -62,10 +64,23 @@ let unsubscribe: Unsubscribe | undefined;
 let upcoming: GameCard | undefined;
 let message = T.loading;
 let messageSub: string | undefined;
-let settingsOpen = false;
+/** A panel over the game: the games list or the settings. */
+let panel: 'games' | 'settings' | undefined;
+/** The games list: which day (0 = ESPN's today), and its games. */
+let gamesDay = 0;
+let dayList: GameCard[] = [];
+/** A game the user picked from the list: following leaves it alone until it is over. */
+let pinned: string | undefined;
 /** When each shot on the court first appeared, epoch ms, for its animation (src/render/court.ts). */
 const shotSeen = new Map<string, number>();
-let sizeBeforeSettings: { w: number; h: number } | undefined;
+let sizeBeforePanel: { w: number; h: number } | undefined;
+
+/** ESPN's day `offset` days from today, "YYYYMMDD": ESPN counts days in US Eastern time. */
+const espnDate = (offset: number) =>
+  new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York' }).format(Date.now() + offset * 86_400_000).replaceAll('-', '');
+const dayLabel = (offset: number) =>
+  new Intl.DateTimeFormat(undefined, { timeZone: 'America/New_York', month: 'numeric', day: 'numeric', weekday: 'short' }).format(Date.now() + offset * 86_400_000);
+const tipOff = (g: GameCard) => new Intl.DateTimeFormat(undefined, { hour: '2-digit', minute: '2-digit' }).format(g.start);
 
 function whenOf(g: GameCard): string {
   const time = new Intl.DateTimeFormat(undefined, { hour: '2-digit', minute: '2-digit' }).format(g.start);
@@ -90,7 +105,7 @@ const landed = (id: string) => !inAir(id);
 
 function animate(): void {
   frame = 0;
-  if (!state || settingsOpen || tierOf(app.clientHeight) !== 'court') return;
+  if (!state || panel || tierOf(app.clientHeight) !== 'court') return;
   const shots = state.recentShots ?? [];
   const flying = shots.filter((s) => inAir(s.id)).map((s) => s.id).join();
   // A flight just ended: redraw so its mark is on the floor.
@@ -102,8 +117,9 @@ function animate(): void {
 
 function render(): void {
   const tier = tierOf(app.clientHeight);
-  app.dataset.tier = settingsOpen ? 'settings' : tier;
-  if (settingsOpen) { app.innerHTML = settingsView(teams, settings, T); return; }
+  app.dataset.tier = panel ? 'panel' : tier;
+  if (panel === 'settings') { app.innerHTML = settingsView(teams, settings, T); return; }
+  if (panel === 'games') { app.innerHTML = gamesView(dayLabel(gamesDay), dayList, T, tipOff, currentId); return; }
   const tag = replaying ? T.replay : undefined;
   if (state) {
     app.innerHTML = tier === 'dot' ? dotView(state, T, tag, settings.team)
@@ -113,6 +129,7 @@ function render(): void {
   }
   else if (upcoming) app.innerHTML = upcomingView(upcoming, whenOf(upcoming), tier === 'dot');
   else app.innerHTML = messageView(message, tier === 'bar' ? messageSub : undefined);
+  app.insertAdjacentHTML('beforeend', controlsView(tier, T));
 }
 
 const live = new EspnLiveSource(fetchJson);
@@ -187,6 +204,8 @@ async function decideNow(): Promise<void> {
   // Still loading the game on screen, or it is in progress: decide() would keep it anyway, so the
   // schedule is not asked (docs/PLAN.md M4: no schedule polling during a game).
   if (deciding || (currentId && (!state || state.status === 'live' || state.status === 'break' || state.status === 'delayed'))) return;
+  // A game the user picked stays until it has been over for a while, even one not started yet.
+  if (pinned && pinned === currentId && !(state?.status === 'final' && finalAt !== undefined && Date.now() - finalAt >= STAY_AFTER_FINAL_MS)) return;
   deciding = true;
   try {
     const today = await dayGames(fetchJson);
@@ -201,35 +220,61 @@ async function decideNow(): Promise<void> {
   }
 }
 
-async function openSettings(): Promise<void> {
-  if (settingsOpen) return;
-  settingsOpen = true;
-  if (shell) {
+async function loadDay(): Promise<void> {
+  // Under `npm run dev` with &fixture, every day is fixtures/nba/scoreboard.json.
+  const fromFixture = import.meta.env.DEV && params.has('fixture');
+  const get = fromFixture ? () => fetch('/fixtures/nba/scoreboard.json').then((r) => r.json()) : fetchJson;
+  try { dayList = await dayGames(get, espnDate(gamesDay)); } catch (e) { console.warn(e); dayList = []; }
+  if (panel === 'games') render();
+}
+
+async function openPanel(kind: 'games' | 'settings'): Promise<void> {
+  const was = panel;
+  panel = kind;
+  if (!was && shell) {
     const { LogicalSize } = await import('@tauri-apps/api/window');
-    sizeBeforeSettings = { w: window.innerWidth, h: window.innerHeight };
-    await (await win()).setSize(new LogicalSize(SETTINGS_SIZE.w, SETTINGS_SIZE.h));
+    sizeBeforePanel = { w: window.innerWidth, h: window.innerHeight };
+    await (await win()).setSize(new LogicalSize(PANEL_SIZE.w, PANEL_SIZE.h));
   }
   render();
-  if (!teams.length) {
+  if (kind === 'games') { gamesDay = 0; await loadDay(); }
+  if (kind === 'settings' && !teams.length) {
     const fromFixture = import.meta.env.DEV && params.has('fixture');
     try { teams = await allTeams(fromFixture ? () => fetch('/fixtures/nba/teams.json').then((r) => r.json()) : fetchJson); } catch (e) { console.warn(e); }
     render();
   }
 }
 
-async function closeSettings(): Promise<void> {
-  settingsOpen = false;
-  if (shell && sizeBeforeSettings) {
+async function closePanel(): Promise<void> {
+  panel = undefined;
+  if (shell && sizeBeforePanel) {
     const { LogicalSize } = await import('@tauri-apps/api/window');
-    await (await win()).setSize(new LogicalSize(sizeBeforeSettings.w, sizeBeforeSettings.h));
+    await (await win()).setSize(new LogicalSize(sizeBeforePanel.w, sizeBeforePanel.h));
   }
   render();
 }
 
+async function setTier(t: Tier): Promise<void> {
+  if (!shell) return;
+  const { LogicalSize } = await import('@tauri-apps/api/window');
+  await (await win()).setSize(new LogicalSize(TIER_PRESET[t].w, TIER_PRESET[t].h));
+}
+
 app.addEventListener('click', (e) => {
-  const el = (e.target as HTMLElement).closest<HTMLElement>('[data-team], [data-done], [data-notify]');
-  if (!el || !settingsOpen) return;
-  if (el.dataset.done !== undefined) { void closeSettings(); return; }
+  const el = (e.target as HTMLElement).closest<HTMLElement>('[data-tier], [data-open], [data-day], [data-game], [data-team], [data-done], [data-notify]');
+  if (!el) return;
+  if (el.dataset.tier) { void setTier(el.dataset.tier as Tier); return; }
+  if (el.dataset.open) { void openPanel(el.dataset.open as 'games' | 'settings'); return; }
+  if (el.dataset.done !== undefined) { void closePanel(); return; }
+  if (el.dataset.day) { gamesDay += Number(el.dataset.day); dayList = []; render(); void loadDay(); return; }
+  if (el.dataset.game) {
+    // Picked from the list: a game on or to come is followed live, a finished one replayed.
+    pinned = el.dataset.game;
+    follow(el.dataset.game, el.dataset.how === 'replay' ? 'replay' : 'live');
+    void closePanel();
+    return;
+  }
+  if (panel !== 'settings') return;
   if (el.dataset.notify) {
     const key = el.dataset.notify as keyof Settings['notify'];
     settings = { ...settings, notify: { ...settings.notify, [key]: (el as HTMLInputElement).checked } };
@@ -246,25 +291,23 @@ app.addEventListener('click', (e) => {
   if (changed && !params.has('game')) { teamCache = undefined; void decideNow(); }
 });
 
-// The window has no title bar or border: press and drag moves it, a double-click switches
-// to the next tier (dot, bar, court). (Tauri's drag region would turn a double-click into maximize.)
-// Outside the desktop shell (npm run dev in a browser) there is no window to move or resize.
+// The window has no title bar or border: press and drag moves it; the toolbar that shows on hover
+// switches the size and opens the panels. Outside the desktop shell (npm run dev in a browser)
+// there is no window to move or resize.
 app.addEventListener('mousedown', async (e) => {
-  if (shell && !settingsOpen && e.button === 0 && e.detail === 1) await (await win()).startDragging();
+  if ((e.target as HTMLElement).closest('button, input, label')) return;
+  if (shell && !panel && e.button === 0 && e.detail === 1) await (await win()).startDragging();
 });
-app.addEventListener('dblclick', async () => {
-  if (!shell || settingsOpen) return;
-  const { LogicalSize } = await import('@tauri-apps/api/window');
-  const next = TIER_PRESET[nextTier(tierOf(app.clientHeight))];
-  await (await win()).setSize(new LogicalSize(next.w, next.h));
+if (shell) void import('@tauri-apps/api/event').then(({ listen }) => {
+  void listen('open-settings', () => void openPanel('settings'));
+  void listen('open-games', () => void openPanel('games'));
 });
-if (shell) void import('@tauri-apps/api/event').then(({ listen }) => listen('open-settings', () => void openSettings()));
 
 // Redraw only when the layout changes, and in the next frame: redrawing inside the observer's
 // callback feeds it its own changes ("ResizeObserver loop completed with undelivered notifications").
 let lastLayout = '';
 new ResizeObserver(() => requestAnimationFrame(() => {
-  const layout = `${settingsOpen}:${tierOf(app.clientHeight)}:${playLinesAt(app.clientHeight)}`;
+  const layout = `${panel}:${tierOf(app.clientHeight)}:${playLinesAt(app.clientHeight)}`;
   if (layout !== lastLayout) { lastLayout = layout; render(); }
 })).observe(app);
 
@@ -275,4 +318,5 @@ else {
   void decideNow();
   setInterval(() => void decideNow(), DECIDE_EVERY_MS);
 }
-if (params.has('settings')) void openSettings();
+if (params.has('settings')) void openPanel('settings');
+if (params.has('games')) void openPanel('games');
