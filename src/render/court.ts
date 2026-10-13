@@ -158,7 +158,8 @@ function net(drop: number, bottom: number, attrs: string): string {
 
 /** The marks of the latest shots on the floor, oldest faintest; a shot still in the air has none yet. */
 export function shotMarks(shots: readonly Shot[], colours: Record<Side, string>, landed: (id: string) => boolean): string {
-  return shots.filter((s) => landed(s.id)).map((s, i, all) => {
+  // Free throws all come from the same spot: they fly, but leave no mark.
+  return shots.filter((s) => s.points !== 1 && landed(s.id)).map((s, i, all) => {
     const fade = (0.35 + 0.65 * ((i + 1) / all.length)).toFixed(2);
     return s.made
       ? disc(spotOf(s), 1.2, `class="mark made" fill="#${colours[s.side]}" opacity="${fade}"`)

@@ -106,16 +106,18 @@ let frame = 0;
 let flyingIds = '';
 const ageOf = (id: string, now = Date.now()) => { const at = shotSeen.get(id); return at === undefined ? undefined : (now - at) / 1000; };
 const inAir = (id: string) => {
-  const shot = state?.recentShots?.find((s) => s.id === id);
+  const shot = courtShots().find((s) => s.id === id);
   const t = ageOf(id);
   return !reducedMotion.matches && shot !== undefined && t !== undefined && t < shotSeconds(shot);
 };
 const landed = (id: string) => !inAir(id);
+/** Everything that can fly on the court: field goals and free throws. */
+const courtShots = () => [...(state?.recentShots ?? []), ...(state?.recentFreeThrows ?? [])];
 
 function animate(): void {
   frame = 0;
   if (!state || panel || tierOf(app.clientHeight) !== 'court') return;
-  const shots = state.recentShots ?? [];
+  const shots = courtShots();
   const flying = shots.filter((s) => inAir(s.id)).map((s) => s.id).join();
   // A flight just ended: redraw so its mark is on the floor.
   if (flying !== flyingIds) { flyingIds = flying; render(); }
@@ -179,7 +181,7 @@ function follow(id: string, how: 'live' | 'replay' | 'result'): void {
       if (s.status === 'final' && finalAt === undefined) finalAt = Date.now();
       // Shots already on the court when the game is first shown do not fly in.
       const seenAt = state ? Date.now() : Date.now() - 60_000;
-      const onCourt = new Set((s.recentShots ?? []).map((shot) => shot.id));
+      const onCourt = new Set([...(s.recentShots ?? []), ...(s.recentFreeThrows ?? [])].map((shot) => shot.id));
       for (const id of shotSeen.keys()) if (!onCourt.has(id)) shotSeen.delete(id);
       for (const id of onCourt) if (!shotSeen.has(id)) shotSeen.set(id, seenAt);
       // A score that went up jumps; the first state of a game does not.
@@ -202,7 +204,7 @@ function follow(id: string, how: 'live' | 'replay' | 'result'): void {
       const last = buildTimeline(feed).at(-1)?.state;
       if (cancelled || !last) return;
       if (last.status === 'final') finalAt = Date.now();
-      for (const shot of last.recentShots ?? []) shotSeen.set(shot.id, Date.now() - 60_000);
+      for (const shot of [...(last.recentShots ?? []), ...(last.recentFreeThrows ?? [])]) shotSeen.set(shot.id, Date.now() - 60_000);
       state = last;
       render();
     }).catch(handlers.onError);

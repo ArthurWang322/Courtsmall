@@ -1,7 +1,7 @@
 // ESPN plays -> normalized timeline. The score always comes from the plays' running
 // `awayScore` / `homeScore`, never from adding up points ourselves.
 
-import { RECENT_PLAYS, RECENT_SHOTS, type Basket, type FoulKind, type GameEvent, type GameState, type GameStatus, type PlayerRef, type PlayLine, type Points, type Side, type StoppageKind, type TeamRef, type TimelineEntry } from '../../model/types.ts';
+import { FREE_THROW_SPOT, RECENT_FREE_THROWS, RECENT_PLAYS, RECENT_SHOTS, type Basket, type FoulKind, type GameEvent, type GameState, type GameStatus, type PlayerRef, type PlayLine, type Points, type Side, type StoppageKind, type TeamRef, type TimelineEntry } from '../../model/types.ts';
 import { refId, type CorePlay, type GameFeed } from './feed-types.ts';
 
 const END_PERIOD = '412';
@@ -136,6 +136,9 @@ export function buildTimeline(feed: GameFeed): TimelineEntry[] {
     const points = play.pointsAttempted;
     if (play.shootingPlay && (points === 2 || points === 3) && Math.abs(x) < 1000 && Math.abs(y) < 1000 && shotSide)
       next.recentShots = [...(next.recentShots ?? []), { id: play.id, side: shotSide, made: play.scoringPlay, points: points as 2 | 3, x, y }].slice(-RECENT_SHOTS);
+    // A free throw has no spot from ESPN; it is always from the line.
+    if (play.shootingPlay && points === 1 && shotSide)
+      next.recentFreeThrows = [...(next.recentFreeThrows ?? []), { id: play.id, side: shotSide, made: play.scoringPlay, points: 1 as const, ...FREE_THROW_SPOT }].slice(-RECENT_FREE_THROWS);
 
     for (const ev of playEvents(play, who, sideFor)) {
       if (ev.type === 'stoppage') next.stoppage = ev.kind;

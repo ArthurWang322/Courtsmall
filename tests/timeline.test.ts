@@ -4,7 +4,7 @@
 import { describe, expect, it } from 'vitest';
 import { buildTimeline } from '../src/data/espn/timeline.ts';
 import type { CorePlay, GameFeed } from '../src/data/espn/feed-types.ts';
-import { BASKET, type Side } from '../src/model/types.ts';
+import { BASKET, FREE_THROW_SPOT, type Side } from '../src/model/types.ts';
 import { FIXTURES, hasFixture, loadFixture } from './fixtures.ts';
 
 const SIDES: Side[] = ['away', 'home'];
@@ -100,6 +100,22 @@ for (const fx of FIXTURES) {
         else expect(d).toBeLessThanOrEqual(23.75 + 1.6);
       }
       expect(seen.size).toBeGreaterThan(100);
+    });
+
+    // Free throws fly on the court from the line; each one must be there, for the right side.
+    it("free throws on the court, per side, match the box score's free-throw attempts", () => {
+      const seen = new Map<string, 'away' | 'home'>();
+      for (const e of timeline) for (const ft of e.state.recentFreeThrows ?? []) {
+        expect([ft.x, ft.y]).toEqual([FREE_THROW_SPOT.x, FREE_THROW_SPOT.y]);
+        seen.set(ft.id, ft.side);
+      }
+      const mine = { away: 0, home: 0 };
+      for (const side of seen.values()) mine[side]++;
+      const box = { away: 0, home: 0 };
+      const sideOf = new Map(competitors.map((c) => [c.team.id, c.homeAway]));
+      for (const team of feed!.summary.boxscore.players ?? []) for (const g of team.statistics) for (const a of g.athletes)
+        box[sideOf.get(team.team.id)!] += Number((a.stats[g.names.indexOf('FT')] ?? '').split('-')[1]) || 0;
+      expect(mine).toEqual(box);
     });
 
     it('every basket event agrees with the score change it came from', () => {

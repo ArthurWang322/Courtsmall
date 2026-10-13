@@ -93,6 +93,11 @@ describe('shotMarks', () => {
     expect(op.at(-1)).toBe(1);
   });
 
+  // Every free throw comes from the same spot; marks there would pile up and push real shots off.
+  it('leaves no mark for a free throw', () => {
+    expect(shotMarks([shot({ id: '1', points: 1, x: 25, y: 14.75 })], colours, always)).toBe('');
+  });
+
   // The mark is the shot's result: it must not be on the floor before the ball has landed.
   it('leaves a shot still in the air off the floor', () => {
     expect(shotMarks([shot({ id: '1' })], colours, (id) => id !== '1')).toBe('');

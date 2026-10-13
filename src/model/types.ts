@@ -57,7 +57,8 @@ export interface Shot {
   id: string;
   side: Side;
   made: boolean;
-  points: 2 | 3;
+  /** 1: a free throw, always at FREE_THROW_SPOT (ESPN gives free throws no spot). */
+  points: 1 | 2 | 3;
   x: number;
   y: number;
 }
@@ -67,6 +68,11 @@ export const BASKET = { x: 25, y: 1 } as const;
 
 /** How many shots the state keeps for the court view. */
 export const RECENT_SHOTS = 4;
+
+/** The free-throw line, 15 ft from the backboard: 13.75 ft from the basket's centre. */
+export const FREE_THROW_SPOT = { x: 25, y: 1 + 13.75 } as const;
+/** How many free throws the state keeps: for their flight only, they leave no mark on the floor. */
+export const RECENT_FREE_THROWS = 3;
 
 /** Points one side has scored since the other side last scored. */
 export interface Run {
@@ -126,8 +132,10 @@ export interface GameState {
   recentPlays?: readonly PlayLine[];
   /** A timeout or review is the latest play: the clock is stopped for it. Cleared by the next play. */
   stoppage?: StoppageKind;
-  /** The latest field-goal attempts, oldest first, at most `RECENT_SHOTS`. Free throws have no spot. */
+  /** The latest field-goal attempts, oldest first, at most `RECENT_SHOTS`. */
   recentShots?: readonly Shot[];
+  /** The latest free throws, oldest first, at most `RECENT_FREE_THROWS`: flown, never marked. */
+  recentFreeThrows?: readonly Shot[];
   run?: Run;
   /** Epoch ms of the moment this state describes. */
   at?: number;
