@@ -75,7 +75,7 @@ function render(): void {
   app.dataset.tier = settingsOpen ? 'settings' : tier;
   if (settingsOpen) { app.innerHTML = settingsView(teams, settings, T); return; }
   const tag = replaying ? T.replay : undefined;
-  if (state) app.innerHTML = tier === 'dot' ? dotView(state, T, tag) : barView(state, T, playLinesAt(app.clientHeight), tag);
+  if (state) app.innerHTML = tier === 'dot' ? dotView(state, T, tag, settings.team) : barView(state, T, playLinesAt(app.clientHeight), tag, settings.team);
   else if (upcoming) app.innerHTML = upcomingView(upcoming, whenOf(upcoming), tier === 'dot');
   else app.innerHTML = messageView(message, tier === 'bar' ? messageSub : undefined);
 }

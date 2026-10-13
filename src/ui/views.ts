@@ -4,6 +4,7 @@
 
 import type { GameCard, GameState, PlayLine, Side, TeamRef } from '../model/types.ts';
 import type { Settings } from '../settings/store.ts';
+import { gameColours, visibleColour } from '../render/colour.ts';
 import type { Strings } from '../i18n/index.ts';
 
 /** A run is shown from this many unanswered points. 【建議】 */
@@ -32,12 +33,14 @@ export function whenText(s: GameState, T: Strings, tipOff?: string): string {
   }
 }
 
-const dot = (s: GameState, side: Side) =>
-  `<i class="dot${s.possession === side && s.status === 'live' ? ' ball' : ''}" style="background:#${esc(s.teams[side].color ?? '888888')}"></i>`;
+const dot = (s: GameState, side: Side, colour: string) =>
+  `<i class="dot${s.possession === side && s.status === 'live' ? ' ball' : ''}" style="background:#${esc(colour)}"></i>`;
 
-function scoreHtml(s: GameState, withAbbr: boolean): string {
+/** `favourite`: the chosen team's id; in a colour clash it keeps its own colour. */
+function scoreHtml(s: GameState, withAbbr: boolean, favourite?: string): string {
+  const c = gameColours(s.teams, favourite);
   const ab = (side: Side) => (withAbbr ? `<span class="abbr">${esc(s.teams[side].abbr)}</span>` : '');
-  return `${dot(s, 'away')}${ab('away')}<b>${s.score.away}</b><span class="muted">–</span><b>${s.score.home}</b>${ab('home')}${dot(s, 'home')}`;
+  return `${dot(s, 'away', c.away)}${ab('away')}<b>${s.score.away}</b><span class="muted">–</span><b>${s.score.home}</b>${ab('home')}${dot(s, 'home', c.home)}`;
 }
 
 /** "[UTAH] I. Collier +2", "[PHI] J. Embiid shooting foul": the team first, so a glance at a
@@ -73,18 +76,18 @@ export function playLines(s: GameState, T: Strings, count: number): string[] {
  * Dot tier: a pill with the score and the period. The team with the ball has a ring on its dot.
  * A replay is marked with "↺" (the word does not fit): a replay mistaken for a live game misleads.
  */
-export function dotView(s: GameState, T: Strings, tag?: string): string {
-  return `<div class="pill"><span class="sc">${scoreHtml(s, false)}</span><span class="when mono">${esc(whenText(s, T))}</span>${tag ? `<span class="tag" title="${esc(tag)}">↺</span>` : ''}</div>`;
+export function dotView(s: GameState, T: Strings, tag?: string, favourite?: string): string {
+  return `<div class="pill"><span class="sc">${scoreHtml(s, false, favourite)}</span><span class="when mono">${esc(whenText(s, T))}</span>${tag ? `<span class="tag" title="${esc(tag)}">↺</span>` : ''}</div>`;
 }
 
 /**
  * Bar tier: score with team abbreviations and the period on top; below, the newest play, and
  * under a divider the one before it, quieter.
  */
-export function barView(s: GameState, T: Strings, lines: number, tag?: string): string {
+export function barView(s: GameState, T: Strings, lines: number, tag?: string, favourite?: string): string {
   const [newest = '', older = ''] = playLines(s, T, lines);
   return `<div class="bar">
-      <div class="row"><span class="sc">${scoreHtml(s, true)}</span><span class="grow"></span>${tag ? `<span class="tag">${esc(tag)}</span>` : ''}<span class="when mono">${esc(whenText(s, T))}</span></div>
+      <div class="row"><span class="sc">${scoreHtml(s, true, favourite)}</span><span class="grow"></span>${tag ? `<span class="tag">${esc(tag)}</span>` : ''}<span class="when mono">${esc(whenText(s, T))}</span></div>
       <div class="row play new">${newest}</div>${lines > 1 ? `
       <hr class="divider"><div class="row play old">${older}</div>` : ''}
     </div>`;
@@ -94,7 +97,7 @@ export function barView(s: GameState, T: Strings, lines: number, tag?: string): 
 export const messageView = (text: string, sub?: string) =>
   `<div class="msg"><span>${esc(text)}</span>${sub ? `<span class="muted">${esc(sub)}</span>` : ''}</div>`;
 
-const cardDot = (t: TeamRef) => `<i class="dot" style="background:#${esc(t.color ?? '888888')}"></i>`;
+const cardDot = (t: TeamRef) => `<i class="dot" style="background:#${esc(visibleColour(t))}"></i>`;
 
 /** The team's next game: who, and when ("Today 19:30" or "Fri 10/23 09:30"). */
 export function upcomingView(g: GameCard, when: string, dot: boolean): string {
