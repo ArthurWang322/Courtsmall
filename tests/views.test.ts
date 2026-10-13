@@ -37,9 +37,21 @@ describe('period', () => {
     expect(whenText({ ...base, status: 'break', period: 3 }, zh)).toBe('第3節結束');
   });
 
-  it('shows the period and clock while live, the result once final', () => {
+  it('shows the period and clock while live, the result once final, overtime included', () => {
     expect(whenText(base, en)).toBe('Q4 7:02');
     expect(whenText({ ...base, status: 'final' }, zh)).toBe('終場');
+    expect(whenText({ ...base, status: 'final', period: 5 }, zh)).toBe('終場/OT');
+    expect(whenText({ ...base, status: 'final', period: 6 }, en)).toBe('Final/2OT');
+  });
+
+  // A finished game picked from the list is a result, not a play-by-play: points per period, no plays.
+  it('shows a finished game as points per period instead of plays', () => {
+    const fin = { ...base, status: 'final' as const, period: 5, periodScores: { away: [32, 28, 30, 23, 12], home: [30, 25, 31, 27, 11] },
+      recentPlays: [{ type: 'rebound' as const, offensive: false, side: 'home' as const }] };
+    const html = barView(fin, zh, 2, undefined, undefined, true);
+    expect(html).not.toContain('防守籃板');
+    const rows = [...html.matchAll(/<div class="row period">(.*?)<\/div>/g)].map((m) => m[1]!.replace(/<[^>]+>/g, ' ').trim().split(/\s+/));
+    expect(rows).toEqual([['SA', '32', '28', '30', '23', '12'], ['UTAH', '30', '25', '31', '27', '11']]);
   });
 });
 
@@ -147,12 +159,12 @@ describe('toolbar and games list', () => {
   });
 
   // The list answers "what can I watch now": games on first; a finished game can only be replayed.
-  it('lists the games on first, then those to come, then the finished ones, which open as replays', () => {
+  it('lists the games on first, then those to come, then the finished ones, which open as results', () => {
     const card = (id: string, status: GameCard['status'], start: number): GameCard => ({
       id, status, start, period: status === 'live' ? 4 : 0, clock: 151, score: { away: 98, home: 101 }, teams: base.teams,
     });
     const html = gamesView('10/13', [card('f', 'final', 1), card('s', 'scheduled', 3), card('l', 'live', 2)], zh, () => '09:30', 'l');
-    expect([...html.matchAll(/data-game="(\w)" data-how="(\w+)"/g)].map((m) => `${m[1]}:${m[2]}`)).toEqual(['l:live', 's:live', 'f:replay']);
+    expect([...html.matchAll(/data-game="(\w)" data-how="(\w+)"/g)].map((m) => `${m[1]}:${m[2]}`)).toEqual(['l:live', 's:live', 'f:result']);
     expect(html).toContain('class="game on live" data-game="l"');
     expect(gamesView('10/13', [], zh, () => '')).toContain('這天沒有比賽');
   });

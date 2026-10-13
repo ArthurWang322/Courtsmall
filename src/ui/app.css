@@ -107,3 +107,9 @@ button { font: inherit; color: inherit; border: 0; background: transparent; padd
 .panel .game .who { display: inline-flex; align-items: center; gap: 6px; font-variant-numeric: tabular-nums; }
 .panel .game .when { margin-left: auto; font-size: 11px; color: var(--muted); }
 .panel .game.live .when { color: var(--accent); }
+
+/* A finished game's points per period (src/ui/views.ts periodTable). */
+.periods { display: flex; flex-direction: column; gap: 2px; margin-top: 4px; }
+.periods .period { gap: 0; font-size: 12px; color: var(--muted); }
+.periods .abbr { width: 46px; }
+.periods .mono { width: 28px; text-align: right; color: var(--text); }

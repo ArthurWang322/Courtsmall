@@ -25,7 +25,8 @@ export function clockText(seconds: number): string {
 export function whenText(s: GameState, T: Strings, tipOff?: string): string {
   switch (s.status) {
     case 'scheduled': return tipOff ?? '';
-    case 'final': return T.final;
+    // "Final/OT": a game that went to overtime says so.
+    case 'final': return s.period > 4 ? `${T.final}/${s.period === 5 ? 'OT' : `${s.period - 4}OT`}` : T.final;
     case 'postponed': return T.postponed;
     case 'cancelled': return T.cancelled;
     case 'delayed': return T.delayed;
@@ -101,9 +102,10 @@ export function dotView(s: GameState, T: Strings, tag?: string, favourite?: stri
 
 /**
  * Bar tier: the score bug on top; below, the newest play, and under a divider the one before it,
- * quieter.
+ * quieter. `result`: a finished game picked from the list, shown as its points per period instead.
  */
-export function barView(s: GameState, T: Strings, lines: number, tag?: string, favourite?: string): string {
+export function barView(s: GameState, T: Strings, lines: number, tag?: string, favourite?: string, result = false): string {
+  if (result) return `<div class="bar">${scoreBug(s, T, tag, favourite)}${periodTable(s)}</div>`;
   const [newest = '', older = ''] = playLines(s, T, lines);
   return `<div class="bar">
       ${scoreBug(s, T, tag, favourite)}
@@ -112,12 +114,18 @@ export function barView(s: GameState, T: Strings, lines: number, tag?: string, f
     </div>`;
 }
 
+/** Points per period for a finished game: one row per team, overtimes included. */
+export function periodTable(s: GameState): string {
+  const row = (side: Side) => `<div class="row period"><span class="abbr">${esc(s.teams[side].abbr)}</span>${s.periodScores[side].map((n) => `<span class="mono">${n}</span>`).join('')}</div>`;
+  return `<div class="periods">${row('away')}${row('home')}</div>`;
+}
+
 /**
  * Court tier: the bar on top, the half court in 3D below. `landed`: whether a shot's flight is
  * over, so its mark is on the floor (src/render/court.ts draws the flights every frame).
  */
-export function courtView(s: GameState, T: Strings, landed: (id: string) => boolean, tag?: string, favourite?: string): string {
-  return `<div class="courtwrap">${barView(s, T, 2, tag, favourite)}${courtSvg(s, gameColours(s.teams, favourite), landed)}</div>`;
+export function courtView(s: GameState, T: Strings, landed: (id: string) => boolean, tag?: string, favourite?: string, result = false): string {
+  return `<div class="courtwrap">${barView(s, T, 2, tag, favourite, result)}${courtSvg(s, gameColours(s.teams, favourite), landed)}</div>`;
 }
 
 /** No game to show: a message, and when the next one tips off. */
@@ -188,12 +196,12 @@ const ORDER: Partial<Record<GameCard['status'], number>> = { live: 0, break: 0, 
 
 /**
  * A day's games: the ones on first, then the ones still to come, then the finished ones. A game on
- * or to come is followed live; a finished one is replayed. `current`: the game on screen.
+ * or to come is followed live; a finished one shows its result. `current`: the game on screen.
  */
 export function gamesView(day: string, games: readonly GameCard[], T: Strings, tipOff: (g: GameCard) => string, current?: string): string {
   const sorted = [...games].sort((a, b) => (ORDER[a.status] ?? 3) - (ORDER[b.status] ?? 3) || a.start - b.start);
   const row = (g: GameCard) => {
-    const how = g.status === 'final' ? 'replay' : 'live';
+    const how = g.status === 'final' ? 'result' : 'live';
     const showScore = g.status !== 'scheduled' && g.status !== 'postponed' && g.status !== 'cancelled';
     const abbr = (sd: Side) => `<span>${esc(g.teams[sd].abbr)}</span>`;
     // Two teams in one row: the same clash rule as on the score (src/render/colour.ts).

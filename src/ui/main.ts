@@ -12,6 +12,7 @@ import type { GameCard, GameState, TeamRef, Unsubscribe } from '../model/types.t
 import type { GameFeed } from '../data/espn/feed-types.ts';
 import { allTeams, dayGames, loadFeed, teamGames, type FetchJson } from '../data/espn/fetch.ts';
 import { EspnLiveSource } from '../data/espn/live-source.ts';
+import { buildTimeline } from '../data/espn/timeline.ts';
 import { EspnReplaySource } from '../data/replay/espn-replay-source.ts';
 import type { PaceMode } from '../data/replay/pacing.ts';
 import { decide, STAY_AFTER_FINAL_MS, type Decision } from '../follow/decide.ts';
@@ -60,6 +61,8 @@ let state: GameState | undefined;
 let currentId: string | undefined;
 let finalAt: number | undefined;
 let replaying = false;
+/** A finished game picked from the list: its result, not its plays (no replay). */
+let resultOnly = false;
 let unsubscribe: Unsubscribe | undefined;
 let upcoming: GameCard | undefined;
 let message = T.loading;
@@ -123,8 +126,8 @@ function render(): void {
   const tag = replaying ? T.replay : undefined;
   if (state) {
     app.innerHTML = tier === 'dot' ? dotView(state, T, tag, settings.team)
-      : tier === 'court' ? courtView(state, T, landed, tag, settings.team)
-      : barView(state, T, playLinesAt(app.clientHeight), tag, settings.team);
+      : tier === 'court' ? courtView(state, T, landed, tag, settings.team, resultOnly)
+      : barView(state, T, playLinesAt(app.clientHeight), tag, settings.team, resultOnly);
     if (tier === 'court' && !frame) frame = requestAnimationFrame(animate);
   }
   else if (upcoming) app.innerHTML = upcomingView(upcoming, whenOf(upcoming), tier === 'dot');
@@ -150,10 +153,11 @@ function leave(): void {
   finalAt = undefined;
 }
 
-function follow(id: string, how: 'live' | 'replay'): void {
+function follow(id: string, how: 'live' | 'replay' | 'result'): void {
   leave();
   currentId = id;
   replaying = how === 'replay';
+  resultOnly = how === 'result';
   upcoming = undefined;
   message = T.loading;
   const handlers = {
@@ -177,6 +181,20 @@ function follow(id: string, how: 'live' | 'replay'): void {
   const load = (gid: string) => (fromFixture
     ? fetch(`/fixtures/nba/game-${gid}.json`).then((r) => r.json() as Promise<GameFeed>)
     : loadFeed(fetchJson, gid));
+  if (how === 'result') {
+    // One load, straight to the last state: no notices, no flights (handlers.onState would do both).
+    let cancelled = false;
+    unsubscribe = () => { cancelled = true; };
+    load(id).then((feed) => {
+      const last = buildTimeline(feed).at(-1)?.state;
+      if (cancelled || !last) return;
+      if (last.status === 'final') finalAt = Date.now();
+      for (const shot of last.recentShots ?? []) shotSeen.set(shot.id, Date.now() - 60_000);
+      state = last;
+      render();
+    }).catch(handlers.onError);
+    return;
+  }
   const replay = new EspnReplaySource(load, { pace: pace(), speed: Number(params.get('speed') ?? 1) });
   unsubscribe = replay.subscribe(id, handlers);
 }
@@ -268,9 +286,9 @@ app.addEventListener('click', (e) => {
   if (el.dataset.done !== undefined) { void closePanel(); return; }
   if (el.dataset.day) { gamesDay += Number(el.dataset.day); dayList = []; render(); void loadDay(); return; }
   if (el.dataset.game) {
-    // Picked from the list: a game on or to come is followed live, a finished one replayed.
+    // Picked from the list: a game on or to come is followed live, a finished one shows its result.
     pinned = el.dataset.game;
-    follow(el.dataset.game, el.dataset.how === 'replay' ? 'replay' : 'live');
+    follow(el.dataset.game, el.dataset.how === 'result' ? 'result' : 'live');
     void closePanel();
     return;
   }
