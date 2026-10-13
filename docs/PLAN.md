@@ -15,8 +15,8 @@ Basesmall 的 NBA 版：一個浮在桌面角落、不打擾工作的比賽在�
 
 | # | 問題 | 影響 |
 | --- | --- | --- |
-| Q1 | 用哪個資料源？候選：`cdn.nba.com/static/json/liveData/`（scoreboard、playbyplay、boxscore）、`stats.nba.com`、ESPN 的非官方 API。三者都不是公開授權的 API。 | 決定 M0 要探哪個、要不要做備援 |
-| Q2 | 使用條款能不能接受？NBA.com 的條款對自動擷取的限制可能比 MLB 嚴。 | 不行就沒有這個專案，所以要最先回答 |
+| Q1 | ~~用哪個資料源？~~ 【已決定，2026-10-13】ESPN（site API 拿賽程與 summary，core API 輪詢直播）。`cdn.nba.com` 從台灣打不到，見 `PROBE_REPORT.md` §1。 | — |
+| Q2 | ~~使用條款能不能接受？~~ 【已決定，2026-10-13】維護者接受 ESPN 非官方 API 的使用條款。 | — |
 | Q3 | 「一秒鐘的餘光」要看到什麼？候選：比分、節次與剩餘時間、球權、目前的得分跑動（例如 10-0 run）、團隊犯規/加罰、最後一擊（誰得分、幾分）。 | 決定標準化模型與渲染 |
 | Q4 | 畫面要不要有球場？棒球的棋子在壘包間移動有意義；籃球是連續的，球場上放棋子很可能違反「做得更少」。 | 決定 M4 的範圍 |
 | Q5 | 正式名稱（repo 暫名 `small-nba`，Basesmall 的原則是名稱不含聯盟名） | README、App 名稱、bundle id |
