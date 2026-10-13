@@ -2,10 +2,12 @@
 
 import { describe, expect, it } from 'vitest';
 import { STRINGS } from '../src/i18n/index.ts';
-import { barView, clockText, dotView, lastLine, RUN_MIN, whenText } from '../src/ui/views.ts';
-import type { GameState } from '../src/model/types.ts';
+import { barView, clockText, dotView, playLines, RUN_MIN, whenText } from '../src/ui/views.ts';
+import type { GameState, PlayLine } from '../src/model/types.ts';
 
 const en = STRINGS.en, zh = STRINGS['zh-TW'];
+/** The newest play line alone, as a one-line bar shows it. */
+const lastLine = (s: GameState, T: typeof en) => playLines(s, T, 1)[0] ?? '';
 const base: GameState = {
   gameId: '1', status: 'live', period: 4, clock: 422,
   teams: { away: { id: 'a', abbr: 'SA', name: 'Spurs', color: 'c4ced4' }, home: { id: 'h', abbr: 'UTAH', name: 'Jazz', color: '4e008e' } },
@@ -49,31 +51,44 @@ describe('last line', () => {
   // The team comes first: a glance at a name alone does not say which side it was. Same in both
   // languages, "+2" included (the maintainer's call, 2026-10-13).
   it('writes a basket as [team] name +points in both languages', () => {
-    expect(lastLine({ ...base, lastPlay: basket }, en)).toBe('[UTAH] I. Collier +2');
-    expect(lastLine({ ...base, lastPlay: basket }, zh)).toBe('[UTAH] I. Collier +2');
+    expect(lastLine({ ...base, recentPlays: [basket] }, en)).toBe('[UTAH] I. Collier +2');
+    expect(lastLine({ ...base, recentPlays: [basket] }, zh)).toBe('[UTAH] I. Collier +2');
     const { player: _, ...noShooter } = basket.basket;
-    expect(lastLine({ ...base, lastPlay: { ...basket, basket: noShooter } }, zh)).toBe('[UTAH] +2');
+    expect(lastLine({ ...base, recentPlays: [{ ...basket, basket: noShooter }] }, zh)).toBe('[UTAH] +2');
   });
 
   it('writes fouls, turnovers, rebounds and substitutions the same way', () => {
-    const line = (lastPlay: NonNullable<GameState['lastPlay']>) => lastLine({ ...base, lastPlay }, zh);
+    const line = (p: PlayLine) => lastLine({ ...base, recentPlays: [p] }, zh);
     expect(line({ type: 'foul', kind: 'shooting', side: 'away', player: embiid })).toBe('[SA] J. Embiid 投籃犯規');
     expect(line({ type: 'turnover', side: 'away', player: embiid, stolenBy: collier })).toBe('[SA] J. Embiid 失誤（I. Collier 抄截）');
-    expect(lastLine({ ...base, lastPlay: { type: 'turnover', side: 'away', player: embiid, stolenBy: collier } }, en)).toBe('[SA] J. Embiid turnover (I. Collier steal)');
+    expect(lastLine({ ...base, recentPlays: [{ type: 'turnover', side: 'away', player: embiid, stolenBy: collier }] }, en)).toBe('[SA] J. Embiid turnover (I. Collier steal)');
     expect(line({ type: 'rebound', offensive: true, side: 'home' })).toBe('[UTAH] 進攻籃板');
     expect(line({ type: 'substitution', side: 'home', in: collier, out: embiid })).toBe('[UTAH] I. Collier 換下 J. Embiid');
-    expect(lastLine({ ...base, lastPlay: { type: 'foul', kind: 'personal', side: 'away', player: embiid } }, en)).toBe('[SA] J. Embiid foul');
+    expect(lastLine({ ...base, recentPlays: [{ type: 'foul', kind: 'personal', side: 'away', player: embiid }] }, en)).toBe('[SA] J. Embiid foul');
+  });
+
+  // The maintainer asked for this (2026-10-13): who missed and who got the rebound, read together.
+  it('stacks the two latest plays, older above, the run after the newer', () => {
+    const miss = { type: 'miss' as const, points: 3 as const, side: 'away' as const, player: embiid };
+    const reb = { type: 'rebound' as const, offensive: false, side: 'home' as const, player: collier };
+    const s = { ...base, recentPlays: [miss, reb], run: { side: 'home' as const, points: 8 } };
+    expect(playLines(s, zh, 2)).toEqual(['[SA] J. Embiid 三分不進', '[UTAH] I. Collier 防守籃板 · UTAH 連得 8 分']);
+    // A window too short for two lines keeps the newer one.
+    expect(playLines(s, zh, 1)).toEqual(['[UTAH] I. Collier 防守籃板 · UTAH 連得 8 分']);
+    // The first play of a game fills the lower line, so the newest play is always in the same place.
+    const html = barView({ ...base, recentPlays: [reb] }, zh, 2);
+    expect(html.indexOf('<div class="row last muted"></div>')).toBeLessThan(html.indexOf('防守籃板'));
   });
 
   // A 2-0 "run" is every basket; the line only calls out a run once it means momentum.
   it(`mentions a run from ${RUN_MIN} unanswered points, not before`, () => {
-    expect(lastLine({ ...base, lastPlay: basket, run: { side: 'home', points: RUN_MIN - 1 } }, en)).toBe('[UTAH] I. Collier +2');
-    expect(lastLine({ ...base, lastPlay: basket, run: { side: 'home', points: 8 } }, en)).toBe('[UTAH] I. Collier +2 · UTAH 8-0 run');
-    expect(lastLine({ ...base, lastPlay: basket, run: { side: 'home', points: 8 } }, zh)).toBe('[UTAH] I. Collier +2 · UTAH 連得 8 分');
+    expect(lastLine({ ...base, recentPlays: [basket], run: { side: 'home', points: RUN_MIN - 1 } }, en)).toBe('[UTAH] I. Collier +2');
+    expect(lastLine({ ...base, recentPlays: [basket], run: { side: 'home', points: 8 } }, en)).toBe('[UTAH] I. Collier +2 · UTAH 8-0 run');
+    expect(lastLine({ ...base, recentPlays: [basket], run: { side: 'home', points: 8 } }, zh)).toBe('[UTAH] I. Collier +2 · UTAH 連得 8 分');
   });
 
   it('drops the run once the game is over', () => {
-    expect(lastLine({ ...base, status: 'final', lastPlay: basket, run: { side: 'home', points: 8 } }, en)).toBe('[UTAH] I. Collier +2');
+    expect(lastLine({ ...base, status: 'final', recentPlays: [basket], run: { side: 'home', points: 8 } }, en)).toBe('[UTAH] I. Collier +2');
   });
 
   // The clock standing still is the question a glance asks; a timeout or review answers it.
@@ -93,7 +108,7 @@ describe('possession', () => {
   });
 
   it('escapes names from the feed', () => {
-    const html = barView({ ...base, lastPlay: { type: 'foul', kind: 'personal', side: 'away', player: { id: 'x', name: '<b>', short: '<b>' } } }, en);
+    const html = barView({ ...base, recentPlays: [{ type: 'foul', kind: 'personal', side: 'away', player: { id: 'x', name: '<b>', short: '<b>' } }] }, en, 1);
     expect(html).toContain('[SA] &lt;b&gt; foul');
   });
 

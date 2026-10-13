@@ -2,7 +2,7 @@
 // What a glance needs (docs/PLAN.md Q3): score, period and clock, possession, the last basket,
 // and a run once it is worth noticing.
 
-import type { GameState, Side } from '../model/types.ts';
+import type { GameState, PlayLine, Side } from '../model/types.ts';
 import type { Strings } from '../i18n/index.ts';
 
 /** A run is shown from this many unanswered points. 【建議】 */
@@ -39,11 +39,9 @@ function scoreHtml(s: GameState, withAbbr: boolean): string {
   return `${dot(s, 'away')}${ab('away')}<b>${s.score.away}</b><span class="muted">–</span><b>${s.score.home}</b>${ab('home')}${dot(s, 'home')}`;
 }
 
-type Line = NonNullable<GameState['lastPlay']>;
-
 /** "[UTAH] I. Collier +2", "[PHI] J. Embiid shooting foul": the team first, so a glance at a
  *  name alone still says which side it was. Team-only plays (a team rebound) drop the name. */
-export function playText(s: GameState, ev: Line, T: Strings): string {
+export function playText(s: GameState, ev: PlayLine, T: Strings): string {
   const team = (side?: Side) => (side ? `[${s.teams[side].abbr}]` : '');
   const join = (...xs: (string | undefined)[]) => xs.filter(Boolean).join(' ');
   switch (ev.type) {
@@ -56,12 +54,17 @@ export function playText(s: GameState, ev: Line, T: Strings): string {
   }
 }
 
-/** The second line of the bar: the latest play, and the run when it is long enough. */
-export function lastLine(s: GameState, T: Strings): string {
-  const parts: string[] = [];
-  if (s.lastPlay) parts.push(esc(playText(s, s.lastPlay, T)));
-  if (s.run && s.run.points >= RUN_MIN && s.status !== 'final') parts.push(esc(T.run(s.teams[s.run.side].abbr, s.run.points)));
-  return parts.join(' · ');
+/**
+ * The play lines under the score, oldest first: the latest `count` plays, the run (when it is long
+ * enough) after the newest. Two lines put a miss and its rebound, or a foul and its free throw, together.
+ */
+export function playLines(s: GameState, T: Strings, count: number): string[] {
+  const lines = (s.recentPlays ?? []).slice(-count).map((p) => esc(playText(s, p, T)));
+  if (s.run && s.run.points >= RUN_MIN && s.status !== 'final') {
+    const run = esc(T.run(s.teams[s.run.side].abbr, s.run.points));
+    if (lines.length) lines[lines.length - 1] += ` · ${run}`; else lines.push(run);
+  }
+  return lines;
 }
 
 /**
@@ -72,11 +75,12 @@ export function dotView(s: GameState, T: Strings, tag?: string): string {
   return `<div class="pill"><span class="sc">${scoreHtml(s, false)}</span><span class="when mono">${esc(whenText(s, T))}</span>${tag ? `<span class="tag" title="${esc(tag)}">↺</span>` : ''}</div>`;
 }
 
-/** Bar tier: score with team abbreviations and the period on top, the latest play below. */
-export function barView(s: GameState, T: Strings, tag?: string): string {
+/** Bar tier: score with team abbreviations and the period on top, the latest plays below. */
+export function barView(s: GameState, T: Strings, lines: number, tag?: string): string {
+  const plays = playLines(s, T, lines);
   return `<div class="bar">
       <div class="row"><span class="sc">${scoreHtml(s, true)}</span><span class="grow"></span>${tag ? `<span class="tag">${esc(tag)}</span>` : ''}<span class="when mono">${esc(whenText(s, T))}</span></div>
-      <div class="row last muted">${lastLine(s, T)}</div>
+      ${Array.from({ length: lines }, (_, i) => `<div class="row last muted">${plays[i - (lines - plays.length)] ?? ''}</div>`).join('')}
     </div>`;
 }
 

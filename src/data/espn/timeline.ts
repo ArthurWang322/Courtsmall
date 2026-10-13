@@ -1,7 +1,7 @@
 // ESPN plays -> normalized timeline. The score always comes from the plays' running
 // `awayScore` / `homeScore`, never from adding up points ourselves.
 
-import type { Basket, FoulKind, GameEvent, GameState, GameStatus, PlayerRef, Points, Side, StoppageKind, TeamRef, TimelineEntry } from '../../model/types.ts';
+import { RECENT_PLAYS, type Basket, type FoulKind, type GameEvent, type GameState, type GameStatus, type PlayerRef, type PlayLine, type Points, type Side, type StoppageKind, type TeamRef, type TimelineEntry } from '../../model/types.ts';
 import { refId, type CorePlay, type GameFeed } from './feed-types.ts';
 
 const END_PERIOD = '412';
@@ -103,6 +103,7 @@ export function buildTimeline(feed: GameFeed): TimelineEntry[] {
       const p = parts.find((x) => x.type === role) ?? (parts.some((x) => x.type) ? undefined : parts[n]);
       return roster.get(refId(p?.athlete, 'athletes') ?? '');
     };
+    const remember = (ev: PlayLine) => { next.recentPlays = [...(next.recentPlays ?? []), ev].slice(-RECENT_PLAYS); };
     const sideFor = (r?: Rostered) => sideOf.get(r?.teamId ?? '') ?? sideOf.get(refId(play.team, 'teams') ?? '');
 
     if (play.period.number !== state.period) {
@@ -124,13 +125,13 @@ export function buildTimeline(feed: GameFeed): TimelineEntry[] {
       next.lastBasket = basket;
       next.run = state.run?.side === s ? { side: s, points: state.run.points + delta } : { side: s, points: delta };
       const ev = { type: 'basket', basket, score: next.score } as const;
-      next.lastPlay = ev;
+      remember(ev);
       events.push(ev);
     }
 
     for (const ev of playEvents(play, who, sideFor)) {
       if (ev.type === 'stoppage') next.stoppage = ev.kind;
-      else next.lastPlay = ev;
+      else remember(ev);
       events.push(ev);
     }
 

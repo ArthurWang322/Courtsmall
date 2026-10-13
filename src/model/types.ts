@@ -73,6 +73,12 @@ export type GameEvent =
   | { type: 'periodEnd'; period: number }
   | { type: 'gameEnd'; winner: Side | 'tie'; score: Record<Side, number> };
 
+/** A play the bar gives a line to. */
+export type PlayLine = Extract<GameEvent, { type: 'basket' | 'miss' | 'foul' | 'turnover' | 'rebound' | 'substitution' }>;
+
+/** How many recent plays the state keeps for the bar. */
+export const RECENT_PLAYS = 2;
+
 export interface GameState {
   gameId: string;
   /** "2026" for the 2025-26 season, as ESPN numbers it. */
@@ -90,8 +96,11 @@ export interface GameState {
   /** The side the league says has the ball in the latest play. Absent when it does not say. */
   possession?: Side;
   lastBasket?: Basket;
-  /** The latest play worth a line on the bar: a basket, miss, foul, turnover, rebound or substitution. */
-  lastPlay?: Extract<GameEvent, { type: 'basket' | 'miss' | 'foul' | 'turnover' | 'rebound' | 'substitution' }>;
+  /**
+   * The latest plays worth a line on the bar (a basket, miss, foul, turnover, rebound or
+   * substitution), oldest first, at most `RECENT_PLAYS`: a miss and its rebound read together.
+   */
+  recentPlays?: readonly PlayLine[];
   /** A timeout or review is the latest play: the clock is stopped for it. Cleared by the next play. */
   stoppage?: StoppageKind;
   run?: Run;

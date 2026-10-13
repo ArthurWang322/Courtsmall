@@ -12,7 +12,7 @@ import { EspnLiveSource } from '../data/espn/live-source.ts';
 import { EspnReplaySource } from '../data/replay/espn-replay-source.ts';
 import type { PaceMode } from '../data/replay/pacing.ts';
 import { langOf, STRINGS } from '../i18n/index.ts';
-import { TIER_PRESET, tierOf } from '../render/tiers.ts';
+import { playLinesAt, TIER_PRESET, tierOf } from '../render/tiers.ts';
 import { barView, dotView, messageView } from './views.ts';
 
 // In `npm run dev`, VITE_PARAMS fills in for the URL, which the desktop window does not have:
@@ -43,7 +43,7 @@ function render(): void {
   const tier = tierOf(app.clientHeight);
   app.dataset.tier = tier;
   if (!state) { app.innerHTML = messageView(message, tier === 'bar' ? messageSub : undefined); return; }
-  app.innerHTML = tier === 'dot' ? dotView(state, T, tag) : barView(state, T, tag);
+  app.innerHTML = tier === 'dot' ? dotView(state, T, tag) : barView(state, T, playLinesAt(app.clientHeight), tag);
 }
 
 const live = new EspnLiveSource(fetchJson);
@@ -100,6 +100,10 @@ app.addEventListener('dblclick', async () => {
 
 // Redraw only when the tier changes: redrawing on every resize notification feeds the observer
 // its own changes ("ResizeObserver loop completed with undelivered notifications").
-new ResizeObserver(() => { if (tierOf(app.clientHeight) !== app.dataset.tier) render(); }).observe(app);
+let lastLayout = '';
+new ResizeObserver(() => {
+  const layout = `${tierOf(app.clientHeight)}:${playLinesAt(app.clientHeight)}`;
+  if (layout !== lastLayout) { lastLayout = layout; render(); }
+}).observe(app);
 render();
 start().catch((e: unknown) => { console.warn(e); message = T.offline; render(); });
