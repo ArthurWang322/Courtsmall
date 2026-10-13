@@ -85,7 +85,7 @@ export function courtLines(): string {
   return `<defs><linearGradient id="wood" x1="0" y1="0" x2="0" y2="1"><stop offset="0" style="stop-color:var(--wood)"/><stop offset="1" style="stop-color:var(--wood-hi)"/></linearGradient></defs>
     <path class="floor" d="${floor}"/><path class="paint" d="${paint}"/>
     <g class="lines"><path d="${lane}"/><path d="${ftCircle}"/><path d="${three}"/></g>
-    <path class="rim-shadow" d="${rimShadow}"/><path class="post" d="${post}"/><path class="board" d="${board}"/><path class="rim" d="${rim}"/>`;
+    <path class="rim-shadow" d="${rimShadow}"/><path class="post" d="${post}"/><path class="board" d="${board}"/>${net(1.8, 0.9, '')}<path class="rim" d="${rim}"/>`;
 }
 
 // ---- Flights ------------------------------------------------------------------------------------
@@ -99,7 +99,9 @@ export const WINDUP_SECONDS = 0.25;
 export const flightSeconds = (s: Shot) => 0.6 + 0.025 * Math.hypot(s.x - BASKET.x, s.y - BASKET.y);
 /** After the rim: a make drops through the net, a miss bounces off to the floor. */
 export const AFTER_SECONDS = { made: 0.35, miss: 0.6 } as const;
-export const shotSeconds = (s: Shot) => WINDUP_SECONDS + flightSeconds(s) + (s.made ? AFTER_SECONDS.made : AFTER_SECONDS.miss);
+/** After a make has dropped through: the points rise from the spot and a ring spreads on the floor. */
+export const SCORE_SECONDS = 0.9;
+export const shotSeconds = (s: Shot) => WINDUP_SECONDS + flightSeconds(s) + (s.made ? AFTER_SECONDS.made + SCORE_SECONDS : AFTER_SECONDS.miss);
 
 /** Which way a miss bounces off the rim, from the play id: a replayed shot bounces the same way. */
 function bounceAngle(id: string): number {
@@ -111,27 +113,38 @@ function bounceAngle(id: string): number {
 /** How far a miss bounces from the rim before it lands, feet. */
 export const BOUNCE_FEET = 7;
 
-export type Phase = 'windup' | 'flight' | 'through' | 'bounce' | 'done';
+export type Phase = 'windup' | 'flight' | 'through' | 'score' | 'bounce' | 'done';
 
 /** Where the ball is `t` seconds after the shot first appeared. Pure, for tests and for drawing. */
-export function ballAt(s: Shot, t: number): { phase: Phase; ball?: P3 } {
+export function ballAt(s: Shot, t: number): { phase: Phase; ball?: P3; v?: number } {
   const spot = spotOf(s);
   const release = { ...spot, z: RELEASE_Z };
   const T = flightSeconds(s);
-  if (t < WINDUP_SECONDS) return { phase: 'windup', ball: release };
+  if (t < WINDUP_SECONDS) return { phase: 'windup', ball: { ...release, z: RELEASE_Z - 2 + 2 * jump(t) } };
   const u = (t - WINDUP_SECONDS) / T;
   if (u < 1) {
     // A parabola from the release to the rim, its top higher for a longer shot.
     const apex = RIM_Z + 3 + 0.22 * Math.hypot(s.x - BASKET.x, s.y - BASKET.y);
     const z = release.z + (RIM_Z - release.z) * u + 4 * (apex - (release.z + RIM_Z) / 2) * u * (1 - u);
-    return { phase: 'flight', ball: { x: release.x + (BASKET.x - release.x) * u, y: release.y + (BASKET.y - release.y) * u, z } };
+    return { phase: 'flight', ball: { x: release.x + (BASKET.x - release.x) * u, y: release.y + (BASKET.y - release.y) * u, z }, v: u };
   }
-  const v = (t - WINDUP_SECONDS - T) / (s.made ? AFTER_SECONDS.made : AFTER_SECONDS.miss);
+  const after = t - WINDUP_SECONDS - T;
+  if (s.made) {
+    if (after < AFTER_SECONDS.made) { const v = after / AFTER_SECONDS.made; return { phase: 'through', ball: { x: BASKET.x, y: BASKET.y, z: RIM_Z - 6 * v }, v }; }
+    const v = (after - AFTER_SECONDS.made) / SCORE_SECONDS;
+    return v < 1 ? { phase: 'score', v } : { phase: 'done' };
+  }
+  const v = after / AFTER_SECONDS.miss;
   if (v >= 1) return { phase: 'done' };
-  if (s.made) return { phase: 'through', ball: { x: BASKET.x, y: BASKET.y, z: RIM_Z - 6 * v } };
   const a = bounceAngle(s.id);
   const z = RIM_Z * (1 - v) + 12 * v * (1 - v);
-  return { phase: 'bounce', ball: { x: BASKET.x + Math.cos(a) * BOUNCE_FEET * v, y: BASKET.y + Math.sin(a) * BOUNCE_FEET * v, z: Math.max(0, z) } };
+  return { phase: 'bounce', ball: { x: BASKET.x + Math.cos(a) * BOUNCE_FEET * v, y: BASKET.y + Math.sin(a) * BOUNCE_FEET * v, z: Math.max(0, z) }, v };
+}
+
+/** The shooter's jump, feet off the floor: up through the release, down soon after. */
+function jump(t: number): number {
+  const k = t / (WINDUP_SECONDS + 0.35);
+  return k >= 1 ? 0 : 1.6 * Math.sin(Math.PI * k);
 }
 
 /** An ellipse lying flat at height `p.z`, radius in feet. */
@@ -139,6 +152,14 @@ function disc(p: P3, r: number, attrs: string): string {
   const c = project(p);
   const rx = r * footAt(p);
   return `<ellipse cx="${f(c.x)}" cy="${f(c.y)}" rx="${f(rx)}" ry="${f(rx * 0.7)}" ${attrs}/>`;
+}
+
+/** The net under the rim: `drop` feet long, its bottom ring `bottom` feet across. */
+function net(drop: number, bottom: number, attrs: string): string {
+  const top = arcPts(BASKET.x, BASKET.y, RIM_R, 0, 2 * Math.PI, RIM_Z, 10);
+  const low = arcPts(BASKET.x, BASKET.y, bottom / 2, 0, 2 * Math.PI, RIM_Z - drop, 10);
+  const strands = top.slice(0, -1).map((p, i) => path([p, low[(i + 1) % 10]!])).join(' ') + ' ' + top.slice(0, -1).map((p, i) => path([p, low[(i + 9) % 10]!])).join(' ');
+  return `<path class="net" d="${strands} ${path(low, true)}" ${attrs}/>`;
 }
 
 /** The marks of the latest shots on the floor, oldest faintest; a shot still in the air has none yet. */
@@ -151,27 +172,59 @@ export function shotMarks(shots: readonly Shot[], colours: Record<Side, string>,
   }).join('');
 }
 
-/** The shooter, the ball and its shadow for one shot, `t` seconds after it appeared. */
+/**
+ * One shot, `t` seconds after it appeared: the shooter jumping, the ball with a short trail and its
+ * shadow, the net swishing on a make or the rim shaking on a miss, and on a make the points rising
+ * from the spot with a ring spreading on the floor (bigger for three).
+ */
 export function flightSvg(s: Shot, t: number, colour: string): string {
-  const { phase, ball } = ballAt(s, t);
-  if (phase === 'done' || !ball) return '';
+  const { phase, ball, v = 0 } = ballAt(s, t);
+  if (phase === 'done') return '';
   const spot = spotOf(s);
-  // The shooter: a short team-coloured cylinder, gone soon after the release.
+  const out: string[] = [];
+
+  // The shooter: a team-coloured cylinder that jumps with the release and fades after it.
   const shooterOpacity = Math.max(0, 1 - Math.max(0, t - WINDUP_SECONDS) / 0.8);
-  const head = { ...spot, z: 4.5 };
-  const base = project(spot), top = project(head), w = 2.4 * footAt(spot);
-  const shooter = shooterOpacity > 0
-    ? `<g class="shooter" opacity="${f(shooterOpacity)}">${disc(spot, 1.2, `fill="#${colour}"`)}<rect x="${f(base.x - w / 2)}" y="${f(top.y)}" width="${f(w)}" height="${f(base.y - top.y)}" fill="#${colour}"/>${disc(head, 1.2, `fill="#${colour}" class="cap"`)}</g>`
-    : '';
-  // The shadow sits on the floor under the ball, smaller and fainter the higher the ball is.
-  const shadow = disc({ ...ball, z: 0 }, Math.max(0.35, 0.85 - ball.z * 0.03), `class="shadow" opacity="${f(Math.max(0.12, 0.5 - ball.z * 0.022))}"`);
-  const b = project(ball);
-  // A make: a ring in the team's colour spreads from the rim as the ball drops through.
-  const swish = phase === 'through'
-    ? disc({ x: BASKET.x, y: BASKET.y, z: RIM_Z }, 0.8 + 2.2 * ((t - WINDUP_SECONDS - flightSeconds(s)) / AFTER_SECONDS.made), `class="swish" fill="none" stroke="#${colour}" opacity="${f(1 - (t - WINDUP_SECONDS - flightSeconds(s)) / AFTER_SECONDS.made)}"`)
-    : '';
-  // The ball is drawn larger than life (1.2 ft, not 0.4) so a glance finds it.
-  return `${shooter}${shadow}${swish}<circle class="ball" cx="${f(b.x)}" cy="${f(b.y)}" r="${f(1.2 * footAt(ball))}"/>`;
+  if (shooterOpacity > 0) {
+    const lift = jump(t);
+    const feet = { ...spot, z: lift }, head = { ...spot, z: lift + 4.5 };
+    const base = project(feet), top = project(head), w = 2.4 * footAt(spot);
+    out.push(disc(spot, Math.max(0.6, 1.2 - lift * 0.25), `class="shadow" opacity="${f(0.45 * shooterOpacity)}"`),
+      `<g class="shooter" opacity="${f(shooterOpacity)}">${disc(feet, 1.2, `fill="#${colour}"`)}<rect x="${f(base.x - w / 2)}" y="${f(top.y)}" width="${f(w)}" height="${f(base.y - top.y)}" fill="#${colour}"/>${disc(head, 1.2, `fill="#${colour}" class="cap"`)}</g>`);
+  }
+
+  // A make: the net stretches and lights up as the ball drops through; then the points rise.
+  if (phase === 'through') out.push(net(1.8 + 1.2 * Math.sin(Math.PI * v), 0.9 + 0.3 * Math.sin(Math.PI * v), `stroke="#${colour}" opacity="${f(1 - v * 0.5)}"`));
+  if (phase === 'score') {
+    const big = s.points === 3;
+    out.push(disc(spot, 1 + (big ? 5 : 3.5) * v, `class="burst" fill="#${colour}" fill-opacity="0.12" stroke="#${colour}" opacity="${f(1 - v)}"`));
+    if (big) out.push(disc(spot, 1 + 3 * v, `class="burst" fill="none" stroke="#${colour}" opacity="${f((1 - v) * 0.6)}"`));
+    const at = project({ ...spot, z: 3 + 5 * v });
+    const size = (big ? 6.5 : 5.2) * footAt(spot);
+    out.push(`<text class="points" x="${f(at.x)}" y="${f(at.y)}" font-size="${f(size)}" fill="#${colour}" opacity="${f(v < 0.7 ? 1 : (1 - v) / 0.3)}">+${s.points}</text>`);
+  }
+  // A miss: the rim shakes as the ball comes off it.
+  if (phase === 'bounce' && v < 0.35) {
+    const shake = Math.sin(v * 60) * 0.25 * (1 - v / 0.35);
+    out.push(`<path class="rim hit" d="${path(arcPts(BASKET.x + shake, BASKET.y, RIM_R, 0, 2 * Math.PI, RIM_Z + shake * 0.5), true)}"/>`);
+  }
+
+  if (ball) {
+    // The shadow sits on the floor under the ball, smaller and fainter the higher the ball is.
+    out.push(disc({ ...ball, z: 0 }, Math.max(0.35, 0.85 - ball.z * 0.03), `class="shadow" opacity="${f(Math.max(0.12, 0.5 - ball.z * 0.022))}"`));
+    // A short trail behind the ball in the air: where it was a few frames ago.
+    if (phase === 'flight' || phase === 'bounce')
+      for (let k = 4; k >= 1; k--) {
+        const g = ballAt(s, t - k * 0.035).ball;
+        if (!g) continue;
+        const p = project(g);
+        out.push(`<circle class="trail" cx="${f(p.x)}" cy="${f(p.y)}" r="${f((1.2 - k * 0.15) * footAt(g))}" opacity="${f(0.32 - k * 0.07)}"/>`);
+      }
+    const b = project(ball);
+    // The ball is drawn larger than life (1.2 ft, not 0.4) so a glance finds it.
+    out.push(`<circle class="ball" cx="${f(b.x)}" cy="${f(b.y)}" r="${f(1.2 * footAt(ball))}"/>`);
+  }
+  return out.join('');
 }
 
 /** The court for a state. Flights are drawn into `.flights` by `drawFlights`, every frame. */

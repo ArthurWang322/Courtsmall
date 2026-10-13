@@ -6,6 +6,8 @@
 //   node scripts/screenshot.mjs "<path and query>" <width> <height> <waitMs> <name> [hover|click:<selector>]
 // `hover`: move the pointer over the window first (the toolbar shows on hover).
 // `click:<selector>`: click that element first, then wait a second and a half.
+// `flight[:skip]`: wait for a shot in the air on the court (after skipping `skip` of them), then
+// take 18 frames 120 ms apart as <name>-00.png ... <name>-17.png.
 //   node scripts/screenshot.mjs "/?game=401810362&replay&fixture&lang=zh-TW" 360 96 5000 bar
 
 import { spawn } from 'node:child_process';
@@ -40,10 +42,27 @@ try {
     await send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: Number(w) / 2, y: Number(h) / 2 });
     await new Promise((r) => setTimeout(r, 400));
   }
-  const { data } = await send('Page.captureScreenshot', { format: 'png' });
   mkdirSync('fixtures/shots', { recursive: true });
-  writeFileSync(`fixtures/shots/${name}.png`, Buffer.from(data, 'base64'));
-  console.log(`fixtures/shots/${name}.png`);
+  const shoot = async (file) => {
+    const { data } = await send('Page.captureScreenshot', { format: 'png' });
+    writeFileSync(`fixtures/shots/${file}.png`, Buffer.from(data, 'base64'));
+  };
+  if (hover?.startsWith('flight')) {
+    const skip = Number(hover.split(':')[1] ?? 0);
+    let seen = 0, prev = false;
+    const until = Date.now() + 120_000;
+    while (Date.now() < until) {
+      const r = await send('Runtime.evaluate', { expression: `!!document.querySelector('.court .flights .shooter')`, returnByValue: true });
+      if (r.result.value && !prev && seen++ >= skip) break;
+      prev = r.result.value;
+      await new Promise((res) => setTimeout(res, 30));
+    }
+    for (let i = 0; i < 18; i++) { await shoot(`${name}-${String(i).padStart(2, '0')}`); await new Promise((res) => setTimeout(res, 120)); }
+    console.log(`fixtures/shots/${name}-00..17.png`);
+  } else {
+    await shoot(name);
+    console.log(`fixtures/shots/${name}.png`);
+  }
 } finally {
   chrome.kill();
 }

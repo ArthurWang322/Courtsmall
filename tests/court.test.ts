@@ -3,7 +3,7 @@
 // bounces out onto the court, and the floor keeps the latest shots, newest strongest.
 
 import { describe, expect, it } from 'vitest';
-import { AFTER_SECONDS, ballAt, BOUNCE_FEET, flightSeconds, project, RIM_Z, shotMarks, WINDUP_SECONDS } from '../src/render/court.ts';
+import { AFTER_SECONDS, ballAt, BOUNCE_FEET, flightSeconds, flightSvg, project, RIM_Z, SCORE_SECONDS, shotMarks, WINDUP_SECONDS } from '../src/render/court.ts';
 import { BASKET, type Shot } from '../src/model/types.ts';
 
 const colours = { away: 'c8102e', home: '008348' };
@@ -52,7 +52,19 @@ describe('ballAt', () => {
     expect(b.phase).toBe('through');
     expect(b.ball!.z).toBeLessThan(RIM_Z - 3);
     expect([b.ball!.x, b.ball!.y]).toEqual([BASKET.x, BASKET.y]);
-    expect(ballAt(s, end + AFTER_SECONDS.made).phase).toBe('done');
+    // Then the points rise from the spot, and only after that is the shot over.
+    expect(ballAt(s, end + AFTER_SECONDS.made + 0.1).phase).toBe('score');
+    expect(ballAt(s, end + AFTER_SECONDS.made + SCORE_SECONDS).phase).toBe('done');
+  });
+
+  // A make should feel like one: the points it was worth, in the team's colour, a ring on the floor.
+  it('shows the points rising in the team colour after a make, and nothing of the kind after a miss', () => {
+    const made = shot(), miss = shot({ made: false });
+    const at = (s: Shot) => WINDUP_SECONDS + flightSeconds(s) + AFTER_SECONDS.made + SCORE_SECONDS / 3;
+    const svg = flightSvg(made, at(made), 'c8102e');
+    expect(svg).toMatch(/<text class="points"[^>]*fill="#c8102e"[^>]*>\+3<\/text>/);
+    expect(svg).toContain('class="burst"');
+    expect(flightSvg(miss, at(miss), 'c8102e')).not.toContain('points');
   });
 
   // A miss that flew back into the backboard would look wrong; it comes off toward the court.

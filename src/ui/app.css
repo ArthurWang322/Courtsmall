@@ -103,7 +103,11 @@ button { font: inherit; color: inherit; border: 0; background: transparent; padd
 .court .shadow { fill: #000; }
 .court .ball { fill: #ef7d33; stroke: rgba(0, 0, 0, .4); stroke-width: 0.3; }
 .court .shooter .cap { filter: brightness(1.25); }
-.court .swish { stroke-width: 0.8; }
+.court .net { fill: none; stroke: rgba(243, 239, 231, .5); stroke-width: 0.25; }
+.court .rim.hit { stroke: #ffb27a; stroke-width: 1.2; }
+.court .trail { fill: #ef7d33; }
+.court .burst { stroke-width: 1.1; }
+.court .points { font-family: var(--display); font-weight: 800; text-anchor: middle; paint-order: stroke; stroke: rgba(0, 0, 0, .6); stroke-width: 0.9; }
 
 /* ---- Toolbar: sizes, games, settings ------------------------------------------------------------
    Out of the way until the pointer is over the window, and then bottom right, over the quietest
