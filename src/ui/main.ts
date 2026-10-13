@@ -349,7 +349,7 @@ async function setTier(t: Tier): Promise<void> {
 }
 
 app.addEventListener('click', (e) => {
-  const el = (e.target as HTMLElement).closest<HTMLElement>('[data-tier], [data-open], [data-day], [data-game], [data-done], [data-notify], [data-fav-open], [data-fav-pick]');
+  const el = (e.target as HTMLElement).closest<HTMLElement>('[data-tier], [data-open], [data-day], [data-game], [data-done], [data-notify], [data-test-notice], [data-fav-open], [data-fav-pick]');
   // The favourite's list: its button opens and closes it, a team in it is picked, a click
   // anywhere else closes it.
   if (pickerOpen && !el?.closest('.favourite')) { pickerOpen = false; render(); }
@@ -377,6 +377,7 @@ app.addEventListener('click', (e) => {
     return;
   }
   if (panel !== 'settings') return;
+  if (el.dataset.testNotice !== undefined) { notifier.test(); return; }
   if (el.dataset.notify) {
     const key = el.dataset.notify as keyof Settings['notify'];
     settings = { ...settings, notify: { ...settings.notify, [key]: (el as HTMLInputElement).checked } };

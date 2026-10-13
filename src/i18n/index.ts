@@ -49,6 +49,9 @@ export interface Strings {
   notifyFinal: string;
   notifyClutch: string;
   done: string;
+  testNotice: string;
+  testNoticeTitle: string;
+  testNoticeBody: string;
   /** The toolbar's tips, one per button. */
   tip: { bar: string; court: string; games: string; settings: string };
   noGames: string;
@@ -97,6 +100,9 @@ export const STRINGS: Record<Lang, Strings> = {
     notifyFinal: 'Notify at the final',
     notifyClutch: 'Notify in a close finish (last 2 min, within 5)',
     done: 'Done',
+    testNotice: 'Send a test notice',
+    testNoticeTitle: 'Courtsmall',
+    testNoticeBody: 'Notices are on. This is what they look like.',
     tip: { bar: 'Simple', court: 'Court', games: 'Games', settings: 'Settings' },
     noGames: 'No games this day',
     prevDay: 'Previous day',
@@ -140,6 +146,9 @@ export const STRINGS: Record<Lang, Strings> = {
     notifyFinal: '終場時通知',
     notifyClutch: '關鍵時刻通知（最後 2 分鐘、差距 5 分內）',
     done: '完成',
+    testNotice: '送出測試通知',
+    testNoticeTitle: 'Courtsmall',
+    testNoticeBody: '通知已開啟，實際的通知會長這樣。',
     tip: { bar: '簡易模式', court: '球場模式', games: '比賽列表', settings: '設定' },
     noGames: '這天沒有比賽',
     prevDay: '前一天',

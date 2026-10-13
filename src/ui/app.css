@@ -197,3 +197,8 @@ button { font: inherit; color: inherit; border: 0; background: transparent; padd
   background: transparent; color: var(--text); font: 500 13px var(--font); text-align: left; }
 .settings .fav-item:hover { background: var(--panel); }
 .settings .fav-item.on { color: var(--accent); }
+
+/* The settings page's test notice button: quiet, under the switches. */
+.settings .test-notice { align-self: flex-start; padding: 4px 10px; border-radius: 8px; border: 1px solid var(--border);
+  background: var(--panel); color: var(--muted); font: 600 12px var(--label); letter-spacing: .06em; }
+.settings .test-notice:hover { color: var(--text); border-color: var(--muted); }

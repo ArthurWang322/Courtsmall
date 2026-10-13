@@ -1,5 +1,7 @@
 // Sends notices as system notifications: the Tauri notification plugin in the desktop shell, the
 // browser's Notification API under `npm run dev`. Each notice key is sent once per game.
+// Under `tauri dev` on macOS the plugin sends as Terminal (com.apple.Terminal), so notices show
+// only if Terminal may notify; the bundled app sends as itself.
 
 import type { GameState } from '../model/types.ts';
 import type { Strings } from '../i18n/index.ts';
@@ -37,6 +39,11 @@ export class Notifier {
   private readonly T: Strings;
 
   constructor(T: Strings) { this.T = T; }
+
+  /** A notice that says it is a test, from the settings page: to see that notices get through. */
+  test(): void {
+    show(this.T.testNoticeTitle, this.T.testNoticeBody).catch((e: unknown) => console.warn('notice not shown', e));
+  }
 
   send(notices: readonly Notice[]): void {
     for (const n of notices) {
