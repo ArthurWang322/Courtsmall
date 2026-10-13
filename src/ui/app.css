@@ -124,6 +124,14 @@ button { font: inherit; color: inherit; border: 0; background: transparent; padd
 .controls .icon.on { color: var(--accent); }
 .controls svg { fill: none; stroke: currentColor; stroke-width: 1.4; stroke-linecap: round; stroke-linejoin: round; }
 .controls .sep { width: 1px; height: 14px; background: var(--border); margin: 0 2px; }
+/* A tip above each button, at once on hover: the label in a small bubble, anchored right so the
+   rightmost ones stay inside the window. */
+.controls .icon { position: relative; }
+.controls .icon[data-tip]::after { content: attr(data-tip); position: absolute; bottom: calc(100% + 7px); right: -2px; z-index: 3;
+  padding: 4px 8px; border-radius: 6px; white-space: nowrap; pointer-events: none;
+  font: 600 12px var(--label); letter-spacing: .06em; color: var(--text); background: var(--surface); border: 1px solid var(--border);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, .4); opacity: 0; transform: translateY(3px); transition: opacity .12s, transform .12s; }
+.controls .icon[data-tip]:hover::after { opacity: 1; transform: none; }
 
 /* ---- Panels: the games list and the settings ---------------------------------------------------- */
 #app[data-tier='panel'] { align-items: stretch; }
