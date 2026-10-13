@@ -26,7 +26,8 @@ export function whenText(s: GameState, T: Strings, tipOff?: string): string {
     case 'cancelled': return T.cancelled;
     case 'delayed': return T.delayed;
     case 'break': return s.period === 2 ? T.half : T.endOf(T.period(s.period));
-    default: return s.period > 0 ? `${T.period(s.period)} ${clockText(s.clock)}` : '';
+    // A timeout or review says why the clock is stopped.
+    default: return s.period > 0 ? `${T.period(s.period)} ${clockText(s.clock)}${s.stoppage ? ` · ${T.stoppage(s.stoppage)}` : ''}` : '';
   }
 }
 
@@ -38,11 +39,26 @@ function scoreHtml(s: GameState, withAbbr: boolean): string {
   return `${dot(s, 'away')}${ab('away')}<b>${s.score.away}</b><span class="muted">–</span><b>${s.score.home}</b>${ab('home')}${dot(s, 'home')}`;
 }
 
-/** The second line of the bar: the last basket, and the run when it is long enough. */
+type Line = NonNullable<GameState['lastPlay']>;
+
+/** "[UTAH] I. Collier +2", "[PHI] J. Embiid shooting foul": the team first, so a glance at a
+ *  name alone still says which side it was. Team-only plays (a team rebound) drop the name. */
+export function playText(s: GameState, ev: Line, T: Strings): string {
+  const team = (side?: Side) => (side ? `[${s.teams[side].abbr}]` : '');
+  const join = (...xs: (string | undefined)[]) => xs.filter(Boolean).join(' ');
+  switch (ev.type) {
+    case 'basket': return join(team(ev.basket.side), ev.basket.player?.short, `+${ev.basket.points}`);
+    case 'foul': return join(team(ev.side), ev.player?.short, T.foul(ev.kind));
+    case 'turnover': return join(team(ev.side), ev.player?.short, T.turnover) + (ev.stolenBy ? T.steal(ev.stolenBy.short) : '');
+    case 'rebound': return join(team(ev.side), ev.player?.short, T.rebound(ev.offensive));
+    case 'substitution': return join(team(ev.side), ev.in && ev.out ? T.substitution(ev.in.short, ev.out.short) : undefined);
+  }
+}
+
+/** The second line of the bar: the latest play, and the run when it is long enough. */
 export function lastLine(s: GameState, T: Strings): string {
   const parts: string[] = [];
-  const b = s.lastBasket;
-  if (b) parts.push(esc(T.basket(s.teams[b.side].abbr, b.player?.short, b.points)));
+  if (s.lastPlay) parts.push(esc(playText(s, s.lastPlay, T)));
   if (s.run && s.run.points >= RUN_MIN && s.status !== 'final') parts.push(esc(T.run(s.teams[s.run.side].abbr, s.run.points)));
   return parts.join(' · ');
 }
@@ -55,7 +71,7 @@ export function dotView(s: GameState, T: Strings, tag?: string): string {
   return `<div class="pill"><span class="sc">${scoreHtml(s, false)}</span><span class="when mono">${esc(whenText(s, T))}</span>${tag ? `<span class="tag" title="${esc(tag)}">↺</span>` : ''}</div>`;
 }
 
-/** Bar tier: score with team abbreviations and the period on top, the last basket below. */
+/** Bar tier: score with team abbreviations and the period on top, the latest play below. */
 export function barView(s: GameState, T: Strings, tag?: string): string {
   return `<div class="bar">
       <div class="row"><span class="sc">${scoreHtml(s, true)}</span><span class="grow"></span>${tag ? `<span class="tag">${esc(tag)}</span>` : ''}<span class="when mono">${esc(whenText(s, T))}</span></div>

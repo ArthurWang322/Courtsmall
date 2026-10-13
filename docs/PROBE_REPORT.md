@@ -153,3 +153,20 @@ ESPN core API（`sports.core.api.espn.com/v2/sports/basketball/leagues/nba/event
 
 第一次的原因也沒有完全確定：也可能是 619 本來就在列表裡、是從罰失被改成罰進。如果是這樣，它走的是「已送出的事件被修改」那條路，比賽鐘的規則救不了它。【未驗證】要確認的話，量測腳本需要記錄每一輪的完整尾端。
 
+## 10. 事件種類（M3 第二行）
+
+14 場夾具裡共有 84 種 `type.id`。`type.text` 是種類名稱（例如「Out of Bounds - Bad Pass Turnover」），不是事件描述，所以轉換層用它歸類（`playKind`，`src/data/espn/timeline.ts`），沒見過的 id 也能歸進去：
+
+| 歸類 | 例子（id 名稱，次數） | 參與者角色 |
+| --- | --- | --- |
+| 失誤 | 62 Bad Pass Turnover 169、63 Lost Ball Turnover 104、64 Traveling 16、70 Shot Clock Turnover 21（沒有球員）、84 Offensive Foul Turnover 48 | `offense`（失誤者）、`defender`（抄截者） |
+| 犯規 | 44 Shooting Foul 306、45 Personal Foul 213、43 Loose Ball Foul 48、42 Offensive Foul 42、24 Offensive Charge 5、35 Technical Foul 7、32 Flagrant Foul Type 1 2、36 Double Personal Foul 1 | `fouler`；雙方犯規沒有角色，依序是兩名球員 |
+| 籃板 | 155 Defensive Rebound 986、156 Offensive Rebound 572（含球隊籃板，沒有球員） | `rebounder` |
+| 換人 | 584 Substitution 913 | `subin`、`subout` |
+| 暫停 | 16 Full Timeout 168 | 無 |
+| 重播審查 | 213–216 Coach's Challenge、277、278–280 Ref-Initiated Review，共 48 | 無 |
+
+- **驗收**：14 場的每位球員，犯規（不含技術犯規）、失誤、進攻籃板、防守籃板的事件數，都等於 boxscore 的 PF、TO、OREB、DREB（`tests/timeline.test.ts`）。
+- **參與者可能是 `null`**：401810405 有一筆「Technical Foul」的 `participants` 裡有 `null`，可能是吹給不在名單上的人（教練、板凳）。轉換層會先濾掉。
+- **暫停會持續到比賽恢復**：暫停期間記錄的換人不會清掉「暫停」，下一筆非換人的事件才會。
+

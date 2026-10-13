@@ -1,5 +1,7 @@
 // UI strings. Traditional Chinese and English; player and team names are never translated.
 
+import type { FoulKind, StoppageKind } from '../model/types.ts';
+
 export type Lang = 'en' | 'zh-TW';
 
 export interface Strings {
@@ -11,8 +13,15 @@ export interface Strings {
   postponed: string;
   cancelled: string;
   delayed: string;
-  /** The last basket: "UTAH I. Collier +2". `name` is absent when the league names no shooter. */
-  basket(abbr: string, name: string | undefined, points: number): string;
+  /** After "[UTAH] I. Collier": the points of a basket, "+2" in every language. */
+  foul(kind: FoulKind): string;
+  turnover: string;
+  /** Appended to a turnover, with its own leading space where the language uses one. */
+  steal(name: string): string;
+  rebound(offensive: boolean): string;
+  /** "[UTAH] A in for B". */
+  substitution(inName: string, outName: string): string;
+  stoppage(kind: StoppageKind): string;
   /** "BOS 10-0 run". */
   run(abbr: string, points: number): string;
   replay: string;
@@ -31,7 +40,12 @@ export const STRINGS: Record<Lang, Strings> = {
     postponed: 'Postponed',
     cancelled: 'Cancelled',
     delayed: 'Delayed',
-    basket: (abbr, name, points) => `${abbr}${name ? ` ${name}` : ''} +${points}`,
+    foul: (k) => ({ personal: 'foul', shooting: 'shooting foul', offensive: 'offensive foul', technical: 'technical foul', flagrant: 'flagrant foul' })[k],
+    turnover: 'turnover',
+    steal: (n) => ` (${n} steal)`,
+    rebound: (o) => (o ? 'offensive rebound' : 'defensive rebound'),
+    substitution: (i, o) => `${i} in for ${o}`,
+    stoppage: (k) => (k === 'timeout' ? 'Timeout' : 'Review'),
     run: (abbr, points) => `${abbr} ${points}-0 run`,
     replay: 'Replay',
     loading: 'Loading…',
@@ -47,7 +61,12 @@ export const STRINGS: Record<Lang, Strings> = {
     postponed: '延賽',
     cancelled: '取消',
     delayed: '暫停比賽',
-    basket: (abbr, name, points) => `${abbr}${name ? ` ${name}` : ''} 得 ${points} 分`,
+    foul: (k) => ({ personal: '犯規', shooting: '投籃犯規', offensive: '進攻犯規', technical: '技術犯規', flagrant: '惡意犯規' })[k],
+    turnover: '失誤',
+    steal: (n) => `（${n} 抄截）`,
+    rebound: (o) => (o ? '進攻籃板' : '防守籃板'),
+    substitution: (i, o) => `${i} 換下 ${o}`,
+    stoppage: (k) => (k === 'timeout' ? '暫停' : '重播審查'),
     run: (abbr, points) => `${abbr} 連得 ${points} 分`,
     replay: '重播',
     loading: '載入中…',

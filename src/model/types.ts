@@ -51,9 +51,20 @@ export interface Run {
   points: number;
 }
 
+export type FoulKind = 'personal' | 'shooting' | 'offensive' | 'technical' | 'flagrant';
+export type StoppageKind = 'timeout' | 'review';
+
 export type GameEvent =
   | { type: 'periodStart'; period: number }
   | { type: 'basket'; basket: Basket; score: Record<Side, number> }
+  /** `side` and `player` are absent when the league does not name them (a team foul, a shot-clock turnover). */
+  | { type: 'foul'; kind: FoulKind; side?: Side; player?: PlayerRef }
+  | { type: 'turnover'; side?: Side; player?: PlayerRef; stolenBy?: PlayerRef }
+  /** No `player`: a team rebound. */
+  | { type: 'rebound'; offensive: boolean; side?: Side; player?: PlayerRef }
+  | { type: 'substitution'; side?: Side; in?: PlayerRef; out?: PlayerRef }
+  /** A timeout, or a coach's challenge or referee review. */
+  | { type: 'stoppage'; kind: StoppageKind; side?: Side }
   | { type: 'periodEnd'; period: number }
   | { type: 'gameEnd'; winner: Side | 'tie'; score: Record<Side, number> };
 
@@ -74,6 +85,10 @@ export interface GameState {
   /** The side the league says has the ball in the latest play. Absent when it does not say. */
   possession?: Side;
   lastBasket?: Basket;
+  /** The latest play worth a line on the bar: a basket, foul, turnover, rebound or substitution. */
+  lastPlay?: Extract<GameEvent, { type: 'basket' | 'foul' | 'turnover' | 'rebound' | 'substitution' }>;
+  /** A timeout or review is the latest play: the clock is stopped for it. Cleared by the next play. */
+  stoppage?: StoppageKind;
   run?: Run;
   /** Epoch ms of the moment this state describes. */
   at?: number;

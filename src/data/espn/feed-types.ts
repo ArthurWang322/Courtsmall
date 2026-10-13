@@ -24,7 +24,8 @@ export interface CorePlay {
   modified?: string;
   team?: Ref;
   possessionTeam?: Ref;
-  participants?: { athlete: Ref; type?: string; order?: number }[];
+  /** An entry can be null, e.g. a technical foul on someone not on the roster (401810405). */
+  participants?: ({ athlete: Ref; type?: string; order?: number } | null)[];
 }
 
 export interface CorePlayPage {

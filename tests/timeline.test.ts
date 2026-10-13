@@ -46,6 +46,25 @@ for (const fx of FIXTURES) {
       expect(Object.fromEntries(mine)).toEqual(Object.fromEntries(box));
     });
 
+    // The bar names who fouled, turned it over or rebounded; per player, those must add up to the
+    // box score's PF, TO, OREB and DREB. Technical fouls are not personal fouls, so they do not count.
+    it("each player's fouls, turnovers and rebounds from events match the box score", () => {
+      const mine: Record<string, Record<string, number>> = { PF: {}, TO: {}, OREB: {}, DREB: {} };
+      const add = (col: string, id?: string) => { if (id) mine[col]![id] = (mine[col]![id] ?? 0) + 1; };
+      for (const e of timeline) for (const ev of e.events) {
+        if (ev.type === 'foul' && ev.kind !== 'technical') add('PF', ev.player?.id);
+        if (ev.type === 'turnover') add('TO', ev.player?.id);
+        if (ev.type === 'rebound') add(ev.offensive ? 'OREB' : 'DREB', ev.player?.id);
+      }
+      const box: Record<string, Record<string, number>> = { PF: {}, TO: {}, OREB: {}, DREB: {} };
+      for (const team of feed!.summary.boxscore.players ?? []) for (const g of team.statistics)
+        for (const col of Object.keys(box)) {
+          const i = g.names.indexOf(col);
+          for (const a of g.athletes) { const n = Number(a.stats[i]); if (n > 0) box[col]![a.athlete.id] = n; }
+        }
+      for (const col of Object.keys(box)) expect({ col, counts: mine[col] }).toEqual({ col, counts: box[col] });
+    });
+
     it('every basket event agrees with the score change it came from', () => {
       let prev = { away: 0, home: 0 };
       for (const e of timeline) {
@@ -94,4 +113,12 @@ describe('run', () => {
     expect(t.at(-1)!.events).toEqual([]);
     expect(t.at(-1)!.state.run).toEqual({ side: 'away', points: 2 });
   });
+
+  // Teams substitute during a timeout; "Timeout" must stay up until play resumes.
+  it('a timeout lasts through the substitutions made during it, and ends with the next play', () => {
+    const typed = (text: string, away: number, home: number): CorePlay => ({ ...play(away, home), type: { id: '0', text } });
+    const t = buildTimeline(feed([typed('Full Timeout', 0, 0), typed('Substitution', 0, 0), typed('Substitution', 0, 0), typed('Jump Shot', 0, 0)]));
+    expect(t.map((e) => e.state.stoppage)).toEqual(['timeout', 'timeout', 'timeout', undefined]);
+  });
 });
+

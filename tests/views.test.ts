@@ -42,25 +42,44 @@ describe('period', () => {
 });
 
 describe('last line', () => {
-  const basket = { side: 'home' as const, points: 2 as const, period: 4, clock: 422, player: { id: 'p', name: 'Isaiah Collier', short: 'I. Collier' } };
+  const collier = { id: 'p', name: 'Isaiah Collier', short: 'I. Collier' };
+  const embiid = { id: 'e', name: 'Joel Embiid', short: 'J. Embiid' };
+  const basket = { type: 'basket' as const, basket: { side: 'home' as const, points: 2 as const, period: 4, clock: 422, player: collier }, score: base.score };
 
-  // The team comes first: a glance at a name alone does not say which side just scored.
-  it('names the team, the scorer and the points', () => {
-    expect(lastLine({ ...base, lastBasket: basket }, en)).toBe('UTAH I. Collier +2');
-    expect(lastLine({ ...base, lastBasket: basket }, zh)).toBe('UTAH I. Collier 得 2 分');
-    const { player: _, ...noShooter } = basket;
-    expect(lastLine({ ...base, lastBasket: noShooter }, zh)).toBe('UTAH 得 2 分');
+  // The team comes first: a glance at a name alone does not say which side it was. Same in both
+  // languages, "+2" included (the maintainer's call, 2026-10-13).
+  it('writes a basket as [team] name +points in both languages', () => {
+    expect(lastLine({ ...base, lastPlay: basket }, en)).toBe('[UTAH] I. Collier +2');
+    expect(lastLine({ ...base, lastPlay: basket }, zh)).toBe('[UTAH] I. Collier +2');
+    const { player: _, ...noShooter } = basket.basket;
+    expect(lastLine({ ...base, lastPlay: { ...basket, basket: noShooter } }, zh)).toBe('[UTAH] +2');
+  });
+
+  it('writes fouls, turnovers, rebounds and substitutions the same way', () => {
+    const line = (lastPlay: NonNullable<GameState['lastPlay']>) => lastLine({ ...base, lastPlay }, zh);
+    expect(line({ type: 'foul', kind: 'shooting', side: 'away', player: embiid })).toBe('[SA] J. Embiid 投籃犯規');
+    expect(line({ type: 'turnover', side: 'away', player: embiid, stolenBy: collier })).toBe('[SA] J. Embiid 失誤（I. Collier 抄截）');
+    expect(lastLine({ ...base, lastPlay: { type: 'turnover', side: 'away', player: embiid, stolenBy: collier } }, en)).toBe('[SA] J. Embiid turnover (I. Collier steal)');
+    expect(line({ type: 'rebound', offensive: true, side: 'home' })).toBe('[UTAH] 進攻籃板');
+    expect(line({ type: 'substitution', side: 'home', in: collier, out: embiid })).toBe('[UTAH] I. Collier 換下 J. Embiid');
+    expect(lastLine({ ...base, lastPlay: { type: 'foul', kind: 'personal', side: 'away', player: embiid } }, en)).toBe('[SA] J. Embiid foul');
   });
 
   // A 2-0 "run" is every basket; the line only calls out a run once it means momentum.
   it(`mentions a run from ${RUN_MIN} unanswered points, not before`, () => {
-    expect(lastLine({ ...base, lastBasket: basket, run: { side: 'home', points: RUN_MIN - 1 } }, en)).toBe('UTAH I. Collier +2');
-    expect(lastLine({ ...base, lastBasket: basket, run: { side: 'home', points: 8 } }, en)).toBe('UTAH I. Collier +2 · UTAH 8-0 run');
-    expect(lastLine({ ...base, lastBasket: basket, run: { side: 'home', points: 8 } }, zh)).toBe('UTAH I. Collier 得 2 分 · UTAH 連得 8 分');
+    expect(lastLine({ ...base, lastPlay: basket, run: { side: 'home', points: RUN_MIN - 1 } }, en)).toBe('[UTAH] I. Collier +2');
+    expect(lastLine({ ...base, lastPlay: basket, run: { side: 'home', points: 8 } }, en)).toBe('[UTAH] I. Collier +2 · UTAH 8-0 run');
+    expect(lastLine({ ...base, lastPlay: basket, run: { side: 'home', points: 8 } }, zh)).toBe('[UTAH] I. Collier +2 · UTAH 連得 8 分');
   });
 
   it('drops the run once the game is over', () => {
-    expect(lastLine({ ...base, status: 'final', lastBasket: basket, run: { side: 'home', points: 8 } }, en)).toBe('UTAH I. Collier +2');
+    expect(lastLine({ ...base, status: 'final', lastPlay: basket, run: { side: 'home', points: 8 } }, en)).toBe('[UTAH] I. Collier +2');
+  });
+
+  // The clock standing still is the question a glance asks; a timeout or review answers it.
+  it('says why the clock is stopped, next to the clock', () => {
+    expect(whenText({ ...base, stoppage: 'timeout' }, zh)).toBe('第4節 7:02 · 暫停');
+    expect(whenText({ ...base, stoppage: 'review' }, en)).toBe('Q4 7:02 · Review');
   });
 });
 
@@ -74,8 +93,8 @@ describe('possession', () => {
   });
 
   it('escapes names from the feed', () => {
-    const html = barView({ ...base, lastBasket: { side: 'away', points: 3, period: 4, clock: 1, player: { id: 'x', name: '<b>', short: '<b>' } } }, en);
-    expect(html).toContain('SA &lt;b&gt; +3');
+    const html = barView({ ...base, lastPlay: { type: 'foul', kind: 'personal', side: 'away', player: { id: 'x', name: '<b>', short: '<b>' } } }, en);
+    expect(html).toContain('[SA] &lt;b&gt; foul');
   });
 
   // A replay that looks live misleads; the pill has no room for the word, so it gets a mark.
