@@ -33,6 +33,11 @@ body { color: var(--text); font: 13px/1.35 var(--font); user-select: none; -webk
 .bar { display: flex; flex-direction: column; gap: 4px; width: 100%; min-width: 0; }
 .bar .row { display: flex; align-items: center; white-space: nowrap; overflow: hidden; }
 .bar .row:first-child { font-size: 15px; }
+/* The score is what a glance is for; the period and clock come second. */
+.bar .sc b { font-size: 22px; font-weight: 700; line-height: 1.1; }
+.bar .row:first-child .when { font-size: 12px; color: var(--muted); }
+.pill .sc b { font-size: 15px; font-weight: 700; }
+.pill .when { font-size: 11px; }
 .bar .play { font-size: 12px; min-height: 16px; text-overflow: ellipsis; }
 /* The newest play reads first; the one before it, under the divider, stays out of the way. */
 .bar .play.new { color: var(--text); font-weight: 500; }
