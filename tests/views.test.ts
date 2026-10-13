@@ -103,21 +103,25 @@ describe('last line', () => {
 });
 
 describe('possession', () => {
-  // The ring marks who has the ball; between periods nobody does, so it must not linger.
-  it('rings the dot of the team with the ball while live, and nobody during a break', () => {
-    const live = dotView({ ...base, possession: 'away' }, en);
-    expect(live.match(/class="dot ball"/g)).toHaveLength(1);
-    expect(live.indexOf('dot ball')).toBeLessThan(live.indexOf('85'));
-    expect(dotView({ ...base, status: 'break', possession: 'away' }, en)).not.toContain('dot ball');
+  // The triangle marks who has the ball; between periods nobody does, so it must not linger.
+  it('puts a triangle on the outer side of the team with the ball while live, and none during a break', () => {
+    const away = dotView({ ...base, possession: 'away' }, en);
+    expect(away.match(/[▶◀]/g)).toEqual(['▶']);
+    expect(away.indexOf('▶')).toBeLessThan(away.indexOf('85'));
+    const home = dotView({ ...base, possession: 'home' }, en);
+    expect(home.match(/[▶◀]/g)).toEqual(['◀']);
+    expect(home.indexOf('◀')).toBeGreaterThan(home.indexOf('112'));
+    expect(dotView({ ...base, status: 'break', possession: 'away' }, en)).not.toMatch(/[▶◀]/);
   });
 
-  // In the bar the mark is a "◂" in the team's cell, beside its score: the dot's ring would be lost in the bug.
-  it("marks the team with the ball in its own cell of the bar's score bug, and nobody during a break", () => {
+  // In the bar the team with the ball has its whole cell framed in its colour, and a triangle.
+  it("frames the cell of the team with the ball in the bar's score bug, and nobody's during a break", () => {
     const html = barView({ ...base, possession: 'home' }, en, 1);
-    const home = html.slice(html.indexOf('>UTAH<'));
-    expect(home.slice(0, home.indexOf('</div>'))).toContain('◂');
-    expect(html.match(/◂/g)).toHaveLength(1);
-    expect(barView({ ...base, status: 'break', possession: 'home' }, en, 1)).not.toContain('◂');
+    const cells = html.match(/<div class="cell team[^"]*"[^>]*>/g)!;
+    expect(cells[0]).toBe('<div class="cell team">');
+    expect(cells[1]).toMatch(/^<div class="cell team ball" style="border-color:#[0-9a-f]{6}">$/);
+    expect(html.match(/◀/g)).toHaveLength(1);
+    expect(barView({ ...base, status: 'break', possession: 'home' }, en, 1)).not.toContain('team ball');
   });
 
   it('escapes names from the feed', () => {

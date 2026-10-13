@@ -34,23 +34,30 @@ export function whenText(s: GameState, T: Strings, tipOff?: string): string {
   }
 }
 
-const dot = (s: GameState, side: Side, colour: string) =>
-  `<i class="dot${s.possession === side && s.status === 'live' ? ' ball' : ''}" style="background:#${esc(colour)}"></i>`;
+const hasBall = (s: GameState, side: Side) => s.possession === side && s.status === 'live';
 
-/** The dot's score: team dots and the two numbers. `favourite`: in a colour clash it keeps its colour. */
+/**
+ * The dot's score: team dots and the two numbers. The team with the ball gets a triangle in its
+ * colour on its outer side, pointing in: "▶● 98 – 101 ●" or "● 98 – 101 ●◀".
+ * `favourite`: in a colour clash it keeps its colour.
+ */
 function scoreHtml(s: GameState, favourite?: string): string {
   const c = gameColours(s.teams, favourite);
-  return `${dot(s, 'away', c.away)}<b>${s.score.away}</b><span class="muted">–</span><b>${s.score.home}</b>${dot(s, 'home', c.home)}`;
+  const dot = (side: Side) => `<i class="dot" style="background:#${esc(c[side])}"></i>`;
+  const arrow = (side: Side) => `<span class="arrow" style="color:#${esc(c[side])}">${hasBall(s, side) ? (side === 'away' ? '▶' : '◀') : ''}</span>`;
+  return `${arrow('away')}${dot('away')}<b>${s.score.away}</b><span class="muted">–</span><b>${s.score.home}</b>${dot('home')}${arrow('home')}`;
 }
 
 /**
  * The bar's score, laid out like a broadcast score bug: one cell per team (a stripe in its colour,
- * the abbreviation, the score; "◂" on the team with the ball), then a cell with the period and clock.
+ * the abbreviation, the score), then a cell with the period and clock.
  */
 function scoreBug(s: GameState, T: Strings, tag?: string, favourite?: string): string {
   const c = gameColours(s.teams, favourite);
-  const cell = (side: Side) =>
-    `<div class="cell team"><i class="stripe" style="background:#${esc(c[side])}"></i><span class="abbr">${esc(s.teams[side].abbr)}</span><b>${s.score[side]}</b><span class="ball-mark">${s.possession === side && s.status === 'live' ? '◂' : ''}</span></div>`;
+  // The team with the ball: its whole cell is framed in its colour, with a triangle by the score.
+  const cell = (side: Side) => hasBall(s, side)
+    ? `<div class="cell team ball" style="border-color:#${esc(c[side])}"><i class="stripe" style="background:#${esc(c[side])}"></i><span class="abbr">${esc(s.teams[side].abbr)}</span><b>${s.score[side]}</b><span class="ball-mark" style="color:#${esc(c[side])}">◀</span></div>`
+    : `<div class="cell team"><i class="stripe" style="background:#${esc(c[side])}"></i><span class="abbr">${esc(s.teams[side].abbr)}</span><b>${s.score[side]}</b><span class="ball-mark"></span></div>`;
   return `<div class="bug">${cell('away')}${cell('home')}${tag ? `<span class="tag">${esc(tag)}</span>` : '<span class="grow"></span>'}<div class="cell clock mono">${esc(whenText(s, T))}</div></div>`;
 }
 
@@ -84,7 +91,7 @@ export function playLines(s: GameState, T: Strings, count: number): string[] {
 }
 
 /**
- * Dot tier: a pill with the score and the period. The team with the ball has a ring on its dot.
+ * Dot tier: a pill with the score and the period. The team with the ball has a triangle by its dot.
  * A replay is marked with "↺" (the word does not fit): a replay mistaken for a live game misleads.
  */
 export function dotView(s: GameState, T: Strings, tag?: string, favourite?: string): string {
