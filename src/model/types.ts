@@ -121,6 +121,8 @@ export interface GameState {
   postseason?: boolean;
   status: GameStatus;
   teams: Record<Side, TeamRef>;
+  /** Epoch ms of the scheduled tip-off. */
+  start?: number;
   /** 1-4, then 5 for the first overtime and so on. 0 before tip-off. */
   period: number;
   /** Seconds left in the period. */

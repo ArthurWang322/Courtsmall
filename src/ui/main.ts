@@ -3,7 +3,7 @@
 // notices) and the games list open from the toolbar that shows on hover, or from the tray menu.
 //
 // URL parameters, for development: ?game=<ESPN event id> (skip following), &replay (replay even
-// if live), &pace=real|compact|results, &speed=<n>, &lang=en|zh-TW, &settings or &games (open
+// if live), &result (show it as it stands, no replay), &pace=real|compact|results, &speed=<n>, &lang=en|zh-TW, &settings or &games (open
 // that panel), &theme=dark|light (dev only).
 // In `npm run dev` only, &fixture replays fixtures/nba/game-<id>.json and reads the team list from
 // fixtures/nba/teams.json instead of asking ESPN (node scripts/probe/06-fixtures.mjs).
@@ -16,7 +16,7 @@ import type { GameCard, GameState, Side, TeamRef, Unsubscribe } from '../model/t
 import type { GameFeed } from '../data/espn/feed-types.ts';
 import { allTeams, dayGames, loadFeed, teamGames, type FetchJson } from '../data/espn/fetch.ts';
 import { EspnLiveSource } from '../data/espn/live-source.ts';
-import { buildTimeline } from '../data/espn/timeline.ts';
+import { buildTimeline, initialState } from '../data/espn/timeline.ts';
 import { EspnReplaySource } from '../data/replay/espn-replay-source.ts';
 import type { PaceMode } from '../data/replay/pacing.ts';
 import { decide, STAY_AFTER_FINAL_MS, type Decision } from '../follow/decide.ts';
@@ -27,7 +27,7 @@ import { playLinesAt, TIER_PRESET, tierOf, TOOLBAR_H, type Tier } from '../rende
 import { drawFlights, shotSeconds } from '../render/court.ts';
 import { gameColours, useTheme, type Theme } from '../render/colour.ts';
 import { loadSettings, saveSettings, type Settings, type ThemeChoice } from '../settings/store.ts';
-import { barView, controlsView, courtView, dotView, gamesView, JUMP_MS, messageView, settingsView, upcomingView, type ScoreAges } from './views.ts';
+import { barView, controlsView, courtView, dotView, gamesView, JUMP_MS, messageView, pregameView, settingsView, type ScoreAges } from './views.ts';
 
 // In `npm run dev`, VITE_PARAMS fills in for the URL, which the desktop window does not have:
 // VITE_PARAMS='game=401898721&replay' npx tauri dev
@@ -113,11 +113,14 @@ const dayLabel = (offset: number) =>
   new Intl.DateTimeFormat(undefined, { timeZone: 'America/New_York', month: 'numeric', day: 'numeric', weekday: 'short' }).format(Date.now() + offset * 86_400_000);
 const tipOff = (g: GameCard) => new Intl.DateTimeFormat(undefined, { hour: '2-digit', minute: '2-digit' }).format(g.start);
 
-function whenOf(g: GameCard): string {
-  const time = new Intl.DateTimeFormat(undefined, { hour: '2-digit', minute: '2-digit' }).format(g.start);
+/** When a game tips off, short enough for the clock cell: "Today 19:30", "Tomorrow 09:30", "10/23 09:30". */
+function whenOf(g: Pick<GameCard, 'start'>): string {
+  const time = new Intl.DateTimeFormat('en-GB', { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(g.start);
   const day = (t: number) => new Date(t).toDateString();
   if (day(g.start) === day(Date.now())) return `${T.today} ${time}`;
-  return new Intl.DateTimeFormat(undefined, { weekday: 'short', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }).format(g.start);
+  if (day(g.start) === day(Date.now() + 86_400_000)) return `${T.tomorrow} ${time}`;
+  const d = new Date(g.start);
+  return `${d.getMonth() + 1}/${d.getDate()} ${time}`;
 }
 
 // ---- Court animation ----------------------------------------------------------------------------
@@ -159,7 +162,11 @@ function render(): void {
   // Below the dot the toolbar has a row of its own; the dot has no room, so there it shows on hover.
   const contentHeight = tier === 'dot' ? app.clientHeight : app.clientHeight - TOOLBAR_H;
   let body: string;
-  if (state) {
+  // A game not started yet: the tip-off and a countdown, whether it is followed or the team's next.
+  const pre = state?.status === 'scheduled' && state.start !== undefined ? { teams: state.teams, start: state.start }
+    : !state && upcoming ? { teams: upcoming.teams, start: upcoming.start } : undefined;
+  if (pre) body = pregameView(pre.teams, pre.start, whenOf({ start: pre.start }), Date.now(), T, tier, settings.team);
+  else if (state) {
     const now = Date.now();
     const ages: ScoreAges = {};
     for (const side of ['away', 'home'] as const) { const at = scoreChangedAt[side]; if (at !== undefined && now - at < JUMP_MS) ages[side] = now - at; }
@@ -168,7 +175,6 @@ function render(): void {
       : tier === 'court' && !resultOnly ? courtView(state, T, landed, tag, settings.team, ages)
       : barView(state, T, playLinesAt(contentHeight), tag, settings.team, resultOnly, ages, tier === 'court');
   }
-  else if (upcoming) body = upcomingView(upcoming, whenOf(upcoming), tier === 'dot');
   else body = messageView(message, tier === 'bar' ? messageSub : undefined);
   app.innerHTML = tier === 'dot' ? body + controlsView(tier, T) : `<div class="content">${body}</div>${controlsView(tier, T)}`;
   if (state && tier === 'court' && !resultOnly && !frame) frame = requestAnimationFrame(animate);
@@ -229,7 +235,8 @@ function follow(id: string, how: 'live' | 'replay' | 'result'): void {
     let cancelled = false;
     unsubscribe = () => { cancelled = true; };
     load(id).then((feed) => {
-      const last = buildTimeline(feed).at(-1)?.state;
+      // A game with no plays yet is shown as it stands before tip-off.
+      const last = buildTimeline(feed).at(-1)?.state ?? initialState(feed);
       if (cancelled || !last) return;
       if (last.status === 'final') finalAt = Date.now();
       for (const shot of [...(last.recentShots ?? []), ...(last.recentFreeThrows ?? [])]) shotSeen.set(shot.id, Date.now() - 60_000);
@@ -376,8 +383,11 @@ new ResizeObserver(() => requestAnimationFrame(() => {
 })).observe(app);
 
 render();
+// The countdown ticks once a second while a game not started yet is on screen.
+setInterval(() => { if (!panel && (state?.status === 'scheduled' || (!state && upcoming))) render(); }, 1000);
+
 const devGame = params.get('game');
-if (devGame) follow(devGame, params.has('replay') ? 'replay' : 'live');
+if (devGame) follow(devGame, params.has('replay') ? 'replay' : params.has('result') ? 'result' : 'live');
 else {
   void decideNow();
   setInterval(() => void decideNow(), DECIDE_EVERY_MS);

@@ -48,6 +48,8 @@ export interface Summary {
     id: string;
     season: { year: number; type: number };
     competitions: {
+      /** Scheduled tip-off, ISO. */
+      date?: string;
       competitors: {
         homeAway: 'home' | 'away';
         team: { id: string; abbreviation: string; displayName: string; color?: string };

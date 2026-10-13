@@ -39,6 +39,7 @@ export interface Strings {
   clutchNotice(when: string, line: string): string;
   /** The team's next game: "Today 19:30", "Fri 10/23 09:30". */
   today: string;
+  tomorrow: string;
   /** Settings. */
   chooseTeam: string;
   noTeam: string;
@@ -55,6 +56,9 @@ export interface Strings {
   nextDay: string;
   /** Short names of the leader stats. */
   stat(key: 'pts' | 'reb' | 'ast' | 'stl' | 'blk' | 'to'): string;
+  /** The countdown to tip-off: unit labels, and what shows once it reaches zero. */
+  units: { d: string; h: string; m: string; s: string };
+  tipOffSoon: string;
   theme: string;
   themeName(t: 'system' | 'dark' | 'light'): string;
   /** The toolbar button: switch to the other theme. */
@@ -88,6 +92,7 @@ export const STRINGS: Record<Lang, Strings> = {
     finalNotice: (l) => `Final: ${l}`,
     clutchNotice: (w, l) => `${w}, ${l}`,
     today: 'Today',
+    tomorrow: 'Tomorrow',
     chooseTeam: 'Your team',
     noTeam: 'None: follow the closest game',
     notifyStart: 'Notify at tip-off',
@@ -101,6 +106,8 @@ export const STRINGS: Record<Lang, Strings> = {
     prevDay: 'Previous day',
     nextDay: 'Next day',
     stat: (k) => ({ pts: 'PTS', reb: 'REB', ast: 'AST', stl: 'STL', blk: 'BLK', to: 'TO' })[k],
+    units: { d: 'DAYS', h: 'HRS', m: 'MIN', s: 'SEC' },
+    tipOffSoon: 'Tip-off soon',
     theme: 'Theme',
     themeName: (t) => ({ system: 'System', dark: 'Dark', light: 'Light' })[t],
     switchTheme: 'Dark / light',
@@ -131,6 +138,7 @@ export const STRINGS: Record<Lang, Strings> = {
     finalNotice: (l) => `終場 ${l}`,
     clutchNotice: (w, l) => `${w} ${l}`,
     today: '今天',
+    tomorrow: '明天',
     chooseTeam: '主隊',
     noTeam: '不選：跟最緊張的比賽',
     notifyStart: '開賽時通知',
@@ -144,6 +152,8 @@ export const STRINGS: Record<Lang, Strings> = {
     prevDay: '前一天',
     nextDay: '後一天',
     stat: (k) => ({ pts: '得分', reb: '籃板', ast: '助攻', stl: '抄截', blk: '火鍋', to: '失誤' })[k],
+    units: { d: '天', h: '時', m: '分', s: '秒' },
+    tipOffSoon: '即將開賽',
     theme: '外觀',
     themeName: (t) => ({ system: '跟隨系統', dark: '深色', light: '淺色' })[t],
     switchTheme: '深色／淺色',

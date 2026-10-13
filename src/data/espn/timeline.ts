@@ -36,6 +36,7 @@ export function initialState(feed: GameFeed): GameState {
     postseason: feed.summary.header.season.type === 3,
     status: gameStatus(comp.status.type.name),
     teams,
+    ...(comp.date ? { start: Date.parse(comp.date) } : {}),
     period: 0,
     clock: 0,
     score: { away: 0, home: 0 },

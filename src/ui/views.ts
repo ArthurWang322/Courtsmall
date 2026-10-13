@@ -160,12 +160,30 @@ export const messageView = (text: string, sub?: string) =>
 const colourDot = (hex: string) => `<i class="dot" style="background:#${esc(hex)}"></i>`;
 const cardDot = (t: TeamRef) => colourDot(visibleColour(t));
 
-/** The team's next game: who, and when ("Today 19:30" or "Fri 10/23 09:30"). */
-export function upcomingView(g: GameCard, when: string, dot: boolean): string {
-  const who = `${cardDot(g.teams.away)}<span>${esc(g.teams.away.abbr)}</span><span class="muted">@</span><span>${esc(g.teams.home.abbr)}</span>${cardDot(g.teams.home)}`;
-  return dot
-    ? `<div class="pill"><span class="sc">${who}</span><span class="when mono">${esc(when)}</span></div>`
-    : `<div class="bar"><div class="row"><span class="sc">${who}</span></div><div class="row play new">${esc(when)}</div></div>`;
+/** Whole days, hours, minutes and seconds left in `ms`; zero once it has passed. */
+export function countdownParts(ms: number): { d: number; h: number; m: number; s: number } {
+  const t = Math.max(0, Math.floor(ms / 1000));
+  return { d: Math.floor(t / 86_400), h: Math.floor((t % 86_400) / 3600), m: Math.floor((t % 3600) / 60), s: t % 60 };
+}
+
+/**
+ * A game not started yet: the score bug with the teams and, in the clock's place, the tip-off
+ * (`when`); under it the time left in days, hours, minutes and seconds, or "tip-off soon" once
+ * that has run out. The dot has room for the teams and the tip-off only. `big`: the court's size.
+ */
+export function pregameView(teams: GameCard['teams'], start: number, when: string, now: number, T: Strings, tier: Tier, favourite?: string): string {
+  const c = gameColours(teams, favourite);
+  if (tier === 'dot')
+    return `<div class="pill"><span class="sc">${colourDot(c.away)}<span class="abbr">${esc(teams.away.abbr)}</span><span class="muted">@</span><span class="abbr">${esc(teams.home.abbr)}</span>${colourDot(c.home)}</span><span class="when mono">${esc(when)}</span></div>`;
+  const cell = (side: Side) => `<div class="cell team" style="--team:#${esc(c[side])}"><i class="stripe"></i><span class="abbr">${esc(teams[side].abbr)}</span><b class="muted">–</b><span class="ball-mark"></span></div>`;
+  const bug = `<div class="bug">${cell('away')}${cell('home')}<span class="grow"></span><div class="cell clock mono">${esc(when)}</div></div>`;
+  const left = start - now;
+  const p = countdownParts(left);
+  const unit = (n: number, label: string) => `<div class="unit"><b>${String(n).padStart(2, '0')}</b><span>${esc(label)}</span></div>`;
+  const clock = left > 0
+    ? `<div class="countdown${tier === 'court' ? ' big' : ''}">${unit(p.d, T.units.d)}${unit(p.h, T.units.h)}${unit(p.m, T.units.m)}${unit(p.s, T.units.s)}</div>`
+    : `<div class="countdown${tier === 'court' ? ' big' : ''}"><span class="soon">${esc(T.tipOffSoon)}</span></div>`;
+  return `<div class="bar pregame">${bug}${clock}</div>`;
 }
 
 /** Choosing a team and the notices. Buttons carry data-* attributes; src/ui/main.ts handles clicks. */

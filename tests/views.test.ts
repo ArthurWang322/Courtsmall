@@ -2,7 +2,7 @@
 
 import { describe, expect, it } from 'vitest';
 import { STRINGS } from '../src/i18n/index.ts';
-import { barView, clockText, controlsView, dotView, gamesView, JUMP_MS, leadersTable, playLines, RUN_MIN, whenText } from '../src/ui/views.ts';
+import { barView, clockText, controlsView, countdownParts, dotView, gamesView, JUMP_MS, leadersTable, playLines, pregameView, RUN_MIN, whenText } from '../src/ui/views.ts';
 import type { GameCard, GameState, PlayLine } from '../src/model/types.ts';
 
 const en = STRINGS.en, zh = STRINGS['zh-TW'];
@@ -196,6 +196,24 @@ describe('leaders', () => {
     const fin = { ...base, status: 'final' as const };
     expect(barView(fin, zh, 2, undefined, undefined, true)).not.toContain('class="leaders"');
     expect(barView(fin, zh, 2, undefined, undefined, true, {}, true)).toContain('class="leaders"');
+  });
+});
+
+describe('countdown', () => {
+  it('splits the time left into days, hours, minutes and seconds, and stops at zero', () => {
+    expect(countdownParts(((1 * 24 + 2) * 3600 + 3 * 60 + 4) * 1000 + 999)).toEqual({ d: 1, h: 2, m: 3, s: 4 });
+    expect(countdownParts(-5000)).toEqual({ d: 0, h: 0, m: 0, s: 0 });
+  });
+
+  // Before tip-off the clock cell says when it starts, and the rest counts down to it.
+  it('shows the tip-off in the clock cell and the countdown under it, then "tip-off soon"', () => {
+    const start = Date.parse('2026-10-23T01:30:00Z');
+    const html = pregameView(base.teams, start, '10/23 09:30', start - (3 * 3600 + 5) * 1000, zh, 'bar');
+    expect(html).toContain('<div class="cell clock mono">10/23 09:30</div>');
+    const units = [...html.matchAll(/<div class="unit"><b>(\d+)<\/b><span>(.)<\/span>/g)].map((m) => `${m[1]}${m[2]}`);
+    expect(units).toEqual(['00天', '03時', '00分', '05秒']);
+    expect(pregameView(base.teams, start, '', start + 1000, zh, 'bar')).toContain('即將開賽');
+    expect(pregameView(base.teams, start, '09:30', start - 1000, zh, 'dot')).not.toContain('countdown');
   });
 });
 

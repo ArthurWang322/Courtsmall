@@ -180,3 +180,15 @@ button { font: inherit; color: inherit; border: 0; background: transparent; padd
 .leader .who.away { justify-content: flex-end; }
 .leader .name { font-size: 12px; color: var(--text); overflow: hidden; text-overflow: ellipsis; }
 .leader b { font: 800 17px var(--display); }
+
+/* A game not started yet (src/ui/views.ts pregameView): a countdown under the score bug. */
+.countdown { display: flex; justify-content: center; gap: 14px; margin-top: 4px; }
+.countdown .unit { display: flex; flex-direction: column; align-items: center; min-width: 38px; }
+.countdown .unit b { font: 800 26px/1 var(--display); letter-spacing: .02em; font-variant-numeric: tabular-nums; }
+.countdown .unit span { font: 600 10px var(--label); letter-spacing: .14em; color: var(--muted); margin-top: 2px; }
+.countdown .soon { font: 600 16px var(--label); letter-spacing: .1em; color: var(--accent); }
+/* The court's size: the countdown where the court would be, larger. */
+.pregame:has(.countdown.big) { height: 100%; }
+.countdown.big { flex: 1; align-items: center; gap: 22px; }
+.countdown.big .unit b { font-size: 52px; }
+.countdown.big .unit span { font-size: 12px; }
