@@ -9,16 +9,12 @@ export interface Settings {
   favourites: string[];
   /** Each notice is its own switch (CLAUDE.md: every feature is a switch). */
   notify: { start: boolean; final: boolean; clutch: boolean };
-  /** Dark or light, or whatever the system uses. */
-  theme: ThemeChoice;
 }
 
-export type ThemeChoice = 'system' | 'dark' | 'light';
 /** One favourite team (the maintainer's call, 2026-10-13); kept as a list should that change. */
 export const MAX_FAVOURITES = 1;
-const THEMES: readonly ThemeChoice[] = ['system', 'dark', 'light'];
 
-export const DEFAULTS: Settings = { favourites: [], notify: { start: true, final: true, clutch: true }, theme: 'system' };
+export const DEFAULTS: Settings = { favourites: [], notify: { start: true, final: true, clutch: true } };
 const KEY = 'courtsmall.settings';
 
 /** Fill in what a stored object lacks, drop what it should not have. */
@@ -31,7 +27,6 @@ export function normalize(raw: unknown): Settings {
     favourites: (Array.isArray(o.favourites) ? [...new Set(o.favourites.filter((t): t is string => typeof t === 'string' && t !== ''))]
       : typeof o.team === 'string' && o.team ? [o.team] : []).slice(0, MAX_FAVOURITES),
     notify: { start: flag(n.start, DEFAULTS.notify.start), final: flag(n.final, DEFAULTS.notify.final), clutch: flag(n.clutch, DEFAULTS.notify.clutch) },
-    theme: THEMES.includes(o.theme as ThemeChoice) ? (o.theme as ThemeChoice) : DEFAULTS.theme,
   };
 }
 

@@ -49,10 +49,8 @@ describe('settings', () => {
 
   it('falls back to the defaults for anything missing or malformed', () => {
     expect(normalize(null)).toEqual(DEFAULTS);
-    expect(normalize({ team: 7, notify: { start: 'yes', final: false } })).toEqual({ favourites: [], notify: { start: true, final: false, clutch: true }, theme: 'system' });
+    expect(normalize({ team: 7, notify: { start: 'yes', final: false } })).toEqual({ favourites: [], notify: { start: true, final: false, clutch: true } });
     // One favourite: the first valid one is kept.
     expect(normalize({ favourites: [7, '', '7', '9'] }).favourites).toEqual(['7']);
-    expect(normalize({ theme: 'light' }).theme).toBe('light');
-    expect(normalize({ theme: 'sepia' }).theme).toBe('system');
   });
 });

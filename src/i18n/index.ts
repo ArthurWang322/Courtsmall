@@ -50,7 +50,7 @@ export interface Strings {
   notifyClutch: string;
   done: string;
   /** The toolbar's tips, one per button. */
-  tip: { bar: string; court: string; theme: string; games: string; settings: string };
+  tip: { bar: string; court: string; games: string; settings: string };
   noGames: string;
   prevDay: string;
   nextDay: string;
@@ -59,8 +59,6 @@ export interface Strings {
   /** The countdown to tip-off: unit labels, and what shows once it reaches zero. */
   units: { d: string; h: string; m: string; s: string };
   tipOffSoon: string;
-  theme: string;
-  themeName(t: 'system' | 'dark' | 'light'): string;
 }
 
 export const STRINGS: Record<Lang, Strings> = {
@@ -99,15 +97,13 @@ export const STRINGS: Record<Lang, Strings> = {
     notifyFinal: 'Notify at the final',
     notifyClutch: 'Notify in a close finish (last 2 min, within 5)',
     done: 'Done',
-    tip: { bar: 'Simple', court: 'Court', theme: 'Dark / light', games: 'Games', settings: 'Settings' },
+    tip: { bar: 'Simple', court: 'Court', games: 'Games', settings: 'Settings' },
     noGames: 'No games this day',
     prevDay: 'Previous day',
     nextDay: 'Next day',
     stat: (k) => ({ pts: 'PTS', reb: 'REB', ast: 'AST', stl: 'STL', blk: 'BLK', to: 'TO' })[k],
     units: { d: 'DAYS', h: 'HRS', m: 'MIN', s: 'SEC' },
     tipOffSoon: 'Tip-off soon',
-    theme: 'Theme',
-    themeName: (t) => ({ system: 'System', dark: 'Dark', light: 'Light' })[t],
   },
   'zh-TW': {
     period: (n) => (n <= 4 ? `第${n}節` : n === 5 ? '延長' : `第${n - 4}延長`),
@@ -144,15 +140,13 @@ export const STRINGS: Record<Lang, Strings> = {
     notifyFinal: '終場時通知',
     notifyClutch: '關鍵時刻通知（最後 2 分鐘、差距 5 分內）',
     done: '完成',
-    tip: { bar: '簡易模式', court: '球場模式', theme: '主題切換', games: '比賽列表', settings: '設定' },
+    tip: { bar: '簡易模式', court: '球場模式', games: '比賽列表', settings: '設定' },
     noGames: '這天沒有比賽',
     prevDay: '前一天',
     nextDay: '後一天',
     stat: (k) => ({ pts: '得分', reb: '籃板', ast: '助攻', stl: '抄截', blk: '火鍋', to: '失誤' })[k],
     units: { d: '天', h: '時', m: '分', s: '秒' },
     tipOffSoon: '即將開賽',
-    theme: '外觀',
-    themeName: (t) => ({ system: '跟隨系統', dark: '深色', light: '淺色' })[t],
   },
 };
 

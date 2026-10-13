@@ -1,7 +1,6 @@
 /* Courtsmall: an arena scoreboard in a corner of the screen. The score is set in a condensed
    athletic display face; everything else stays quiet so the score is what the eye finds.
-   Two themes, on <html data-theme> (src/ui/main.ts). --background must match BACKGROUNDS in
-   src/render/colour.ts: team colours are checked against it. */
+   --background must match BACKGROUND in src/render/colour.ts: team colours are checked against it. */
 :root {
   --background: #141317; --surface: #1c1b20; --panel: #222127; --border: #2e2d34; --edge: rgba(255, 255, 255, .07);
   --text: #f3efe7; --muted: #9b98a2; --faint: #6c6973; --accent: #f2b544; --glow: rgba(242, 181, 68, .07);
@@ -13,15 +12,6 @@
   --mono: var(--label);
   /* A fine grain over the panel, so it reads as a surface rather than a flat fill. */
   --grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 .5 0'/%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23n)' opacity='.6'/%3E%3C/svg%3E");
-}
-:root[data-theme='light'] {
-  /* Clean and cool: white cards on a light grey, basketball orange for the accent, a maple floor
-     that stands out from the grey around it. No grain or warm glow: on light they read as dirt. */
-  --background: #f4f5f7; --surface: #ffffff; --panel: #ffffff; --border: #dfe2e8; --edge: rgba(255, 255, 255, 1);
-  --text: #15171c; --muted: #646a78; --faint: #a3a8b4; --accent: #e8590c; --glow: transparent;
-  --wood: #d9a86c; --wood-hi: #ebc694; --plank: rgba(110, 60, 15, .13); --court-line: rgba(255, 255, 255, .85); --court-edge: rgba(110, 60, 15, .35);
-  --board-fill: rgba(255, 255, 255, .7); --board-line: rgba(60, 64, 75, .55); --points-stroke: rgba(255, 255, 255, .9);
-  --grain: none;
 }
 * { box-sizing: border-box; }
 html, body { margin: 0; height: 100%; background: transparent; overflow: hidden; }
@@ -76,12 +66,6 @@ button { font: inherit; color: inherit; border: 0; background: transparent; padd
 .bug b { font: 800 27px/1.05 var(--display); letter-spacing: .02em; min-width: 2.1ch; text-align: right; font-variant-numeric: tabular-nums; }
 .bug .ball-mark { width: 12px; font-size: 11px; color: var(--team); }
 /* The team with the ball: the whole cell framed in its colour, glowing faintly. */
-/* On light, white cells with a faint tint and a soft shadow instead of an inner highlight. */
-:root[data-theme='light'] .bug .cell { background: linear-gradient(90deg, color-mix(in srgb, var(--team, var(--panel)) 10%, #fff) 0%, #fff 55%);
-  box-shadow: 0 1px 2px rgba(20, 24, 33, .06); }
-:root[data-theme='light'] .bug .clock { background: #fff; }
-:root[data-theme='light'] #app { box-shadow: none; }
-:root[data-theme='light'] .controls .icon[data-tip]::after, :root[data-theme='light'] .fav-list { box-shadow: 0 6px 16px rgba(20, 24, 33, .12); }
 /* The glow stays tight to the cell, so it does not wash over the play line below. */
 .bug .team.ball { border-width: 1.5px; box-shadow: inset 0 1px 0 var(--edge), 0 0 0 1px color-mix(in srgb, var(--team) 25%, transparent), 0 0 8px -3px var(--team); }
 .bug .clock { padding: 0 9px; font: 600 14px var(--label); letter-spacing: .04em; color: var(--muted); white-space: nowrap; background: var(--surface); }
@@ -170,9 +154,6 @@ button { font: inherit; color: inherit; border: 0; background: transparent; padd
 
 @media (prefers-reduced-motion: reduce) { .jump { animation: none; } .controls, .panel .game { transition: none; } }
 
-/* The theme row on the settings page. */
-.settings .themes { display: flex; align-items: center; gap: 4px; font-size: 12px; }
-.settings .themes .muted { margin-right: 4px; }
 
 /* A finished game's leaders (src/ui/views.ts leadersTable): stat in the middle, each side on its side. */
 .leaders { display: flex; flex-direction: column; gap: 3px; margin-top: 14px; padding-top: 10px; border-top: 1px solid var(--border); }

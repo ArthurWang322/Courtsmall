@@ -138,7 +138,7 @@ describe('toolbar and games list', () => {
     expect(html.match(/class="icon on" data-tier="(\w+)"/)![1]).toBe('bar');
     expect([...html.matchAll(/data-tier="(\w+)"/g)].map((m) => m[1])).toEqual(['bar', 'court']);
     // Every button says what it does on hover, in the maintainer's words.
-    expect([...html.matchAll(/data-tip="([^"]+)"/g)].map((m) => m[1])).toEqual(['簡易模式', '球場模式', '主題切換', '比賽列表', '設定']);
+    expect([...html.matchAll(/data-tip="([^"]+)"/g)].map((m) => m[1])).toEqual(['簡易模式', '球場模式', '比賽列表', '設定']);
     expect(html).toContain('data-open="games"');
     expect(html).toContain('data-open="settings"');
   });
@@ -226,7 +226,7 @@ describe('favourite team', () => {
 
 describe('settings page', () => {
   const teams = [{ id: '7', abbr: 'DEN', name: 'Denver Nuggets', color: 'fec524' }, { id: '20', abbr: 'PHI', name: 'Philadelphia 76ers', color: 'ed174c' }];
-  const settings = { favourites: [] as string[], notify: { start: true, final: true, clutch: true }, theme: 'system' as const };
+  const settings = { favourites: [] as string[], notify: { start: true, final: true, clutch: true } };
 
   // One favourite, picked from a drop-down whose first choice is none; the teams by full name.
   it('shows the choice, and when open lists none and every team by full name, the choice marked', () => {

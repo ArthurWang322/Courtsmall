@@ -2,7 +2,7 @@
 // ESPN's (fixtures/nba/teams.json); these values are copied from that list.
 
 import { describe, expect, it } from 'vitest';
-import { BACKGROUND, BACKGROUNDS, CLASH_DISTANCE, contrast, gameColours, MIN_CONTRAST, oklabDistance, useTheme, visibleColour } from '../src/render/colour.ts';
+import { BACKGROUND, CLASH_DISTANCE, contrast, gameColours, MIN_CONTRAST, oklabDistance, visibleColour } from '../src/render/colour.ts';
 
 const BKN = { id: '17', abbr: 'BKN', name: 'Brooklyn Nets', color: '000000', alternateColor: 'ffffff' };
 const NO = { id: '3', abbr: 'NO', name: 'New Orleans Pelicans', color: '0a2240', alternateColor: 'b4975a' };
@@ -41,21 +41,15 @@ describe('gameColours', () => {
   });
 });
 
-describe('light theme', () => {
-  const light = BACKGROUNDS.light;
+describe('on a light background', () => {
+  const light = 'f4f5f7';
   const GS = { id: '9', abbr: 'GS', name: 'Golden State Warriors', color: 'fdb927', alternateColor: '1d428a' };
 
-  // What vanishes flips with the background: black shows on light, gold does not.
+  // The checks take any background: what vanishes flips with it, black shows on light, gold does not.
   it('keeps a dark first colour and moves a pale one off a light background', () => {
     expect(visibleColour(BKN, light)).toBe('000000');
     expect(visibleColour(GS, light)).toBe('1d428a');
     const c = visibleColour({ color: 'f0f0e0', alternateColor: 'fafafa' }, light);
     expect(contrast(c, light)).toBeGreaterThanOrEqual(MIN_CONTRAST);
-  });
-
-  it('checks against the theme in use when no background is given', () => {
-    useTheme('light');
-    try { expect(gameColours({ away: BKN, home: BOS }).away).toBe('000000'); } finally { useTheme('dark'); }
-    expect(gameColours({ away: BKN, home: BOS }).away).toBe('ffffff');
   });
 });
