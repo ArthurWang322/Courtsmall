@@ -234,13 +234,13 @@ app.addEventListener('dblclick', async () => {
 });
 if (shell) void import('@tauri-apps/api/event').then(({ listen }) => listen('open-settings', () => void openSettings()));
 
-// Redraw only when the layout changes: redrawing on every resize notification feeds the observer
-// its own changes ("ResizeObserver loop completed with undelivered notifications").
+// Redraw only when the layout changes, and in the next frame: redrawing inside the observer's
+// callback feeds it its own changes ("ResizeObserver loop completed with undelivered notifications").
 let lastLayout = '';
-new ResizeObserver(() => {
+new ResizeObserver(() => requestAnimationFrame(() => {
   const layout = `${settingsOpen}:${tierOf(app.clientHeight)}:${playLinesAt(app.clientHeight)}`;
   if (layout !== lastLayout) { lastLayout = layout; render(); }
-}).observe(app);
+})).observe(app);
 
 render();
 const devGame = params.get('game');
