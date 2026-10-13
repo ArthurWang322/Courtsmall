@@ -17,9 +17,10 @@ import { decide, type Decision } from '../follow/decide.ts';
 import { langOf, STRINGS } from '../i18n/index.ts';
 import { Notifier } from '../notify/notifier.ts';
 import { notices } from '../notify/rules.ts';
-import { playLinesAt, TIER_PRESET, tierOf } from '../render/tiers.ts';
+import { nextTier, playLinesAt, TIER_PRESET, tierOf } from '../render/tiers.ts';
+import { SHOT_ANIMATION_MS } from '../render/court.ts';
 import { loadSettings, saveSettings, type Settings } from '../settings/store.ts';
-import { barView, dotView, messageView, settingsView, upcomingView } from './views.ts';
+import { barView, courtView, dotView, messageView, settingsView, upcomingView } from './views.ts';
 
 // In `npm run dev`, VITE_PARAMS fills in for the URL, which the desktop window does not have:
 // VITE_PARAMS='game=401898721&replay' npx tauri dev
@@ -61,6 +62,8 @@ let upcoming: GameCard | undefined;
 let message = T.loading;
 let messageSub: string | undefined;
 let settingsOpen = false;
+/** When each shot on the court first appeared, epoch ms, for its animation (src/render/court.ts). */
+const shotSeen = new Map<string, number>();
 let sizeBeforeSettings: { w: number; h: number } | undefined;
 
 function whenOf(g: GameCard): string {
@@ -75,7 +78,13 @@ function render(): void {
   app.dataset.tier = settingsOpen ? 'settings' : tier;
   if (settingsOpen) { app.innerHTML = settingsView(teams, settings, T); return; }
   const tag = replaying ? T.replay : undefined;
-  if (state) app.innerHTML = tier === 'dot' ? dotView(state, T, tag, settings.team) : barView(state, T, playLinesAt(app.clientHeight), tag, settings.team);
+  if (state) {
+    const now = Date.now();
+    const ages = new Map([...shotSeen].map(([id, at]) => [id, now - at]));
+    app.innerHTML = tier === 'dot' ? dotView(state, T, tag, settings.team)
+      : tier === 'court' ? courtView(state, T, ages, tag, settings.team)
+      : barView(state, T, playLinesAt(app.clientHeight), tag, settings.team);
+  }
   else if (upcoming) app.innerHTML = upcomingView(upcoming, whenOf(upcoming), tier === 'dot');
   else app.innerHTML = messageView(message, tier === 'bar' ? messageSub : undefined);
 }
@@ -93,6 +102,7 @@ function leave(): void {
   unsubscribe?.();
   unsubscribe = undefined;
   state = undefined;
+  shotSeen.clear();
   currentId = undefined;
   finalAt = undefined;
 }
@@ -109,6 +119,11 @@ function follow(id: string, how: 'live' | 'replay'): void {
       // Notices for live games only: a replay already happened.
       if (!replaying) notifier.send(notices(state, s, settings.notify));
       if (s.status === 'final' && finalAt === undefined) finalAt = Date.now();
+      // Shots already on the court when the game is first shown do not fly in.
+      const seenAt = state ? Date.now() : Date.now() - SHOT_ANIMATION_MS;
+      const onCourt = new Set((s.recentShots ?? []).map((shot) => shot.id));
+      for (const id of shotSeen.keys()) if (!onCourt.has(id)) shotSeen.delete(id);
+      for (const id of onCourt) if (!shotSeen.has(id)) shotSeen.set(id, seenAt);
       state = s;
       render();
     },
@@ -206,7 +221,7 @@ app.addEventListener('click', (e) => {
 });
 
 // The window has no title bar or border: press and drag moves it, a double-click switches
-// between the dot and the bar. (Tauri's drag region would turn a double-click into maximize.)
+// to the next tier (dot, bar, court). (Tauri's drag region would turn a double-click into maximize.)
 // Outside the desktop shell (npm run dev in a browser) there is no window to move or resize.
 app.addEventListener('mousedown', async (e) => {
   if (shell && !settingsOpen && e.button === 0 && e.detail === 1) await (await win()).startDragging();
@@ -214,7 +229,7 @@ app.addEventListener('mousedown', async (e) => {
 app.addEventListener('dblclick', async () => {
   if (!shell || settingsOpen) return;
   const { LogicalSize } = await import('@tauri-apps/api/window');
-  const next = TIER_PRESET[tierOf(app.clientHeight) === 'dot' ? 'bar' : 'dot'];
+  const next = TIER_PRESET[nextTier(tierOf(app.clientHeight))];
   await (await win()).setSize(new LogicalSize(next.w, next.h));
 });
 if (shell) void import('@tauri-apps/api/event').then(({ listen }) => listen('open-settings', () => void openSettings()));

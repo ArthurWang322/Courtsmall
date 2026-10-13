@@ -4,7 +4,7 @@
 import { describe, expect, it } from 'vitest';
 import { buildTimeline } from '../src/data/espn/timeline.ts';
 import type { CorePlay, GameFeed } from '../src/data/espn/feed-types.ts';
-import type { Side } from '../src/model/types.ts';
+import { BASKET, type Side } from '../src/model/types.ts';
 import { FIXTURES, hasFixture, loadFixture } from './fixtures.ts';
 
 const SIDES: Side[] = ['away', 'home'];
@@ -85,6 +85,21 @@ for (const fx of FIXTURES) {
         put('FGA', attempts('FG')); put('3PA', attempts('3PT')); put('FTA', attempts('FT')); put('BLK', Number(stat('BLK')));
       }
       for (const col of cols) expect({ col, counts: mine[col] }).toEqual({ col, counts: box[col] });
+    });
+
+    // The court view puts a three outside the arc and a two inside it only if the spot is mapped
+    // right: ESPN's coordinates, the basket at (25, 1), checked against the 1784 distances in the
+    // play texts (docs/PROBE_REPORT.md §11). 23.75 ft arc, 22 ft in the corners, 1.6 ft rounding.
+    it('every shot on the court lies on the right side of the three-point line', () => {
+      const seen = new Set<string>();
+      for (const e of timeline) for (const sh of e.state.recentShots ?? []) {
+        if (seen.has(sh.id)) continue;
+        seen.add(sh.id);
+        const d = Math.hypot(sh.x - BASKET.x, sh.y - BASKET.y);
+        if (sh.points === 3) expect(d).toBeGreaterThanOrEqual(22 - 1.6);
+        else expect(d).toBeLessThanOrEqual(23.75 + 1.6);
+      }
+      expect(seen.size).toBeGreaterThan(100);
     });
 
     it('every basket event agrees with the score change it came from', () => {

@@ -26,6 +26,8 @@ export interface CorePlay {
   wallclock: string;
   /** ISO time, minute precision, of the last correction. */
   modified?: string;
+  /** Shot spot in feet (docs/PROBE_REPORT.md §11); a sentinel near -2^31 on plays that are not shots. */
+  coordinate?: { x: number; y: number };
   team?: Ref;
   possessionTeam?: Ref;
   /** An entry can be null, e.g. a technical foul on someone not on the roster (401810405). */

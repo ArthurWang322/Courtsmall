@@ -5,6 +5,7 @@
 import type { GameCard, GameState, PlayLine, Side, TeamRef } from '../model/types.ts';
 import type { Settings } from '../settings/store.ts';
 import { gameColours, visibleColour } from '../render/colour.ts';
+import { courtSvg } from '../render/court.ts';
 import type { Strings } from '../i18n/index.ts';
 
 /** A run is shown from this many unanswered points. 【建議】 */
@@ -91,6 +92,11 @@ export function barView(s: GameState, T: Strings, lines: number, tag?: string, f
       <div class="row play new">${newest}</div>${lines > 1 ? `
       <hr class="divider"><div class="row play old">${older}</div>` : ''}
     </div>`;
+}
+
+/** Court tier: the bar on top, the half court with the latest shots below. `ages`: src/render/court.ts. */
+export function courtView(s: GameState, T: Strings, ages: ReadonlyMap<string, number>, tag?: string, favourite?: string): string {
+  return `<div class="courtwrap">${barView(s, T, 2, tag, favourite)}${courtSvg(s, gameColours(s.teams, favourite), ages)}</div>`;
 }
 
 /** No game to show: a message, and when the next one tips off. */

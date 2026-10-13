@@ -47,6 +47,27 @@ export interface Basket {
   clock: number;
 }
 
+/**
+ * One field-goal attempt on the half court, for the court view. ESPN's coordinates in feet:
+ * x 0-50 across, y away from the baseline, the basket at (25, 1) (docs/PROBE_REPORT.md §11).
+ * Both teams' shots are drawn on the same basket.
+ */
+export interface Shot {
+  /** ESPN play id. */
+  id: string;
+  side: Side;
+  made: boolean;
+  points: 2 | 3;
+  x: number;
+  y: number;
+}
+
+/** Where the basket is in shot coordinates. */
+export const BASKET = { x: 25, y: 1 } as const;
+
+/** How many shots the state keeps for the court view. */
+export const RECENT_SHOTS = 8;
+
 /** Points one side has scored since the other side last scored. */
 export interface Run {
   side: Side;
@@ -105,6 +126,8 @@ export interface GameState {
   recentPlays?: readonly PlayLine[];
   /** A timeout or review is the latest play: the clock is stopped for it. Cleared by the next play. */
   stoppage?: StoppageKind;
+  /** The latest field-goal attempts, oldest first, at most `RECENT_SHOTS`. Free throws have no spot. */
+  recentShots?: readonly Shot[];
   run?: Run;
   /** Epoch ms of the moment this state describes. */
   at?: number;

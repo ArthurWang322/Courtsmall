@@ -19,9 +19,10 @@ body { color: var(--text); font: 13px/1.35 var(--font); user-select: none; -webk
 .mono { font-family: var(--mono); font-variant-numeric: tabular-nums; }
 .grow { flex: 1; }
 .dot { width: 9px; height: 9px; border-radius: 50%; flex: 0 0 9px; box-shadow: 0 0 0 1.5px color-mix(in srgb, var(--text) 60%, transparent); }
-/* The team with the ball. */
-.dot.ball { box-shadow: 0 0 0 2px var(--accent); }
-.sc { display: inline-flex; align-items: center; gap: 6px; font-variant-numeric: tabular-nums; }
+/* The team with the ball: a ring with a gap, so it shows on any team colour (gold teams included). */
+.dot.ball { box-shadow: 0 0 0 1.5px var(--background), 0 0 0 3px var(--text); }
+/* Room for the ring: rows clip what overflows them. */
+.sc { display: inline-flex; align-items: center; gap: 6px; font-variant-numeric: tabular-nums; padding: 0 4px; }
 .sc b { font-weight: 600; }
 .abbr { color: var(--muted); }
 .tag { color: var(--accent); font-size: 11px; margin: 0 8px; }
@@ -48,3 +49,21 @@ body { color: var(--text); font: 13px/1.35 var(--font); user-select: none; -webk
 .settings button.done { border-color: var(--accent); color: var(--accent); }
 .settings .none { justify-content: center; }
 .settings .check { font-size: 12px; color: var(--muted); display: flex; align-items: center; gap: 6px; }
+
+/* Court tier (src/render/court.ts). One SVG unit is one foot. */
+#app[data-tier='court'] { align-items: stretch; }
+.courtwrap { display: flex; flex-direction: column; gap: 6px; width: 100%; min-width: 0; }
+.court { flex: 1; min-height: 0; width: 100%; }
+.court .lines path, .court .lines circle { fill: none; stroke: var(--border); stroke-width: 0.3; }
+.court .lines .rim { stroke: var(--muted); }
+.court .mark.miss { stroke-width: 0.4; }
+.court .ball { fill: var(--accent); transform-box: view-box; animation: fly 550ms ease-in both; }
+.court .mark.fresh { animation: appear 350ms ease-out both; }
+/* A shot's ball travels to the rim on a short arc, then goes. */
+@keyframes fly {
+  0% { transform: translate(0, 0); }
+  50% { transform: translate(calc(var(--dx) * .5), calc(var(--dy) * .5 - 4px)); }
+  100% { transform: translate(var(--dx), var(--dy)); opacity: 0; }
+}
+@keyframes appear { from { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .court .ball { display: none; } .court .mark.fresh { animation: none; } }

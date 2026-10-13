@@ -1,7 +1,7 @@
 // ESPN plays -> normalized timeline. The score always comes from the plays' running
 // `awayScore` / `homeScore`, never from adding up points ourselves.
 
-import { RECENT_PLAYS, type Basket, type FoulKind, type GameEvent, type GameState, type GameStatus, type PlayerRef, type PlayLine, type Points, type Side, type StoppageKind, type TeamRef, type TimelineEntry } from '../../model/types.ts';
+import { RECENT_PLAYS, RECENT_SHOTS, type Basket, type FoulKind, type GameEvent, type GameState, type GameStatus, type PlayerRef, type PlayLine, type Points, type Side, type StoppageKind, type TeamRef, type TimelineEntry } from '../../model/types.ts';
 import { refId, type CorePlay, type GameFeed } from './feed-types.ts';
 
 const END_PERIOD = '412';
@@ -128,6 +128,14 @@ export function buildTimeline(feed: GameFeed): TimelineEntry[] {
       remember(ev);
       events.push(ev);
     }
+
+    // A field goal with a real spot (non-shots carry a sentinel near -2^31) goes on the court.
+    const { x, y } = play.coordinate ?? { x: NaN, y: NaN };
+    const made = events.find((e): e is Extract<GameEvent, { type: 'basket' }> => e.type === 'basket');
+    const shotSide = made?.basket.side ?? sideFor(who('shooter'));
+    const points = play.pointsAttempted;
+    if (play.shootingPlay && (points === 2 || points === 3) && Math.abs(x) < 1000 && Math.abs(y) < 1000 && shotSide)
+      next.recentShots = [...(next.recentShots ?? []), { id: play.id, side: shotSide, made: play.scoringPlay, points: points as 2 | 3, x, y }].slice(-RECENT_SHOTS);
 
     for (const ev of playEvents(play, who, sideFor)) {
       if (ev.type === 'stoppage') next.stoppage = ev.kind;
