@@ -120,7 +120,7 @@ export function ballAt(s: Shot, t: number): { phase: Phase; ball?: P3; v?: numbe
   const spot = spotOf(s);
   const release = { ...spot, z: RELEASE_Z };
   const T = flightSeconds(s);
-  if (t < WINDUP_SECONDS) return { phase: 'windup', ball: { ...release, z: RELEASE_Z - 2 + 2 * jump(t) } };
+  if (t < WINDUP_SECONDS) return { phase: 'windup', ball: release };
   const u = (t - WINDUP_SECONDS) / T;
   if (u < 1) {
     // A parabola from the release to the rim, its top higher for a longer shot.
@@ -139,12 +139,6 @@ export function ballAt(s: Shot, t: number): { phase: Phase; ball?: P3; v?: numbe
   const a = bounceAngle(s.id);
   const z = RIM_Z * (1 - v) + 12 * v * (1 - v);
   return { phase: 'bounce', ball: { x: BASKET.x + Math.cos(a) * BOUNCE_FEET * v, y: BASKET.y + Math.sin(a) * BOUNCE_FEET * v, z: Math.max(0, z) }, v };
-}
-
-/** The shooter's jump, feet off the floor: up through the release, down soon after. */
-function jump(t: number): number {
-  const k = t / (WINDUP_SECONDS + 0.35);
-  return k >= 1 ? 0 : 1.6 * Math.sin(Math.PI * k);
 }
 
 /** An ellipse lying flat at height `p.z`, radius in feet. */
@@ -173,7 +167,7 @@ export function shotMarks(shots: readonly Shot[], colours: Record<Side, string>,
 }
 
 /**
- * One shot, `t` seconds after it appeared: the shooter jumping, the ball with a short trail and its
+ * One shot, `t` seconds after it appeared: the shooter's dot, the ball with a short trail and its
  * shadow, the net swishing on a make or the rim shaking on a miss, and on a make the points rising
  * from the spot with a ring spreading on the floor (bigger for three).
  */
@@ -183,14 +177,13 @@ export function flightSvg(s: Shot, t: number, colour: string): string {
   const spot = spotOf(s);
   const out: string[] = [];
 
-  // The shooter: a team-coloured cylinder that jumps with the release and fades after it.
+  // The shooter: a dot in the team's colour on the spot, a ring going out from it at the release,
+  // fading once the ball is away.
   const shooterOpacity = Math.max(0, 1 - Math.max(0, t - WINDUP_SECONDS) / 0.8);
   if (shooterOpacity > 0) {
-    const lift = jump(t);
-    const feet = { ...spot, z: lift }, head = { ...spot, z: lift + 4.5 };
-    const base = project(feet), top = project(head), w = 2.4 * footAt(spot);
-    out.push(disc(spot, Math.max(0.6, 1.2 - lift * 0.25), `class="shadow" opacity="${f(0.45 * shooterOpacity)}"`),
-      `<g class="shooter" opacity="${f(shooterOpacity)}">${disc(feet, 1.2, `fill="#${colour}"`)}<rect x="${f(base.x - w / 2)}" y="${f(top.y)}" width="${f(w)}" height="${f(base.y - top.y)}" fill="#${colour}"/>${disc(head, 1.2, `fill="#${colour}" class="cap"`)}</g>`);
+    const k = Math.min(1, t / (WINDUP_SECONDS + 0.35));
+    out.push(disc(spot, 1.2 + 2 * k, `class="burst" fill="none" stroke="#${colour}" opacity="${f((1 - k) * shooterOpacity)}"`),
+      disc(spot, 1.2, `class="shooter" fill="#${colour}" opacity="${f(shooterOpacity)}"`));
   }
 
   // A make: the net stretches and lights up as the ball drops through; then the points rise.

@@ -102,7 +102,6 @@ button { font: inherit; color: inherit; border: 0; background: transparent; padd
 .court .mark.miss { stroke-width: 0.8; }
 .court .shadow { fill: #000; }
 .court .ball { fill: #ef7d33; stroke: rgba(0, 0, 0, .4); stroke-width: 0.3; }
-.court .shooter .cap { filter: brightness(1.25); }
 .court .net { fill: none; stroke: rgba(243, 239, 231, .5); stroke-width: 0.25; }
 .court .rim.hit { stroke: #ffb27a; stroke-width: 1.2; }
 .court .trail { fill: #ef7d33; }
