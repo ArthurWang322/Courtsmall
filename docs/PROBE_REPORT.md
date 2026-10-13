@@ -99,7 +99,7 @@ ESPN core API（`sports.core.api.espn.com/v2/sports/basketball/leagues/nba/event
 - 補一個低頻的完整重抓（`plays?limit=1000`，整場約 384–540 筆），用來接住插在中間的事件與舊事件的更正。頻率【待決，M2 定】。
 - 更正只更新狀態，不重播事件，同 Basesmall 的做法。
 
-## 8. M1 轉換層驗收時的發現
+## 7. M1 轉換層驗收時的發現
 
 `tests/timeline.test.ts` 用 14 場夾具（`node scripts/probe/06-fixtures.mjs`，site summary 加 core API 的 plays）對照官方數字。
 
@@ -107,7 +107,7 @@ ESPN core API（`sports.core.api.espn.com/v2/sports/basketball/leagues/nba/event
 - 副作用：重播到錯誤的那一筆時，畫面會短暫顯示錯的比分。這是資料源本身的狀態，暫時不修。
 - **`possessionTeam` 是這一球進攻的那一隊**（投進時是得分隊，防守籃板時是籃板隊）。投進以後到下一筆之前，球權仍顯示得分隊。目前照官方欄位，不自行推算換邊。
 
-## 9. 還沒驗證
+## 8. 還沒驗證
 
 - 一場打完後，`modified` 最晚會到什麼時候（今天量的比賽還沒打完）。【未驗證】
 - `plays?limit=1000` 的完整重抓有多大。【未驗證，M2 量】

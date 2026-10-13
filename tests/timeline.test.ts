@@ -86,7 +86,7 @@ describe('run', () => {
     expect(t.at(-1)!.state.run).toEqual({ side: 'home', points: 1 });
   });
 
-  // Seen in real games (docs/PROBE_REPORT.md §8): the score drops on a timeout and comes back on a
+  // Seen in real games (docs/PROBE_REPORT.md §7): the score drops on a timeout and comes back on a
   // turnover. Crediting that turnover as a basket would name the wrong player and break the run.
   it('a score that comes back on a non-scoring play is a correction, not a basket', () => {
     const t = buildTimeline(feed([play(0, 2, 'H'), play(2, 2, 'A'), play(2, 0), play(2, 2)]));
