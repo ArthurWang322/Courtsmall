@@ -1,6 +1,6 @@
 [package]
 name = "courtsmall"
-version = "0.0.0"
+version = "0.1.0"
 description = "Basketball, but small. Unofficial desktop companion for following live NBA games."
 license = "Apache-2.0"
 edition = "2021"

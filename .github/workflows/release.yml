@@ -1,0 +1,54 @@
+# A version tag (v0.1.0) builds Windows and macOS into a DRAFT release: nothing is public until the
+# maintainer reads it and presses Publish. Windows: an NSIS installer (per user, no admin). macOS: a
+# universal app and dmg, ad-hoc signed (not notarized: open it with right-click, Open, the first
+# time). Based on Basesmall's release workflow.
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            args: --bundles nsis
+            rust_targets: ''
+          - os: macos-latest
+            args: --target universal-apple-darwin --bundles app,dmg
+            rust_targets: aarch64-apple-darwin,x86_64-apple-darwin
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.rust_targets }}
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+      # The lock file was made with --legacy-peer-deps (npm 10 could not resolve vitest's peers).
+      - run: npm ci --legacy-peer-deps
+      - run: npm test
+      - uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tagName: ${{ github.ref_name }}
+          releaseName: Courtsmall ${{ github.ref_name }}
+          releaseBody: |
+            Windows: download the `-setup.exe` and run it. It is not code-signed, so Windows SmartScreen may warn the first time: choose More info, then Run anyway.
+            macOS: download the `.dmg`. It is not notarized: the first time, right-click the app and choose Open.
+            Not affiliated with or endorsed by the NBA, its teams or ESPN.
+          releaseDraft: true
+          prerelease: false
+          args: ${{ matrix.args }}

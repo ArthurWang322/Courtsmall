@@ -26,13 +26,16 @@
 
 ## Install
 
-There is no release yet. Build it from source (below); the app bundle lands in `src-tauri/target/release/bundle/`.
+Download the installer for your system from [Releases](https://github.com/ArthurWang322/Courtsmall/releases): nothing else to install.
 
-It is developed and tested on macOS. The build is not notarised, so the first time, open it from Finder with right-click → Open.
+- **Windows**: the `-setup.exe`. It installs for your user, no admin needed. It is not code-signed, so the first time Windows SmartScreen may warn: choose *More info*, then *Run anyway*.
+- **macOS**: the `.dmg` (Apple silicon and Intel). It is not notarized, so the first time, right-click the app and choose *Open*.
+
+It is developed on macOS; the Windows build is new and less tried.
 
 ## Build from source
 
-You need Node.js (24 recommended) and Rust ([rustup](https://rustup.rs)).
+For development. You need Node.js (24 recommended) and Rust ([rustup](https://rustup.rs)).
 
 ```bash
 npm install            # with npm 10 (Node 23), use: npm install --legacy-peer-deps
@@ -40,6 +43,8 @@ npm test
 npx tauri dev          # run the app
 npx tauri build        # build the app bundle and installer
 ```
+
+A version tag (`git tag v0.1.0 && git push --tags`) builds the Windows and macOS installers on GitHub Actions into a draft release, to check and publish.
 
 Tests that check the adapter against ESPN's box scores need recorded games, which are not committed:
 
@@ -77,5 +82,7 @@ Courtsmall 是一個浮在桌面角落的小視窗，用 ESPN 公開的資料顯
 - **最愛球隊**：自動跟它的比賽，在比賽列表裡標星號；沒設定時跟最緊張的比賽。
 - **開賽前**倒數，**終場後**顯示各節比分與雙方各項領先者。
 - 開賽、終場、關鍵時刻的通知，各自可以開關（目前系統通知還無法顯示，正在查原因）。
+
+**安裝**：到 [Releases](https://github.com/ArthurWang322/Courtsmall/releases) 下載安裝檔，不需要裝其他東西。Windows 下載 `-setup.exe`（第一次若出現 SmartScreen 警告，按「其他資訊 → 仍要執行」）；macOS 下載 `.dmg`（第一次請按右鍵 →「打開」）。
 
 全部在你的電腦上執行，沒有伺服器。非 NBA、球隊或 ESPN 官方產品。
