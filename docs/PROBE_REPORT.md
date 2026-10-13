@@ -103,5 +103,5 @@ ESPN core API（`sports.core.api.espn.com/v2/sports/basketball/leagues/nba/event
 
 - 一場打完後，`modified` 最晚會到什麼時候（今天量的比賽還沒打完）。【未驗證】
 - `plays?limit=1000` 的完整重抓有多大。【未驗證，M2 量】
-- ESPN 的使用條款。這是非官方 API，沒有公開授權。【待決】
+- ~~ESPN 的使用條款~~ 【已決定，2026-10-13】維護者接受，見 `PLAN.md` Q2。
 - 台灣封鎖 `cdn.nba.com` 的原因是公司網路還是地區。【待決】
