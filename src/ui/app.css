@@ -81,12 +81,13 @@ button { font: inherit; color: inherit; border: 0; background: transparent; padd
 .court .shooter .cap { filter: brightness(1.25); }
 .court .swish { stroke-width: 0.8; }
 
-/* The toolbar: sizes, games, settings. Out of the way until the pointer is over the window. */
-.controls { position: absolute; top: 4px; right: 6px; display: flex; align-items: center; gap: 2px; padding: 2px;
+/* The toolbar: sizes, games, settings. Out of the way until the pointer is over the window, and
+   then bottom right, over the quietest line (the older play), not the score or the clock. */
+.controls { position: absolute; bottom: 4px; right: 6px; display: flex; align-items: center; gap: 2px; padding: 2px;
   border-radius: 8px; background: color-mix(in srgb, var(--background) 92%, transparent); border: 1px solid var(--border);
   opacity: 0; transition: opacity .15s; }
 #app:hover .controls { opacity: 1; }
-#app[data-tier='dot'] .controls { top: 50%; transform: translateY(-50%); right: 4px; border-radius: 999px; }
+#app[data-tier='dot'] .controls { bottom: auto; top: 50%; transform: translateY(-50%); right: 4px; border-radius: 999px; }
 .controls .icon, .panel .icon { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 20px;
   border-radius: 6px; color: var(--muted); cursor: pointer; }
 .controls .icon:hover, .panel .icon:hover { color: var(--text); background: var(--panel); }
