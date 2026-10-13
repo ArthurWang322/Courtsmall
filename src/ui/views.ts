@@ -192,12 +192,20 @@ export function pregameView(teams: GameCard['teams'], start: number, when: strin
 }
 
 /** Choosing a team and the notices. Buttons carry data-* attributes; src/ui/main.ts handles clicks. */
-export function settingsView(teams: readonly TeamRef[], s: Settings, T: Strings): string {
-  // The favourite, from a drop-down: none first (follow the closest game), then the teams by full name.
+export function settingsView(teams: readonly TeamRef[], s: Settings, T: Strings, pickerOpen = false): string {
+  // The favourite, from a drop-down of our own (a native one opens all 30 teams at once): a button
+  // with the choice, and when `pickerOpen`, a short scrolling list under it, none first, then the
+  // teams by full name.
   const fav = teams.find((t) => s.favourites.includes(t.id));
-  const option = (value: string, label: string, on: boolean) => `<option value="${esc(value)}"${on ? ' selected' : ''}>${esc(label)}</option>`;
-  const picker = `<div class="favourite">${fav ? cardDot(fav) : '<i class="dot none"></i>'}<select data-favourite aria-label="${esc(T.chooseTeam)}">`
-    + option('', T.noFavourite, !fav) + [...teams].sort((a, b) => a.name.localeCompare(b.name)).map((t) => option(t.id, t.name, t.id === fav?.id)).join('') + '</select></div>';
+  // The list is names only: the team list has no colours (src/data/espn/fetch.ts allTeams). The
+  // choice shows its colour once its schedule has brought it.
+  const item = (id: string, label: string) =>
+    `<button class="fav-item${(fav?.id ?? '') === id ? ' on' : ''}" data-fav-pick="${esc(id)}">${esc(label)}</button>`;
+  const list = pickerOpen
+    ? `<div class="fav-list">${item('', T.noFavourite)}${[...teams].sort((a, b) => a.name.localeCompare(b.name)).map((t) => item(t.id, t.name)).join('')}</div>`
+    : '';
+  const mark = fav?.color ? cardDot(fav) : '<i class="dot none"></i>';
+  const picker = `<div class="favourite"><button class="fav-current" data-fav-open aria-expanded="${pickerOpen}">${mark}<span>${esc(fav?.name ?? T.noFavourite)}</span><i class="caret"></i></button>${list}</div>`;
   const check = (key: keyof Settings['notify'], label: string) =>
     `<label class="check"><input type="checkbox" data-notify="${key}"${s.notify[key] ? ' checked' : ''}> ${esc(label)}</label>`;
   return `<div class="settings">

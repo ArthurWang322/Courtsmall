@@ -105,6 +105,8 @@ const shotSeen = new Map<string, number>();
 /** When each side's score last went up, epoch ms, for the score's jump (src/ui/views.ts). */
 const scoreChangedAt: Partial<Record<Side, number>> = {};
 let sizeBeforePanel: { w: number; h: number } | undefined;
+/** The favourite team's list is open on the settings page. */
+let pickerOpen = false;
 
 /** ESPN's day `offset` days from today, "YYYYMMDD": ESPN counts days in US Eastern time. */
 const espnDate = (offset: number) =>
@@ -156,7 +158,13 @@ function render(): void {
   // A result in a court-sized window keeps the court's layout: the score where it always is, the
   // points per period and the leaders where the court would be.
   app.dataset.tier = panel ? 'panel' : tier;
-  if (panel === 'settings') { app.innerHTML = settingsView(teams, settings, T); return; }
+  if (panel === 'settings') {
+    app.innerHTML = settingsView(teams, settings, T, pickerOpen);
+    // The list opens on the current choice: scroll the list only (scrollIntoView would move the page too).
+    const list = app.querySelector<HTMLElement>('.fav-list'), on = app.querySelector<HTMLElement>('.fav-item.on');
+    if (list && on) list.scrollTop = on.offsetTop - (list.clientHeight - on.offsetHeight) / 2;
+    return;
+  }
   if (panel === 'games') { app.innerHTML = gamesView(dayLabel(gamesDay), dayList, T, tipOff, currentId, settings.favourites); return; }
   const tag = replaying ? T.replay : undefined;
   // Below the dot the toolbar has a row of its own; the dot has no room, so there it shows on hover.
@@ -328,6 +336,7 @@ async function colourFavourite(): Promise<void> {
 
 async function closePanel(): Promise<void> {
   panel = undefined;
+  pickerOpen = false;
   if (shell && sizeBeforePanel) {
     const { LogicalSize } = await import('@tauri-apps/api/window');
     await (await win()).setSize(new LogicalSize(sizeBeforePanel.w, sizeBeforePanel.h));
@@ -342,8 +351,22 @@ async function setTier(t: Tier): Promise<void> {
 }
 
 app.addEventListener('click', (e) => {
-  const el = (e.target as HTMLElement).closest<HTMLElement>('[data-tier], [data-open], [data-day], [data-game], [data-done], [data-notify], [data-theme-toggle], [data-pick-theme]');
+  const el = (e.target as HTMLElement).closest<HTMLElement>('[data-tier], [data-open], [data-day], [data-game], [data-done], [data-notify], [data-theme-toggle], [data-pick-theme], [data-fav-open], [data-fav-pick]');
+  // The favourite's list: its button opens and closes it, a team in it is picked, a click
+  // anywhere else closes it.
+  if (pickerOpen && !el?.closest('.favourite')) { pickerOpen = false; render(); }
   if (!el) return;
+  if (el.dataset.favOpen !== undefined) { pickerOpen = !pickerOpen; render(); return; }
+  if (el.dataset.favPick !== undefined) {
+    pickerOpen = false;
+    settings = { ...settings, favourites: el.dataset.favPick ? [el.dataset.favPick] : [] };
+    saveSettings(settings);
+    render();
+    void colourFavourite();
+    // A new favourite: drop the game on screen unless it is in progress (decide() never leaves one).
+    if (!params.has('game')) { teamCache = undefined; void decideNow(); }
+    return;
+  }
   // The toolbar's button flips to the other theme; the settings page offers system, dark, light.
   if (el.dataset.themeToggle !== undefined) { setTheme(resolvedTheme() === 'dark' ? 'light' : 'dark'); return; }
   if (el.dataset.pickTheme) { setTheme(el.dataset.pickTheme as ThemeChoice); return; }
@@ -367,17 +390,7 @@ app.addEventListener('click', (e) => {
   }
 });
 
-// The favourite team, picked from the drop-down on the settings page (one team, or none).
-app.addEventListener('change', (e) => {
-  const el = e.target as HTMLSelectElement;
-  if (el.dataset.favourite === undefined) return;
-  settings = { ...settings, favourites: el.value ? [el.value] : [] };
-  saveSettings(settings);
-  render();
-  void colourFavourite();
-  // A new favourite: drop the game on screen unless it is in progress (decide() never leaves one).
-  if (!params.has('game')) { teamCache = undefined; void decideNow(); }
-});
+
 
 // The window has no title bar or border: press and drag moves it; the toolbar along the bottom
 // (on hover, in the dot) switches the size and opens the panels. Outside the desktop shell (npm run dev in a browser)
