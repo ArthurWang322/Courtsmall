@@ -34,5 +34,14 @@ export function notices(before: GameState | undefined, after: GameState, setting
   return out;
 }
 
+/**
+ * What to compare a game's first state with. The app starts following a game only once it is on
+ * (before that it shows the countdown), so it never sees the game scheduled; if the schedule last
+ * had it scheduled, it has just started and the tip-off is news. Otherwise, as when the app opens
+ * in the third quarter, there is nothing to compare with and no start is announced.
+ */
+export const assumedBefore = (first: GameState, wasScheduled: boolean): GameState | undefined =>
+  wasScheduled ? { ...first, status: 'scheduled' } : undefined;
+
 export const leader = (s: GameState): Side | undefined =>
   s.score.away === s.score.home ? undefined : s.score.away > s.score.home ? 'away' : 'home';

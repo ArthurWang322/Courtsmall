@@ -22,7 +22,7 @@ import type { PaceMode } from '../data/replay/pacing.ts';
 import { decide, STAY_AFTER_FINAL_MS, type Decision } from '../follow/decide.ts';
 import { langOf, STRINGS } from '../i18n/index.ts';
 import { Notifier } from '../notify/notifier.ts';
-import { notices } from '../notify/rules.ts';
+import { assumedBefore, notices } from '../notify/rules.ts';
 import { playLinesAt, TIER_PRESET, tierOf, TOOLBAR_H, type Tier } from '../render/tiers.ts';
 import { drawFlights, shotSeconds } from '../render/court.ts';
 import { gameColours } from '../render/colour.ts';
@@ -70,6 +70,8 @@ let replaying = false;
 let resultOnly = false;
 let unsubscribe: Unsubscribe | undefined;
 let upcoming: GameCard | undefined;
+/** Games the schedule last had as not started: one of them coming on has just tipped off. */
+const knownScheduled = new Set<string>();
 let message = T.loading;
 let messageSub: string | undefined;
 /** A panel over the game: the games list or the settings. */
@@ -214,7 +216,7 @@ function follow(id: string, how: 'live' | 'replay' | 'result'): void {
     onEvent: () => {},
     onState: (s: GameState) => {
       // Notices for live games only: a replay already happened.
-      if (!replaying) notifier.send(notices(state, s, settings.notify));
+      if (!replaying) notifier.send(notices(state ?? assumedBefore(s, knownScheduled.has(id)), s, settings.notify));
       if (s.status === 'final' && finalAt === undefined) finalAt = Date.now();
       // Shots already on the court when the game is first shown do not fly in.
       const seenAt = state ? Date.now() : Date.now() - 60_000;
@@ -283,6 +285,7 @@ async function decideNow(): Promise<void> {
   try {
     const today = await dayGames(fetchJson);
     const teamSchedule = settings.favourites.length ? await scheduleOf(settings.favourites) : undefined;
+    for (const g of [...today, ...(teamSchedule ?? [])]) if (g.status === 'scheduled') knownScheduled.add(g.id); else knownScheduled.delete(g.id);
     const current = currentId && state ? { id: currentId, status: state.status, ...(finalAt !== undefined ? { finalAt } : {}) } : undefined;
     apply(decide({ now: Date.now(), today, favourites: settings.favourites, ...(teamSchedule ? { teamGames: teamSchedule } : {}), ...(current ? { current } : {}) }));
   } catch (e) {
