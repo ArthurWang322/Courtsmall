@@ -5,7 +5,7 @@
 // Usage (with `npm run dev` or `npx tauri dev` running):
 //   node scripts/screenshot.mjs "<path and query>" <width> <height> <waitMs> <name> [hover|click:<selector>]
 // `hover`: move the pointer over the window first (the toolbar shows on hover).
-// `click:<selector>`: click that element first, then wait a second and a half.
+// `click:<selector>[ >> <selector>...]`: click those elements in turn, a second and a half apart.
 // `flight[:skip]`: wait for a shot in the air on the court (after skipping `skip` of them), then
 // take 18 frames 120 ms apart as <name>-00.png ... <name>-17.png.
 //   node scripts/screenshot.mjs "/?game=401810362&replay&fixture&lang=zh-TW" 360 96 5000 bar
@@ -36,8 +36,11 @@ try {
   await send('Page.navigate', { url: `http://localhost:1420${path}` });
   await new Promise((r) => setTimeout(r, Number(wait)));
   if (hover?.startsWith('click:')) {
-    await send('Runtime.evaluate', { expression: `document.querySelector(${JSON.stringify(hover.slice(6))})?.click()` });
-    await new Promise((r) => setTimeout(r, 1500));
+    // Several clicks in turn: click:<a> >> <b>
+    for (const sel of hover.slice(6).split('>>').map((x) => x.trim())) {
+      await send('Runtime.evaluate', { expression: `document.querySelector(${JSON.stringify(sel)})?.click()` });
+      await new Promise((r) => setTimeout(r, 1500));
+    }
   } else if (hover) {
     await send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: Number(w) / 2, y: Number(h) / 2 });
     await new Promise((r) => setTimeout(r, 400));

@@ -27,7 +27,7 @@ import { playLinesAt, TIER_PRESET, tierOf, TOOLBAR_H, type Tier } from '../rende
 import { drawFlights, shotSeconds } from '../render/court.ts';
 import { gameColours, useTheme, type Theme } from '../render/colour.ts';
 import { loadSettings, saveSettings, type Settings, type ThemeChoice } from '../settings/store.ts';
-import { barView, controlsView, courtView, dotView, gamesView, JUMP_MS, messageView, pregameView, settingsView, type ScoreAges } from './views.ts';
+import { barView, controlsView, courtView, dotView, favIn, gamesView, JUMP_MS, messageView, pregameView, settingsView, type ScoreAges } from './views.ts';
 
 // In `npm run dev`, VITE_PARAMS fills in for the URL, which the desktop window does not have:
 // VITE_PARAMS='game=401898721&replay' npx tauri dev
@@ -147,7 +147,7 @@ function animate(): void {
   // A flight just ended: redraw so its mark is on the floor.
   if (flying !== flyingIds) { flyingIds = flying; render(); }
   const now = Date.now();
-  if (!reducedMotion.matches && drawFlights(app, shots, gameColours(state.teams, settings.team), (id) => ageOf(id, now)) && !frame)
+  if (!reducedMotion.matches && drawFlights(app, shots, gameColours(state.teams, favIn(state.teams, settings.favourites)), (id) => ageOf(id, now)) && !frame)
     frame = requestAnimationFrame(animate);
 }
 
@@ -157,7 +157,7 @@ function render(): void {
   // points per period and the leaders where the court would be.
   app.dataset.tier = panel ? 'panel' : tier;
   if (panel === 'settings') { app.innerHTML = settingsView(teams, settings, T); return; }
-  if (panel === 'games') { app.innerHTML = gamesView(dayLabel(gamesDay), dayList, T, tipOff, currentId); return; }
+  if (panel === 'games') { app.innerHTML = gamesView(dayLabel(gamesDay), dayList, T, tipOff, currentId, settings.favourites); return; }
   const tag = replaying ? T.replay : undefined;
   // Below the dot the toolbar has a row of its own; the dot has no room, so there it shows on hover.
   const contentHeight = tier === 'dot' ? app.clientHeight : app.clientHeight - TOOLBAR_H;
@@ -165,15 +165,15 @@ function render(): void {
   // A game not started yet: the tip-off and a countdown, whether it is followed or the team's next.
   const pre = state?.status === 'scheduled' && state.start !== undefined ? { teams: state.teams, start: state.start }
     : !state && upcoming ? { teams: upcoming.teams, start: upcoming.start } : undefined;
-  if (pre) body = pregameView(pre.teams, pre.start, whenOf({ start: pre.start }), Date.now(), T, tier, settings.team);
+  if (pre) body = pregameView(pre.teams, pre.start, whenOf({ start: pre.start }), Date.now(), T, tier, settings.favourites);
   else if (state) {
     const now = Date.now();
     const ages: ScoreAges = {};
     for (const side of ['away', 'home'] as const) { const at = scoreChangedAt[side]; if (at !== undefined && now - at < JUMP_MS) ages[side] = now - at; }
-    body = tier === 'dot' ? dotView(state, T, tag, settings.team, ages)
+    body = tier === 'dot' ? dotView(state, T, tag, settings.favourites, ages)
       // A finished game picked from the list is its result: no court, whatever the size.
-      : tier === 'court' && !resultOnly ? courtView(state, T, landed, tag, settings.team, ages)
-      : barView(state, T, playLinesAt(contentHeight), tag, settings.team, resultOnly, ages, tier === 'court');
+      : tier === 'court' && !resultOnly ? courtView(state, T, landed, tag, settings.favourites, ages)
+      : barView(state, T, playLinesAt(contentHeight), tag, settings.favourites, resultOnly, ages, tier === 'court');
   }
   else body = messageView(message, tier === 'bar' ? messageSub : undefined);
   app.innerHTML = tier === 'dot' ? body + controlsView(tier, T) : `<div class="content">${body}</div>${controlsView(tier, T)}`;
@@ -249,12 +249,14 @@ function follow(id: string, how: 'live' | 'replay' | 'result'): void {
   unsubscribe = replay.subscribe(id, handlers);
 }
 
-let teamCache: { team: string; at: number; games: GameCard[] } | undefined;
-async function scheduleOf(team: string): Promise<GameCard[]> {
-  if (teamCache?.team === team && Date.now() - teamCache.at < TEAM_SCHEDULE_TTL_MS) return teamCache.games;
-  // The current part of the season (the preseason in October), then the regular season.
-  const games = [...(await teamGames(fetchJson, team)), ...(await teamGames(fetchJson, team, 2))];
-  teamCache = { team, at: Date.now(), games };
+let teamCache: { key: string; at: number; games: GameCard[] } | undefined;
+/** The favourites' games: the current part of the season (the preseason in October), then the regular season. */
+async function scheduleOf(teams: readonly string[]): Promise<GameCard[]> {
+  const key = teams.join();
+  if (teamCache?.key === key && Date.now() - teamCache.at < TEAM_SCHEDULE_TTL_MS) return teamCache.games;
+  const games: GameCard[] = [];
+  for (const team of teams) games.push(...(await teamGames(fetchJson, team)), ...(await teamGames(fetchJson, team, 2)));
+  teamCache = { key, at: Date.now(), games };
   return games;
 }
 
@@ -277,9 +279,9 @@ async function decideNow(): Promise<void> {
   deciding = true;
   try {
     const today = await dayGames(fetchJson);
-    const teamSchedule = settings.team ? await scheduleOf(settings.team) : undefined;
+    const teamSchedule = settings.favourites.length ? await scheduleOf(settings.favourites) : undefined;
     const current = currentId && state ? { id: currentId, status: state.status, ...(finalAt !== undefined ? { finalAt } : {}) } : undefined;
-    apply(decide({ now: Date.now(), today, ...(settings.team ? { team: settings.team } : {}), ...(teamSchedule ? { teamGames: teamSchedule } : {}), ...(current ? { current } : {}) }));
+    apply(decide({ now: Date.now(), today, favourites: settings.favourites, ...(teamSchedule ? { teamGames: teamSchedule } : {}), ...(current ? { current } : {}) }));
   } catch (e) {
     console.warn(e);
     if (!state && !upcoming) { message = T.offline; render(); }
@@ -352,14 +354,14 @@ app.addEventListener('click', (e) => {
     saveSettings(settings);
     return;
   }
+  // One favourite (the maintainer's call, 2026-10-13): a tap picks a team, another replaces it,
+  // the same one again clears it.
   const team = el.dataset.team ?? '';
-  const changed = team !== (settings.team ?? '');
-  const { team: _, ...rest } = settings;
-  settings = team ? { ...rest, team } : rest;
+  settings = { ...settings, favourites: settings.favourites.includes(team) ? [] : [team] };
   saveSettings(settings);
   render();
-  // A new team: drop the game on screen unless it is in progress (decide() never leaves one).
-  if (changed && !params.has('game')) { teamCache = undefined; void decideNow(); }
+  // A new favourite: drop the game on screen unless it is in progress (decide() never leaves one).
+  if (!params.has('game')) { teamCache = undefined; void decideNow(); }
 });
 
 // The window has no title bar or border: press and drag moves it; the toolbar along the bottom

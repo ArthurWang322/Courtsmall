@@ -18,7 +18,7 @@ describe('decide', () => {
   it('never leaves a game in progress', () => {
     const today = [live('1', 'a', 'b', 1, 600, 2, 30), live('2', 'den', 'phi', 4, 10, 100, 100)];
     expect(decide({ now: T0, today, current: { id: '1', status: 'live' } })).toEqual({ kind: 'game', id: '1', why: 'current' });
-    expect(decide({ now: T0, team: 'den', today, current: { id: '1', status: 'break' } })).toEqual({ kind: 'game', id: '1', why: 'current' });
+    expect(decide({ now: T0, favourites: ['den'], today, current: { id: '1', status: 'break' } })).toEqual({ kind: 'game', id: '1', why: 'current' });
   });
 
   it('keeps a finished game up for a while, then moves on', () => {
@@ -28,21 +28,32 @@ describe('decide', () => {
     expect(decide({ now: T0 + STAY_AFTER_FINAL_MS, today, current })).toEqual({ kind: 'game', id: '2', why: 'tense' });
   });
 
+  // Two favourites playing at once: the closer game wins, as without favourites.
+  it('follows the tensest of the favourites\' games on', () => {
+    const blowout = live('1', 'den', 'a', 4, 60, 80, 120), close = live('2', 'b', 'phx', 4, 60, 101, 100);
+    expect(decide({ now: T0, favourites: ['den', 'phx'], today: [blowout, close] })).toEqual({ kind: 'game', id: '2', why: 'team' });
+  });
+
+  it("shows the soonest of the favourites' next games when none is on", () => {
+    const later = game('3', 'den', 'a', { start: T0 + 8 * 3600_000 }), sooner = game('4', 'b', 'phx', { start: T0 + 2 * 3600_000 });
+    expect(decide({ now: T0, favourites: ['den', 'phx'], today: [], teamGames: [later, sooner] })).toEqual({ kind: 'upcoming', game: sooner });
+  });
+
   it("follows the team's game when it is on", () => {
     const today = [live('1', 'a', 'b', 4, 10, 100, 100), live('2', 'den', 'phi', 1, 600, 2, 30)];
-    expect(decide({ now: T0, team: 'den', today })).toEqual({ kind: 'game', id: '2', why: 'team' });
+    expect(decide({ now: T0, favourites: ['den'], today })).toEqual({ kind: 'game', id: '2', why: 'team' });
   });
 
   it("shows the team's next game when it is not playing now, today's or another day's", () => {
     const later = game('3', 'den', 'phi', { start: T0 + 5 * 3600_000 });
     const tomorrow = game('4', 'den', 'lal', { start: T0 + 30 * 3600_000 });
-    expect(decide({ now: T0, team: 'den', today: [later], teamGames: [tomorrow, later] })).toEqual({ kind: 'upcoming', game: later });
-    expect(decide({ now: T0, team: 'den', today: [], teamGames: [tomorrow] })).toEqual({ kind: 'upcoming', game: tomorrow });
+    expect(decide({ now: T0, favourites: ['den'], today: [later], teamGames: [tomorrow, later] })).toEqual({ kind: 'upcoming', game: later });
+    expect(decide({ now: T0, favourites: ['den'], today: [], teamGames: [tomorrow] })).toEqual({ kind: 'upcoming', game: tomorrow });
   });
 
   // With a team chosen, other games are not offered on their own: the window is the team's.
   it("does not follow another team's game when the team is off", () => {
-    expect(decide({ now: T0, team: 'den', today: [live('1', 'a', 'b', 4, 10, 100, 100)], teamGames: [] })).toEqual({ kind: 'idle' });
+    expect(decide({ now: T0, favourites: ['den'], today: [live('1', 'a', 'b', 4, 10, 100, 100)], teamGames: [] })).toEqual({ kind: 'idle' });
   });
 
   it('without a team, follows the tensest game on, or waits for the next tip-off', () => {

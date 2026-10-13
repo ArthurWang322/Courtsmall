@@ -47,13 +47,18 @@ export function whenText(s: GameState, T: Strings, tipOff?: string): string {
 
 const hasBall = (s: GameState, side: Side) => s.possession === side && s.status === 'live';
 
+/** The favourite playing in this game, if any (it keeps its colour in a clash). */
+export const favIn = (teams: Record<Side, TeamRef>, favs: readonly string[]) => favs.find((id) => id === teams.away.id || id === teams.home.id);
+/** A star before a favourite team's abbreviation. */
+const star = (t: TeamRef, favs: readonly string[]) => (favs.includes(t.id) ? '<span class="star">★</span>' : '');
+
 /**
  * The dot's score: team dots and the two numbers. The team with the ball gets a triangle in its
  * colour on its outer side, pointing in: "▶● 98 – 101 ●" or "● 98 – 101 ●◀".
- * `favourite`: in a colour clash it keeps its colour.
+ * `favs`: the favourite teams; in a colour clash a favourite keeps its colour.
  */
-function scoreHtml(s: GameState, favourite?: string, ages: ScoreAges = {}): string {
-  const c = gameColours(s.teams, favourite);
+function scoreHtml(s: GameState, favs: readonly string[] = [], ages: ScoreAges = {}): string {
+  const c = gameColours(s.teams, favIn(s.teams, favs));
   const dot = (side: Side) => `<i class="dot" style="background:#${esc(c[side])}"></i>`;
   const arrow = (side: Side) => `<span class="arrow" style="color:#${esc(c[side])}">${hasBall(s, side) ? (side === 'away' ? '▶' : '◀') : ''}</span>`;
   return `${arrow('away')}${dot('away')}${scoreNum(s.score.away, ages.away)}<span class="muted">–</span>${scoreNum(s.score.home, ages.home)}${dot('home')}${arrow('home')}`;
@@ -63,13 +68,13 @@ function scoreHtml(s: GameState, favourite?: string, ages: ScoreAges = {}): stri
  * The bar's score, laid out like a broadcast score bug: one cell per team (a stripe in its colour,
  * the abbreviation, the score), then a cell with the period and clock.
  */
-function scoreBug(s: GameState, T: Strings, tag?: string, favourite?: string, ages: ScoreAges = {}): string {
-  const c = gameColours(s.teams, favourite);
+function scoreBug(s: GameState, T: Strings, tag?: string, favs: readonly string[] = [], ages: ScoreAges = {}): string {
+  const c = gameColours(s.teams, favIn(s.teams, favs));
   // The team with the ball: its whole cell is framed in its colour, with a triangle by the score.
   // `--team` tints the cell (app.css); the stripe and the possession frame use it too.
   const cell = (side: Side) => hasBall(s, side)
-    ? `<div class="cell team ball" style="--team:#${esc(c[side])};border-color:#${esc(c[side])}"><i class="stripe"></i><span class="abbr">${esc(s.teams[side].abbr)}</span>${scoreNum(s.score[side], ages[side])}<span class="ball-mark">◀</span></div>`
-    : `<div class="cell team" style="--team:#${esc(c[side])}"><i class="stripe"></i><span class="abbr">${esc(s.teams[side].abbr)}</span>${scoreNum(s.score[side], ages[side])}<span class="ball-mark"></span></div>`;
+    ? `<div class="cell team ball" style="--team:#${esc(c[side])};border-color:#${esc(c[side])}"><i class="stripe"></i><span class="abbr">${star(s.teams[side], favs)}${esc(s.teams[side].abbr)}</span>${scoreNum(s.score[side], ages[side])}<span class="ball-mark">◀</span></div>`
+    : `<div class="cell team" style="--team:#${esc(c[side])}"><i class="stripe"></i><span class="abbr">${star(s.teams[side], favs)}${esc(s.teams[side].abbr)}</span>${scoreNum(s.score[side], ages[side])}<span class="ball-mark"></span></div>`;
   return `<div class="bug">${cell('away')}${cell('home')}${tag ? `<span class="tag">${esc(tag)}</span>` : '<span class="grow"></span>'}<div class="cell clock mono">${esc(whenText(s, T))}</div></div>`;
 }
 
@@ -106,8 +111,8 @@ export function playLines(s: GameState, T: Strings, count: number): string[] {
  * Dot tier: a pill with the score and the period. The team with the ball has a triangle by its dot.
  * A replay is marked with "↺" (the word does not fit): a replay mistaken for a live game misleads.
  */
-export function dotView(s: GameState, T: Strings, tag?: string, favourite?: string, ages: ScoreAges = {}): string {
-  return `<div class="pill"><span class="sc">${scoreHtml(s, favourite, ages)}</span><span class="when mono">${esc(whenText(s, T))}</span>${tag ? `<span class="tag" title="${esc(tag)}">↺</span>` : ''}</div>`;
+export function dotView(s: GameState, T: Strings, tag?: string, favs: readonly string[] = [], ages: ScoreAges = {}): string {
+  return `<div class="pill"><span class="sc">${scoreHtml(s, favs, ages)}</span><span class="when mono">${esc(whenText(s, T))}</span>${tag ? `<span class="tag" title="${esc(tag)}">↺</span>` : ''}</div>`;
 }
 
 /**
@@ -115,11 +120,11 @@ export function dotView(s: GameState, T: Strings, tag?: string, favourite?: stri
  * quieter. `result`: a finished game picked from the list, shown as its points per period instead,
  * and with `withLeaders` (a window tall enough) each side's leaders under them.
  */
-export function barView(s: GameState, T: Strings, lines: number, tag?: string, favourite?: string, result = false, ages: ScoreAges = {}, withLeaders = false): string {
-  if (result) return `<div class="bar">${scoreBug(s, T, tag, favourite)}${periodTable(s)}${withLeaders ? leadersTable(s, T) : ''}</div>`;
+export function barView(s: GameState, T: Strings, lines: number, tag?: string, favs: readonly string[] = [], result = false, ages: ScoreAges = {}, withLeaders = false): string {
+  if (result) return `<div class="bar">${scoreBug(s, T, tag, favs)}${periodTable(s)}${withLeaders ? leadersTable(s, T) : ''}</div>`;
   const [newest = '', older = ''] = playLines(s, T, lines);
   return `<div class="bar">
-      ${scoreBug(s, T, tag, favourite, ages)}
+      ${scoreBug(s, T, tag, favs, ages)}
       <div class="row play new">${newest}</div>${lines > 1 ? `
       <hr class="divider"><div class="row play old">${older}</div>` : ''}
     </div>`;
@@ -149,8 +154,8 @@ export function leadersTable(s: GameState, T: Strings): string {
  * Court tier: the bar on top, the half court in 3D below. `landed`: whether a shot's flight is
  * over, so its mark is on the floor (src/render/court.ts draws the flights every frame).
  */
-export function courtView(s: GameState, T: Strings, landed: (id: string) => boolean, tag?: string, favourite?: string, ages: ScoreAges = {}): string {
-  return `<div class="courtwrap">${barView(s, T, 2, tag, favourite, false, ages)}${courtSvg(s, gameColours(s.teams, favourite), landed)}</div>`;
+export function courtView(s: GameState, T: Strings, landed: (id: string) => boolean, tag?: string, favs: readonly string[] = [], ages: ScoreAges = {}): string {
+  return `<div class="courtwrap">${barView(s, T, 2, tag, favs, false, ages)}${courtSvg(s, gameColours(s.teams, favIn(s.teams, favs)), landed)}</div>`;
 }
 
 /** No game to show: a message, and when the next one tips off. */
@@ -171,11 +176,11 @@ export function countdownParts(ms: number): { d: number; h: number; m: number; s
  * (`when`); under it the time left in days, hours, minutes and seconds, or "tip-off soon" once
  * that has run out. The dot has room for the teams and the tip-off only. `big`: the court's size.
  */
-export function pregameView(teams: GameCard['teams'], start: number, when: string, now: number, T: Strings, tier: Tier, favourite?: string): string {
-  const c = gameColours(teams, favourite);
+export function pregameView(teams: GameCard['teams'], start: number, when: string, now: number, T: Strings, tier: Tier, favs: readonly string[] = []): string {
+  const c = gameColours(teams, favIn(teams, favs));
   if (tier === 'dot')
     return `<div class="pill"><span class="sc">${colourDot(c.away)}<span class="abbr">${esc(teams.away.abbr)}</span><span class="muted">@</span><span class="abbr">${esc(teams.home.abbr)}</span>${colourDot(c.home)}</span><span class="when mono">${esc(when)}</span></div>`;
-  const cell = (side: Side) => `<div class="cell team" style="--team:#${esc(c[side])}"><i class="stripe"></i><span class="abbr">${esc(teams[side].abbr)}</span><b class="muted">–</b><span class="ball-mark"></span></div>`;
+  const cell = (side: Side) => `<div class="cell team" style="--team:#${esc(c[side])}"><i class="stripe"></i><span class="abbr">${star(teams[side], favs)}${esc(teams[side].abbr)}</span><b class="muted">–</b><span class="ball-mark"></span></div>`;
   const bug = `<div class="bug">${cell('away')}${cell('home')}<span class="grow"></span><div class="cell clock mono">${esc(when)}</div></div>`;
   const left = start - now;
   const p = countdownParts(left);
@@ -188,13 +193,15 @@ export function pregameView(teams: GameCard['teams'], start: number, when: strin
 
 /** Choosing a team and the notices. Buttons carry data-* attributes; src/ui/main.ts handles clicks. */
 export function settingsView(teams: readonly TeamRef[], s: Settings, T: Strings): string {
-  const team = (t: TeamRef) =>
-    `<button class="team${s.team === t.id ? ' on' : ''}" data-team="${esc(t.id)}" title="${esc(t.name)}">${cardDot(t)}${esc(t.abbr)}</button>`;
+  const team = (t: TeamRef) => {
+    const fav = s.favourites.includes(t.id);
+    return `<button class="team${fav ? ' on' : ''}" data-team="${esc(t.id)}" title="${esc(t.name)}">${cardDot(t)}${esc(t.abbr)}<span class="star">${fav ? '★' : ''}</span></button>`;
+  };
   const check = (key: keyof Settings['notify'], label: string) =>
     `<label class="check"><input type="checkbox" data-notify="${key}"${s.notify[key] ? ' checked' : ''}> ${esc(label)}</label>`;
   return `<div class="settings">
       <div class="head"><b>${esc(T.chooseTeam)}</b><button class="done" data-done>${esc(T.done)}</button></div>
-      <button class="team none${s.team ? '' : ' on'}" data-team="">${esc(T.noTeam)}</button>
+      <span class="hint muted">${esc(s.favourites.length ? T.favouritesHint : T.noTeam)}</span>
       <div class="teams">${teams.map(team).join('')}</div>
       ${check('start', T.notifyStart)}${check('final', T.notifyFinal)}${check('clutch', T.notifyClutch)}
       <div class="themes"><span class="muted">${esc(T.theme)}</span>${(['system', 'dark', 'light'] as const).map((t) =>
@@ -245,17 +252,20 @@ const ORDER: Partial<Record<GameCard['status'], number>> = { live: 0, break: 0, 
 /**
  * A day's games: the ones on first, then the ones still to come, then the finished ones. A game on
  * or to come is followed live; a finished one shows its result. `current`: the game on screen.
+ * The favourites' games come first in each group, starred.
  */
-export function gamesView(day: string, games: readonly GameCard[], T: Strings, tipOff: (g: GameCard) => string, current?: string): string {
-  const sorted = [...games].sort((a, b) => (ORDER[a.status] ?? 3) - (ORDER[b.status] ?? 3) || a.start - b.start);
+export function gamesView(day: string, games: readonly GameCard[], T: Strings, tipOff: (g: GameCard) => string, current?: string, favs: readonly string[] = []): string {
+  // Within each group (on, to come, finished), the favourites' games come first.
+  const isFav = (g: GameCard) => (favIn(g.teams, favs) ? 0 : 1);
+  const sorted = [...games].sort((a, b) => (ORDER[a.status] ?? 3) - (ORDER[b.status] ?? 3) || isFav(a) - isFav(b) || a.start - b.start);
   const row = (g: GameCard) => {
     const how = g.status === 'final' ? 'result' : 'live';
     const showScore = g.status !== 'scheduled' && g.status !== 'postponed' && g.status !== 'cancelled';
-    const abbr = (sd: Side) => `<span>${esc(g.teams[sd].abbr)}</span>`;
+    const abbr = (sd: Side) => `<span>${star(g.teams[sd], favs)}${esc(g.teams[sd].abbr)}</span>`;
     // Two teams in one row: the same clash rule as on the score (src/render/colour.ts).
-    const c = gameColours(g.teams);
+    const c = gameColours(g.teams, favIn(g.teams, favs));
     const mid = showScore ? `<b>${g.score.away}</b><span class="muted">–</span><b>${g.score.home}</b>` : '<span class="muted">@</span>';
-    return `<button class="game${g.id === current ? ' on' : ''}${how === 'live' && g.status !== 'scheduled' ? ' live' : ''}" data-game="${esc(g.id)}" data-how="${how}">`
+    return `<button class="game${g.id === current ? ' on' : ''}${how === 'live' && g.status !== 'scheduled' ? ' live' : ''}${favIn(g.teams, favs) ? ' fav' : ''}" data-game="${esc(g.id)}" data-how="${how}">`
       + `<span class="who">${colourDot(c.away)}${abbr('away')}${mid}${abbr('home')}${colourDot(c.home)}</span>`
       + `<span class="when mono">${esc(cardWhen(g, T, tipOff))}</span></button>`;
   };

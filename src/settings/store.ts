@@ -2,8 +2,11 @@
 // data folder. Reads and writes never throw; a broken or missing store gives the defaults.
 
 export interface Settings {
-  /** ESPN team id of the team to follow; absent: follow the closest game. */
-  team?: string;
+  /**
+   * ESPN id of the favourite team, in a list of at most MAX_FAVOURITES: followed, and starred
+   * wherever it appears. Empty: follow the closest game.
+   */
+  favourites: string[];
   /** Each notice is its own switch (CLAUDE.md: every feature is a switch). */
   notify: { start: boolean; final: boolean; clutch: boolean };
   /** Dark or light, or whatever the system uses. */
@@ -11,18 +14,22 @@ export interface Settings {
 }
 
 export type ThemeChoice = 'system' | 'dark' | 'light';
+/** One favourite team (the maintainer's call, 2026-10-13); kept as a list should that change. */
+export const MAX_FAVOURITES = 1;
 const THEMES: readonly ThemeChoice[] = ['system', 'dark', 'light'];
 
-export const DEFAULTS: Settings = { notify: { start: true, final: true, clutch: true }, theme: 'system' };
+export const DEFAULTS: Settings = { favourites: [], notify: { start: true, final: true, clutch: true }, theme: 'system' };
 const KEY = 'courtsmall.settings';
 
 /** Fill in what a stored object lacks, drop what it should not have. */
 export function normalize(raw: unknown): Settings {
-  const o = (raw && typeof raw === 'object' ? raw : {}) as Partial<Settings>;
+  const o = (raw && typeof raw === 'object' ? raw : {}) as Partial<Settings> & { team?: unknown };
   const n = (o.notify && typeof o.notify === 'object' ? o.notify : {}) as Partial<Settings['notify']>;
   const flag = (v: unknown, d: boolean) => (typeof v === 'boolean' ? v : d);
   return {
-    ...(typeof o.team === 'string' && o.team ? { team: o.team } : {}),
+    // Before favourites there was one team to follow (`team`); it becomes the first favourite.
+    favourites: (Array.isArray(o.favourites) ? [...new Set(o.favourites.filter((t): t is string => typeof t === 'string' && t !== ''))]
+      : typeof o.team === 'string' && o.team ? [o.team] : []).slice(0, MAX_FAVOURITES),
     notify: { start: flag(n.start, DEFAULTS.notify.start), final: flag(n.final, DEFAULTS.notify.final), clutch: flag(n.clutch, DEFAULTS.notify.clutch) },
     theme: THEMES.includes(o.theme as ThemeChoice) ? (o.theme as ThemeChoice) : DEFAULTS.theme,
   };

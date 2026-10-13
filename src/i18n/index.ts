@@ -43,6 +43,7 @@ export interface Strings {
   /** Settings. */
   chooseTeam: string;
   noTeam: string;
+  favouritesHint: string;
   notifyStart: string;
   notifyFinal: string;
   notifyClutch: string;
@@ -93,8 +94,9 @@ export const STRINGS: Record<Lang, Strings> = {
     clutchNotice: (w, l) => `${w}, ${l}`,
     today: 'Today',
     tomorrow: 'Tomorrow',
-    chooseTeam: 'Your team',
-    noTeam: 'None: follow the closest game',
+    chooseTeam: 'Favourite team',
+    noTeam: 'None yet: the closest game is followed. Tap a team to star it.',
+    favouritesHint: 'Its games are followed and starred. Tap another team to switch, the same one to clear.',
     notifyStart: 'Notify at tip-off',
     notifyFinal: 'Notify at the final',
     notifyClutch: 'Notify in a close finish (last 2 min, within 5)',
@@ -139,8 +141,9 @@ export const STRINGS: Record<Lang, Strings> = {
     clutchNotice: (w, l) => `${w} ${l}`,
     today: '今天',
     tomorrow: '明天',
-    chooseTeam: '主隊',
-    noTeam: '不選：跟最緊張的比賽',
+    chooseTeam: '最愛球隊',
+    noTeam: '還沒有最愛球隊：自動跟最緊張的比賽。點一隊加星。',
+    favouritesHint: '會自動跟它的比賽並加上星號。點別隊換掉，點同一隊取消。',
     notifyStart: '開賽時通知',
     notifyFinal: '終場時通知',
     notifyClutch: '關鍵時刻通知（最後 2 分鐘、差距 5 分內）',

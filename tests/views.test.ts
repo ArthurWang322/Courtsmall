@@ -217,3 +217,25 @@ describe('countdown', () => {
   });
 });
 
+describe('favourite team', () => {
+  const card = (id: string, away: string, home: string, status: GameCard['status'], start: number): GameCard => ({
+    id, status, start, period: 4, clock: 100, score: { away: 90, home: 91 },
+    teams: { away: { id: away, abbr: away.toUpperCase(), name: away }, home: { id: home, abbr: home.toUpperCase(), name: home } },
+  });
+
+  // Opening the list, the favourite's game is the one to find at a glance.
+  it("puts the favourite's game first in its group, starred and lit", () => {
+    const html = gamesView('10/13', [card('1', 'a', 'b', 'live', 1), card('2', 'c', 'den', 'live', 2), card('3', 'd', 'e', 'final', 0)], zh, () => '', undefined, ['den']);
+    expect([...html.matchAll(/data-game="(\d)"/g)].map((m) => m[1])).toEqual(['2', '1', '3']);
+    expect(html).toContain('class="game live fav" data-game="2"');
+    expect(html).toMatch(/<span><span class="star">★<\/span>DEN<\/span>/);
+    expect(html.match(/★/g)).toHaveLength(1);
+  });
+
+  it("stars the favourite in the score bug", () => {
+    const html = barView(base, en, 1, undefined, [base.teams.home.id]);
+    expect(html).toMatch(/<span class="abbr"><span class="star">★<\/span>UTAH<\/span>/);
+    expect(barView(base, en, 1)).not.toContain('★');
+  });
+});
+

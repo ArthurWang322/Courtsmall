@@ -41,10 +41,17 @@ describe('notices', () => {
 });
 
 describe('settings', () => {
+  // Settings saved before favourites had one team to follow; it must not be lost on update.
+  it('turns the one team to follow of older settings into the first favourite', () => {
+    expect(normalize({ team: '7' }).favourites).toEqual(['7']);
+    expect(normalize({ team: '7', favourites: ['9'] }).favourites).toEqual(['9']);
+  });
+
   it('falls back to the defaults for anything missing or malformed', () => {
     expect(normalize(null)).toEqual(DEFAULTS);
-    expect(normalize({ team: 7, notify: { start: 'yes', final: false } })).toEqual({ notify: { start: true, final: false, clutch: true }, theme: 'system' });
-    expect(normalize({ team: '7' }).team).toBe('7');
+    expect(normalize({ team: 7, notify: { start: 'yes', final: false } })).toEqual({ favourites: [], notify: { start: true, final: false, clutch: true }, theme: 'system' });
+    // One favourite: the first valid one is kept.
+    expect(normalize({ favourites: [7, '', '7', '9'] }).favourites).toEqual(['7']);
     expect(normalize({ theme: 'light' }).theme).toBe('light');
     expect(normalize({ theme: 'sepia' }).theme).toBe('system');
   });
