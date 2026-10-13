@@ -8,7 +8,11 @@
 // In `npm run dev` only, &fixture replays fixtures/nba/game-<id>.json and reads the team list from
 // fixtures/nba/teams.json instead of asking ESPN (node scripts/probe/06-fixtures.mjs).
 
-import type { GameCard, GameState, TeamRef, Unsubscribe } from '../model/types.ts';
+// Fonts, bundled (SIL OFL 1.1): Big Shoulders Display for the scores, Barlow Condensed for labels.
+import '@fontsource/big-shoulders-display/latin-800';
+import '@fontsource/barlow-condensed/latin-500';
+import '@fontsource/barlow-condensed/latin-600';
+import type { GameCard, GameState, Side, TeamRef, Unsubscribe } from '../model/types.ts';
 import type { GameFeed } from '../data/espn/feed-types.ts';
 import { allTeams, dayGames, loadFeed, teamGames, type FetchJson } from '../data/espn/fetch.ts';
 import { EspnLiveSource } from '../data/espn/live-source.ts';
@@ -23,7 +27,7 @@ import { playLinesAt, TIER_PRESET, tierOf, type Tier } from '../render/tiers.ts'
 import { drawFlights, shotSeconds } from '../render/court.ts';
 import { gameColours } from '../render/colour.ts';
 import { loadSettings, saveSettings, type Settings } from '../settings/store.ts';
-import { barView, controlsView, courtView, dotView, gamesView, messageView, settingsView, upcomingView } from './views.ts';
+import { barView, controlsView, courtView, dotView, gamesView, JUMP_MS, messageView, settingsView, upcomingView, type ScoreAges } from './views.ts';
 
 // In `npm run dev`, VITE_PARAMS fills in for the URL, which the desktop window does not have:
 // VITE_PARAMS='game=401898721&replay' npx tauri dev
@@ -76,6 +80,8 @@ let dayList: GameCard[] = [];
 let pinned: string | undefined;
 /** When each shot on the court first appeared, epoch ms, for its animation (src/render/court.ts). */
 const shotSeen = new Map<string, number>();
+/** When each side's score last went up, epoch ms, for the score's jump (src/ui/views.ts). */
+const scoreChangedAt: Partial<Record<Side, number>> = {};
 let sizeBeforePanel: { w: number; h: number } | undefined;
 
 /** ESPN's day `offset` days from today, "YYYYMMDD": ESPN counts days in US Eastern time. */
@@ -125,9 +131,12 @@ function render(): void {
   if (panel === 'games') { app.innerHTML = gamesView(dayLabel(gamesDay), dayList, T, tipOff, currentId); return; }
   const tag = replaying ? T.replay : undefined;
   if (state) {
-    app.innerHTML = tier === 'dot' ? dotView(state, T, tag, settings.team)
-      : tier === 'court' ? courtView(state, T, landed, tag, settings.team, resultOnly)
-      : barView(state, T, playLinesAt(app.clientHeight), tag, settings.team, resultOnly);
+    const now = Date.now();
+    const ages: ScoreAges = {};
+    for (const side of ['away', 'home'] as const) { const at = scoreChangedAt[side]; if (at !== undefined && now - at < JUMP_MS) ages[side] = now - at; }
+    app.innerHTML = tier === 'dot' ? dotView(state, T, tag, settings.team, ages)
+      : tier === 'court' ? courtView(state, T, landed, tag, settings.team, resultOnly, ages)
+      : barView(state, T, playLinesAt(app.clientHeight), tag, settings.team, resultOnly, ages);
     if (tier === 'court' && !frame) frame = requestAnimationFrame(animate);
   }
   else if (upcoming) app.innerHTML = upcomingView(upcoming, whenOf(upcoming), tier === 'dot');
@@ -149,6 +158,8 @@ function leave(): void {
   unsubscribe = undefined;
   state = undefined;
   shotSeen.clear();
+  delete scoreChangedAt.away;
+  delete scoreChangedAt.home;
   currentId = undefined;
   finalAt = undefined;
 }
@@ -171,6 +182,8 @@ function follow(id: string, how: 'live' | 'replay' | 'result'): void {
       const onCourt = new Set((s.recentShots ?? []).map((shot) => shot.id));
       for (const id of shotSeen.keys()) if (!onCourt.has(id)) shotSeen.delete(id);
       for (const id of onCourt) if (!shotSeen.has(id)) shotSeen.set(id, seenAt);
+      // A score that went up jumps; the first state of a game does not.
+      if (state) for (const side of ['away', 'home'] as const) if (s.score[side] > state.score[side]) scoreChangedAt[side] = Date.now();
       state = s;
       render();
     },

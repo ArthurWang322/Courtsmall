@@ -2,7 +2,7 @@
 
 import { describe, expect, it } from 'vitest';
 import { STRINGS } from '../src/i18n/index.ts';
-import { barView, clockText, controlsView, dotView, gamesView, playLines, RUN_MIN, whenText } from '../src/ui/views.ts';
+import { barView, clockText, controlsView, dotView, gamesView, JUMP_MS, playLines, RUN_MIN, whenText } from '../src/ui/views.ts';
 import type { GameCard, GameState, PlayLine } from '../src/model/types.ts';
 
 const en = STRINGS.en, zh = STRINGS['zh-TW'];
@@ -130,8 +130,8 @@ describe('possession', () => {
   it("frames the cell of the team with the ball in the bar's score bug, and nobody's during a break", () => {
     const html = barView({ ...base, possession: 'home' }, en, 1);
     const cells = html.match(/<div class="cell team[^"]*"[^>]*>/g)!;
-    expect(cells[0]).toBe('<div class="cell team">');
-    expect(cells[1]).toMatch(/^<div class="cell team ball" style="border-color:#[0-9a-f]{6}">$/);
+    expect(cells[0]).toMatch(/^<div class="cell team" style="--team:#[0-9a-f]{6}">$/);
+    expect(cells[1]).toMatch(/^<div class="cell team ball" style="--team:#([0-9a-f]{6});border-color:#\1">$/);
     expect(html.match(/◀/g)).toHaveLength(1);
     expect(barView({ ...base, status: 'break', possession: 'home' }, en, 1)).not.toContain('team ball');
   });
@@ -169,3 +169,14 @@ describe('toolbar and games list', () => {
     expect(gamesView('10/13', [], zh, () => '')).toContain('這天沒有比賽');
   });
 });
+
+describe('score jump', () => {
+  // The moment a score changes is the one worth catching from the corner of an eye.
+  it('makes a score that just went up jump, resuming across redraws, and stops after JUMP_MS', () => {
+    const html = barView(base, en, 1, undefined, undefined, false, { home: 200 });
+    expect(html).toContain('<b class="jump" style="animation-delay:-200ms">112</b>');
+    expect(html).toContain('<b>85</b>');
+    expect(barView(base, en, 1, undefined, undefined, false, { home: JUMP_MS })).not.toContain('jump');
+  });
+});
+

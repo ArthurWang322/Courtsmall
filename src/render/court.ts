@@ -80,7 +80,10 @@ export function courtLines(): string {
   const board = path([{ x: 22, y: BOARD_Y, z: RIM_Z - 0.5 }, { x: 28, y: BOARD_Y, z: RIM_Z - 0.5 }, { x: 28, y: BOARD_Y, z: RIM_Z + 3 }, { x: 22, y: BOARD_Y, z: RIM_Z + 3 }], true);
   const rim = path(arcPts(BASKET.x, BASKET.y, RIM_R, 0, 2 * Math.PI, RIM_Z), true);
   const rimShadow = path(arcPts(BASKET.x, BASKET.y, RIM_R, 0, 2 * Math.PI), true);
-  return `<path class="floor" d="${floor}"/>
+  // The floor is wood: a warm gradient, lighter toward the near end where the light falls.
+  const paint = path([ground(17, FAR), ground(17, FAR + 19), ground(33, FAR + 19), ground(33, FAR)], true);
+  return `<defs><linearGradient id="wood" x1="0" y1="0" x2="0" y2="1"><stop offset="0" style="stop-color:var(--wood)"/><stop offset="1" style="stop-color:var(--wood-hi)"/></linearGradient></defs>
+    <path class="floor" d="${floor}"/><path class="paint" d="${paint}"/>
     <g class="lines"><path d="${lane}"/><path d="${ftCircle}"/><path d="${three}"/></g>
     <path class="rim-shadow" d="${rimShadow}"/><path class="post" d="${post}"/><path class="board" d="${board}"/><path class="rim" d="${rim}"/>`;
 }

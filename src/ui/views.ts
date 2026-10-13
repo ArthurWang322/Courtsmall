@@ -9,6 +9,15 @@ import { gameColours, visibleColour } from '../render/colour.ts';
 import { courtSvg } from '../render/court.ts';
 import type { Strings } from '../i18n/index.ts';
 
+/** How long a score that just changed keeps its jump, ms (app.css `.jump`). */
+export const JUMP_MS = 600;
+/** Ms since each side's score last changed; a side not in it has not changed lately. */
+export type ScoreAges = Partial<Record<Side, number>>;
+
+/** A score number, jumping if it changed less than JUMP_MS ago (resumed across redraws). */
+const scoreNum = (n: number, age?: number) =>
+  age !== undefined && age < JUMP_MS ? `<b class="jump" style="animation-delay:${-age}ms">${n}</b>` : `<b>${n}</b>`;
+
 /** A run is shown from this many unanswered points. 【建議】 */
 export const RUN_MIN = 6;
 
@@ -43,23 +52,24 @@ const hasBall = (s: GameState, side: Side) => s.possession === side && s.status 
  * colour on its outer side, pointing in: "▶● 98 – 101 ●" or "● 98 – 101 ●◀".
  * `favourite`: in a colour clash it keeps its colour.
  */
-function scoreHtml(s: GameState, favourite?: string): string {
+function scoreHtml(s: GameState, favourite?: string, ages: ScoreAges = {}): string {
   const c = gameColours(s.teams, favourite);
   const dot = (side: Side) => `<i class="dot" style="background:#${esc(c[side])}"></i>`;
   const arrow = (side: Side) => `<span class="arrow" style="color:#${esc(c[side])}">${hasBall(s, side) ? (side === 'away' ? '▶' : '◀') : ''}</span>`;
-  return `${arrow('away')}${dot('away')}<b>${s.score.away}</b><span class="muted">–</span><b>${s.score.home}</b>${dot('home')}${arrow('home')}`;
+  return `${arrow('away')}${dot('away')}${scoreNum(s.score.away, ages.away)}<span class="muted">–</span>${scoreNum(s.score.home, ages.home)}${dot('home')}${arrow('home')}`;
 }
 
 /**
  * The bar's score, laid out like a broadcast score bug: one cell per team (a stripe in its colour,
  * the abbreviation, the score), then a cell with the period and clock.
  */
-function scoreBug(s: GameState, T: Strings, tag?: string, favourite?: string): string {
+function scoreBug(s: GameState, T: Strings, tag?: string, favourite?: string, ages: ScoreAges = {}): string {
   const c = gameColours(s.teams, favourite);
   // The team with the ball: its whole cell is framed in its colour, with a triangle by the score.
+  // `--team` tints the cell (app.css); the stripe and the possession frame use it too.
   const cell = (side: Side) => hasBall(s, side)
-    ? `<div class="cell team ball" style="border-color:#${esc(c[side])}"><i class="stripe" style="background:#${esc(c[side])}"></i><span class="abbr">${esc(s.teams[side].abbr)}</span><b>${s.score[side]}</b><span class="ball-mark" style="color:#${esc(c[side])}">◀</span></div>`
-    : `<div class="cell team"><i class="stripe" style="background:#${esc(c[side])}"></i><span class="abbr">${esc(s.teams[side].abbr)}</span><b>${s.score[side]}</b><span class="ball-mark"></span></div>`;
+    ? `<div class="cell team ball" style="--team:#${esc(c[side])};border-color:#${esc(c[side])}"><i class="stripe"></i><span class="abbr">${esc(s.teams[side].abbr)}</span>${scoreNum(s.score[side], ages[side])}<span class="ball-mark">◀</span></div>`
+    : `<div class="cell team" style="--team:#${esc(c[side])}"><i class="stripe"></i><span class="abbr">${esc(s.teams[side].abbr)}</span>${scoreNum(s.score[side], ages[side])}<span class="ball-mark"></span></div>`;
   return `<div class="bug">${cell('away')}${cell('home')}${tag ? `<span class="tag">${esc(tag)}</span>` : '<span class="grow"></span>'}<div class="cell clock mono">${esc(whenText(s, T))}</div></div>`;
 }
 
@@ -96,19 +106,19 @@ export function playLines(s: GameState, T: Strings, count: number): string[] {
  * Dot tier: a pill with the score and the period. The team with the ball has a triangle by its dot.
  * A replay is marked with "↺" (the word does not fit): a replay mistaken for a live game misleads.
  */
-export function dotView(s: GameState, T: Strings, tag?: string, favourite?: string): string {
-  return `<div class="pill"><span class="sc">${scoreHtml(s, favourite)}</span><span class="when mono">${esc(whenText(s, T))}</span>${tag ? `<span class="tag" title="${esc(tag)}">↺</span>` : ''}</div>`;
+export function dotView(s: GameState, T: Strings, tag?: string, favourite?: string, ages: ScoreAges = {}): string {
+  return `<div class="pill"><span class="sc">${scoreHtml(s, favourite, ages)}</span><span class="when mono">${esc(whenText(s, T))}</span>${tag ? `<span class="tag" title="${esc(tag)}">↺</span>` : ''}</div>`;
 }
 
 /**
  * Bar tier: the score bug on top; below, the newest play, and under a divider the one before it,
  * quieter. `result`: a finished game picked from the list, shown as its points per period instead.
  */
-export function barView(s: GameState, T: Strings, lines: number, tag?: string, favourite?: string, result = false): string {
+export function barView(s: GameState, T: Strings, lines: number, tag?: string, favourite?: string, result = false, ages: ScoreAges = {}): string {
   if (result) return `<div class="bar">${scoreBug(s, T, tag, favourite)}${periodTable(s)}</div>`;
   const [newest = '', older = ''] = playLines(s, T, lines);
   return `<div class="bar">
-      ${scoreBug(s, T, tag, favourite)}
+      ${scoreBug(s, T, tag, favourite, ages)}
       <div class="row play new">${newest}</div>${lines > 1 ? `
       <hr class="divider"><div class="row play old">${older}</div>` : ''}
     </div>`;
@@ -124,8 +134,8 @@ export function periodTable(s: GameState): string {
  * Court tier: the bar on top, the half court in 3D below. `landed`: whether a shot's flight is
  * over, so its mark is on the floor (src/render/court.ts draws the flights every frame).
  */
-export function courtView(s: GameState, T: Strings, landed: (id: string) => boolean, tag?: string, favourite?: string, result = false): string {
-  return `<div class="courtwrap">${barView(s, T, 2, tag, favourite, result)}${courtSvg(s, gameColours(s.teams, favourite), landed)}</div>`;
+export function courtView(s: GameState, T: Strings, landed: (id: string) => boolean, tag?: string, favourite?: string, result = false, ages: ScoreAges = {}): string {
+  return `<div class="courtwrap">${barView(s, T, 2, tag, favourite, result, ages)}${courtSvg(s, gameColours(s.teams, favourite), landed)}</div>`;
 }
 
 /** No game to show: a message, and when the next one tips off. */

@@ -1,116 +1,151 @@
+/* Courtsmall: an arena scoreboard in a corner of the screen. The score is set in a condensed
+   athletic display face; everything else stays quiet so the score is what the eye finds.
+   --background must match BACKGROUND in src/render/colour.ts (team colours are checked against it). */
 :root {
-  --background: #15171C; --panel: #1B1E24; --border: #2A2E37; --text: #E8EAEE; --muted: #A0A6B1; --accent: #E8B04A;
-  --font: 'Segoe UI Variable', 'Segoe UI', 'Microsoft JhengHei UI', 'PingFang TC', system-ui, sans-serif;
-  --mono: 'Cascadia Mono', Consolas, ui-monospace, monospace;
+  --background: #141317; --surface: #1c1b20; --panel: #222127; --border: #2e2d34; --edge: rgba(255, 255, 255, .07);
+  --text: #f3efe7; --muted: #9b98a2; --faint: #6c6973; --accent: #f2b544; --wood: #2b2119; --wood-hi: #3a2c20;
+  --display: 'Big Shoulders Display', 'Barlow Condensed', 'PingFang TC', system-ui, sans-serif;
+  --label: 'Barlow Condensed', 'PingFang TC', 'Microsoft JhengHei UI', system-ui, sans-serif;
+  --font: 'Segoe UI Variable', 'Segoe UI', 'PingFang TC', 'Microsoft JhengHei UI', system-ui, sans-serif;
+  --mono: var(--label);
+  /* A fine grain over the panel, so it reads as a surface rather than a flat fill. */
+  --grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 .5 0'/%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23n)' opacity='.6'/%3E%3C/svg%3E");
 }
 * { box-sizing: border-box; }
 html, body { margin: 0; height: 100%; background: transparent; overflow: hidden; }
-body { color: var(--text); font: 13px/1.35 var(--font); user-select: none; -webkit-user-select: none; }
+body { color: var(--text); font: 13px/1.35 var(--font); user-select: none; -webkit-user-select: none; -webkit-font-smoothing: antialiased; }
+button { font: inherit; color: inherit; border: 0; background: transparent; padding: 0; cursor: pointer; }
 
-#app { position: absolute; inset: 0; display: flex; align-items: center; overflow: hidden; border-radius: 14px;
-  background: var(--background); border: 1px solid var(--border); padding: 10px 16px; cursor: default; }
+/* The window: a dark panel with a warm glow from the top left, grain, and a lit top edge. */
+#app { position: absolute; inset: 0; display: flex; align-items: center; overflow: hidden; border-radius: 14px; padding: 10px 16px; cursor: default;
+  background:
+    var(--grain),
+    radial-gradient(120% 90% at 0% 0%, rgba(242, 181, 68, .07), transparent 55%),
+    linear-gradient(180deg, var(--surface), var(--background));
+  background-blend-mode: overlay, normal, normal;
+  border: 1px solid var(--border); box-shadow: inset 0 1px 0 var(--edge); }
 #app[data-tier='dot'] { border-radius: 999px; padding: 0 14px; }
 /* Clicks land on #app, which moves the window (src/ui/main.ts). */
 #app * { pointer-events: none; }
 /* Except what is for clicking: the panels and the hover toolbar. */
 #app .settings, #app .settings *, #app .panel, #app .panel *, #app .controls, #app .controls * { pointer-events: auto; }
 
-button { font: inherit; color: inherit; border: 0; background: transparent; padding: 0; cursor: pointer; }
 .muted { color: var(--muted); }
-.mono { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+.mono { font-family: var(--label); font-variant-numeric: tabular-nums; letter-spacing: .03em; }
 .grow { flex: 1; }
-.dot { width: 9px; height: 9px; border-radius: 50%; flex: 0 0 9px; box-shadow: 0 0 0 1.5px color-mix(in srgb, var(--text) 60%, transparent); }
-/* The team with the ball, in the dot: a triangle in its colour beside its dot. */
-.arrow { font-size: 10px; width: 9px; text-align: center; line-height: 1; }
-/* Room for the ring: rows clip what overflows them. */
-.sc { display: inline-flex; align-items: center; gap: 6px; font-variant-numeric: tabular-nums; padding: 0 4px; }
-.sc b { font-weight: 600; }
-.abbr { color: var(--muted); }
-.tag { color: var(--accent); font-size: 11px; margin: 0 8px; }
+.dot { width: 9px; height: 9px; border-radius: 50%; flex: 0 0 9px; box-shadow: 0 0 0 1.5px rgba(0, 0, 0, .45), 0 0 6px -1px currentColor; }
+.tag { font: 600 11px var(--label); letter-spacing: .12em; text-transform: uppercase; color: var(--accent); margin: 0 8px; }
 
+/* A score that just went up jumps (src/ui/views.ts JUMP_MS). */
+.jump { display: inline-block; animation: jump 600ms cubic-bezier(.2, .9, .3, 1.4) both; }
+@keyframes jump {
+  0% { transform: translateY(0); color: var(--accent); }
+  35% { transform: translateY(-5px) scale(1.12); color: var(--accent); }
+  100% { transform: translateY(0); }
+}
+
+/* ---- Dot ---------------------------------------------------------------------------------------- */
 .pill { display: flex; align-items: center; gap: 10px; width: 100%; white-space: nowrap; }
-.pill .when { color: var(--muted); margin-left: auto; }
-.pill .tag { margin: 0; }
-.bar { display: flex; flex-direction: column; gap: 4px; width: 100%; min-width: 0; }
-.bar .row { display: flex; align-items: center; white-space: nowrap; overflow: hidden; }
-/* The bar's score bug: a cell per team with a stripe in its colour, then the period and clock.
-   The score is what a glance is for; the period and clock come second. */
-.bug { display: flex; align-items: stretch; gap: 3px; min-width: 0; }
-.bug .cell { display: flex; align-items: center; background: var(--panel); border: 1px solid var(--border); border-radius: 6px; overflow: hidden; }
-.bug .team { gap: 7px; padding-right: 6px; min-width: 0; }
-.bug .stripe { align-self: stretch; width: 4px; flex: 0 0 4px; }
-.bug .abbr { font-size: 12px; letter-spacing: .02em; }
-.bug b { font-size: 22px; font-weight: 700; line-height: 1.15; font-variant-numeric: tabular-nums; min-width: 2.2ch; text-align: right; }
-.bug .ball-mark { width: 12px; font-size: 13px; }
-/* The team with the ball, in the bar: its whole cell framed in its colour. */
-.bug .team.ball { border-width: 2px; }
-.bug .clock { padding: 0 8px; font-size: 12px; color: var(--muted); white-space: nowrap; }
-.bug .tag { align-self: center; margin: 0 6px 0 auto; }
-.pill .sc b { font-size: 15px; font-weight: 700; }
-.pill .when { font-size: 11px; }
-.bar .play { font-size: 12px; min-height: 16px; text-overflow: ellipsis; }
-/* The newest play reads first; the one before it, under the divider, stays out of the way. */
-.bar .play.new { color: var(--text); font-weight: 500; }
-.bar .play.old { color: var(--muted); font-weight: 400; opacity: .7; }
-.bar .divider { border: 0; border-top: 1px solid var(--border); margin: 1px 0; }
-.msg { display: flex; flex-direction: column; gap: 2px; white-space: nowrap; }
-#app[data-tier='panel'] { align-items: stretch; }
-.settings { display: flex; flex-direction: column; gap: 8px; width: 100%; min-width: 0; height: 100%; overflow: auto; padding: 4px 0; }
-.settings .head { display: flex; align-items: center; justify-content: space-between; }
-.settings .teams { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 4px; }
-.settings button { display: inline-flex; align-items: center; gap: 5px; padding: 4px 6px; border-radius: 8px; border: 1px solid var(--border);
-  background: var(--panel); color: var(--text); font: 12px var(--font); cursor: pointer; }
-.settings button.on { border-color: var(--accent); }
-.settings button.done { border-color: var(--accent); color: var(--accent); }
-.settings .none { justify-content: center; }
-.settings .check { font-size: 12px; color: var(--muted); display: flex; align-items: center; gap: 6px; }
+.sc { display: inline-flex; align-items: center; gap: 6px; padding: 0 4px; }
+.pill .sc b { font: 800 18px/1 var(--display); letter-spacing: .02em; }
+.pill .when { margin-left: auto; font-size: 13px; color: var(--muted); }
+.pill .tag { margin: 0; letter-spacing: 0; }
+/* The team with the ball: a triangle in its colour beside its dot. */
+.arrow { font-size: 9px; width: 9px; text-align: center; line-height: 1; }
 
-/* Court tier (src/render/court.ts): a half court in 3D, the basket at the far end. */
+/* ---- Bar ---------------------------------------------------------------------------------------- */
+.bar { display: flex; flex-direction: column; gap: 5px; width: 100%; min-width: 0; }
+.bar .row { display: flex; align-items: center; white-space: nowrap; overflow: hidden; }
+
+/* The score bug: a cell per team, tinted from the left in its colour (--team, set inline), then the
+   period and clock. The score is what a glance is for; the period and clock come second. */
+.bug { display: flex; align-items: stretch; gap: 4px; min-width: 0; }
+.bug .cell { display: flex; align-items: center; border: 1px solid var(--border); border-radius: 7px; overflow: hidden;
+  background: linear-gradient(90deg, color-mix(in srgb, var(--team, var(--panel)) 22%, var(--panel)) 0%, var(--panel) 60%);
+  box-shadow: inset 0 1px 0 var(--edge); }
+.bug .team { gap: 8px; padding-right: 7px; min-width: 0; }
+.bug .stripe { align-self: stretch; width: 3px; flex: 0 0 3px; background: var(--team); box-shadow: 0 0 10px 1px var(--team); }
+.bug .abbr { font: 600 13px var(--label); letter-spacing: .08em; color: var(--muted); }
+.bug b { font: 800 27px/1.05 var(--display); letter-spacing: .02em; min-width: 2.1ch; text-align: right; font-variant-numeric: tabular-nums; }
+.bug .ball-mark { width: 12px; font-size: 11px; color: var(--team); }
+/* The team with the ball: the whole cell framed in its colour, glowing faintly. */
+.bug .team.ball { border-width: 1.5px; box-shadow: inset 0 1px 0 var(--edge), 0 0 0 1px color-mix(in srgb, var(--team) 25%, transparent), 0 0 14px -4px var(--team); }
+.bug .clock { padding: 0 9px; font: 600 14px var(--label); letter-spacing: .04em; color: var(--muted); white-space: nowrap; background: var(--surface); }
+.bug .tag { align-self: center; margin: 0 6px 0 auto; }
+
+/* The two latest plays: the newest reads first; the one before it, under the divider, stays back. */
+.bar .play { font-size: 12.5px; min-height: 16px; text-overflow: ellipsis; padding-left: 2px; }
+.bar .play.new { color: var(--text); font-weight: 500; }
+.bar .play.old { color: var(--faint); }
+.bar .divider { border: 0; height: 1px; margin: 1px 0; background: linear-gradient(90deg, var(--border), transparent 85%); }
+.msg { display: flex; flex-direction: column; gap: 2px; white-space: nowrap; }
+.msg span:first-child { font: 600 15px var(--label); letter-spacing: .04em; }
+
+/* A finished game's points per period (src/ui/views.ts periodTable). */
+.periods { display: flex; flex-direction: column; gap: 2px; margin-top: 4px; }
+.periods .period { gap: 0; font-size: 12px; color: var(--muted); }
+.periods .abbr { width: 52px; font: 600 12px var(--label); letter-spacing: .08em; }
+.periods .mono { width: 30px; text-align: right; font: 600 15px var(--label); color: var(--text); }
+
+/* ---- Court (src/render/court.ts): a half court in 3D, the basket at the far end ------------------ */
 #app[data-tier='court'] { align-items: stretch; }
 .courtwrap { display: flex; flex-direction: column; gap: 6px; width: 100%; min-width: 0; }
-.court { flex: 1; min-height: 0; width: 100%; }
-.court .floor { fill: color-mix(in srgb, var(--panel) 80%, #3a2a1c); stroke: var(--border); stroke-width: 0.6; }
-.court .lines path { fill: none; stroke: color-mix(in srgb, var(--muted) 45%, transparent); stroke-width: 0.6; }
+.court { flex: 1; min-height: 0; width: 100%; filter: drop-shadow(0 6px 10px rgba(0, 0, 0, .45)); }
+.court .floor { fill: url(#wood); stroke: rgba(243, 239, 231, .18); stroke-width: 0.6; }
+.court .paint { fill: rgba(0, 0, 0, .22); }
+.court .lines path { fill: none; stroke: rgba(243, 239, 231, .42); stroke-width: 0.6; }
 .court .post { fill: none; stroke: var(--muted); stroke-width: 0.9; }
-.court .board { fill: color-mix(in srgb, var(--text) 10%, transparent); stroke: var(--muted); stroke-width: 0.6; }
-.court .rim { fill: none; stroke: #e8823a; stroke-width: 0.9; }
+.court .board { fill: rgba(243, 239, 231, .08); stroke: rgba(243, 239, 231, .55); stroke-width: 0.6; }
+.court .rim { fill: none; stroke: #ef7d33; stroke-width: 1; }
 .court .rim-shadow { fill: rgba(0, 0, 0, .35); stroke: none; }
-.court .mark.miss { stroke-width: 0.7; }
+.court .mark.miss { stroke-width: 0.8; }
 .court .shadow { fill: #000; }
-.court .ball { fill: #e8823a; stroke: rgba(0, 0, 0, .35); stroke-width: 0.3; }
+.court .ball { fill: #ef7d33; stroke: rgba(0, 0, 0, .4); stroke-width: 0.3; }
 .court .shooter .cap { filter: brightness(1.25); }
 .court .swish { stroke-width: 0.8; }
 
-/* The toolbar: sizes, games, settings. Out of the way until the pointer is over the window, and
-   then bottom right, over the quietest line (the older play), not the score or the clock. */
-.controls { position: absolute; bottom: 4px; right: 6px; display: flex; align-items: center; gap: 2px; padding: 2px;
-  border-radius: 8px; background: color-mix(in srgb, var(--background) 92%, transparent); border: 1px solid var(--border);
-  opacity: 0; transition: opacity .15s; }
-#app:hover .controls { opacity: 1; }
+/* ---- Toolbar: sizes, games, settings ------------------------------------------------------------
+   Out of the way until the pointer is over the window, and then bottom right, over the quietest
+   line (the older play), not the score or the clock. */
+.controls { position: absolute; bottom: 5px; right: 7px; display: flex; align-items: center; gap: 2px; padding: 2px;
+  border-radius: 9px; background: color-mix(in srgb, var(--background) 88%, transparent); border: 1px solid var(--border);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, .45), inset 0 1px 0 var(--edge); backdrop-filter: blur(6px);
+  opacity: 0; transform: translateY(3px); transition: opacity .16s, transform .16s; }
+#app:hover .controls { opacity: 1; transform: none; }
 #app[data-tier='dot'] .controls { bottom: auto; top: 50%; transform: translateY(-50%); right: 4px; border-radius: 999px; }
 .controls .icon, .panel .icon { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 20px;
-  border-radius: 6px; color: var(--muted); cursor: pointer; }
+  border-radius: 6px; color: var(--muted); cursor: pointer; transition: color .12s, background .12s; }
 .controls .icon:hover, .panel .icon:hover { color: var(--text); background: var(--panel); }
 .controls .icon.on { color: var(--accent); }
 .controls svg { fill: none; stroke: currentColor; stroke-width: 1.4; stroke-linecap: round; stroke-linejoin: round; }
 .controls .sep { width: 1px; height: 14px; background: var(--border); margin: 0 2px; }
 
-/* The games list (src/ui/views.ts gamesView). */
-.panel { display: flex; flex-direction: column; gap: 8px; width: 100%; min-width: 0; height: 100%; padding: 4px 0; }
-.panel .head { display: flex; align-items: center; gap: 4px; }
+/* ---- Panels: the games list and the settings ---------------------------------------------------- */
+#app[data-tier='panel'] { align-items: stretch; }
+.panel, .settings { display: flex; flex-direction: column; gap: 8px; width: 100%; min-width: 0; height: 100%; padding: 4px 0; }
+.settings { overflow: auto; }
+.panel .head, .settings .head { display: flex; align-items: center; gap: 4px; }
+.settings .head { justify-content: space-between; }
+.panel .head b, .settings .head b { font: 600 16px var(--label); letter-spacing: .08em; text-transform: uppercase; }
 .panel .head .icon { font-size: 16px; }
-.panel .done { padding: 4px 8px; border-radius: 8px; border: 1px solid var(--accent); color: var(--accent); background: var(--panel); font: 12px var(--font); cursor: pointer; }
+.panel .done, .settings button.done { padding: 4px 10px; border-radius: 8px; border: 1px solid var(--accent); color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 8%, var(--panel)); font: 600 12px var(--label); letter-spacing: .08em; text-transform: uppercase; }
 .panel .list { display: flex; flex-direction: column; gap: 4px; overflow: auto; min-height: 0; }
-.panel .game { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-radius: 8px; border: 1px solid var(--border);
-  background: var(--panel); color: var(--text); font: 13px var(--font); cursor: pointer; text-align: left; }
-.panel .game:hover { border-color: var(--muted); }
+.panel .game { display: flex; align-items: center; gap: 8px; padding: 7px 10px; border-radius: 8px; border: 1px solid var(--border);
+  background: linear-gradient(180deg, var(--panel), var(--surface)); color: var(--text); text-align: left; transition: border-color .12s, transform .12s; }
+.panel .game:hover { border-color: var(--muted); transform: translateX(2px); }
 .panel .game.on { border-color: var(--accent); }
-.panel .game .who { display: inline-flex; align-items: center; gap: 6px; font-variant-numeric: tabular-nums; }
-.panel .game .when { margin-left: auto; font-size: 11px; color: var(--muted); }
+.panel .game .who { display: inline-flex; align-items: center; gap: 6px; font: 600 14px var(--label); letter-spacing: .05em; }
+.panel .game .who b { font: 800 17px var(--display); letter-spacing: .02em; }
+.panel .game .when { margin-left: auto; font-size: 12px; color: var(--muted); }
 .panel .game.live .when { color: var(--accent); }
+.settings .teams { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 4px; }
+.settings button { display: inline-flex; align-items: center; gap: 5px; padding: 5px 6px; border-radius: 8px; border: 1px solid var(--border);
+  background: linear-gradient(180deg, var(--panel), var(--surface)); color: var(--text); font: 600 13px var(--label); letter-spacing: .05em; }
+.settings button:hover { border-color: var(--muted); }
+.settings button.on { border-color: var(--accent); box-shadow: 0 0 10px -3px var(--accent); }
+.settings .none { justify-content: center; letter-spacing: .02em; }
+.settings .check { font-size: 12px; color: var(--muted); display: flex; align-items: center; gap: 6px; }
+.settings .check input { accent-color: var(--accent); }
 
-/* A finished game's points per period (src/ui/views.ts periodTable). */
-.periods { display: flex; flex-direction: column; gap: 2px; margin-top: 4px; }
-.periods .period { gap: 0; font-size: 12px; color: var(--muted); }
-.periods .abbr { width: 46px; }
-.periods .mono { width: 28px; text-align: right; color: var(--text); }
+@media (prefers-reduced-motion: reduce) { .jump { animation: none; } .controls, .panel .game { transition: none; } }

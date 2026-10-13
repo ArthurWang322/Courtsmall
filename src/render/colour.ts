@@ -5,7 +5,7 @@
 import type { Side, TeamRef } from '../model/types.ts';
 
 /** The window background, `--background` in src/ui/app.css. */
-export const BACKGROUND = '15171c';
+export const BACKGROUND = '141317';
 /** Least contrast a team dot needs against the background (WCAG ratio; 3 is "large text"). */
 export const MIN_CONTRAST = 2.2;
 /** Below this OKLab distance two team colours read as the same. */
