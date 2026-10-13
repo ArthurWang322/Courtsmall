@@ -4,7 +4,7 @@
 //
 // Usage (with `npm run dev` or `npx tauri dev` running):
 //   node scripts/screenshot.mjs "<path and query>" <width> <height> <waitMs> <name> [hover|click:<selector>]
-// `hover`: move the pointer over the window first (the toolbar shows on hover).
+// `hover`: move the pointer over the window first; `hover:<selector>`: over that element.
 // `click:<selector>[ >> <selector>...]`: click those elements in turn, a second and a half apart.
 // `flight[:skip]`: wait for a shot in the air on the court (after skipping `skip` of them), then
 // take 18 frames 120 ms apart as <name>-00.png ... <name>-17.png.
@@ -42,7 +42,14 @@ try {
       await new Promise((r) => setTimeout(r, 1500));
     }
   } else if (hover) {
-    await send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: Number(w) / 2, y: Number(h) / 2 });
+    // `hover` alone: the middle of the window; `hover:<selector>`: the middle of that element.
+    let x = Number(w) / 2, y = Number(h) / 2;
+    if (hover.startsWith('hover:')) {
+      const r = await send('Runtime.evaluate', { expression: `JSON.stringify(document.querySelector(${JSON.stringify(hover.slice(6))})?.getBoundingClientRect())`, returnByValue: true });
+      const box = JSON.parse(r.result.value ?? 'null');
+      if (box) { x = box.x + box.width / 2; y = box.y + box.height / 2; }
+    }
+    await send('Input.dispatchMouseEvent', { type: 'mouseMoved', x, y });
     await new Promise((r) => setTimeout(r, 400));
   }
   mkdirSync('fixtures/shots', { recursive: true });

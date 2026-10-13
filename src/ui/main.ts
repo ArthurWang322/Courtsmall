@@ -153,19 +153,36 @@ function animate(): void {
     frame = requestAnimationFrame(animate);
 }
 
+// The window is two parts made once: the view, redrawn on every state, and the toolbar, redrawn only
+// when what it shows changes. Rebuilding the toolbar each time would drop the pointer's hover, and
+// with it the button's tip, every few seconds.
+const contentEl = document.createElement('div');
+contentEl.className = 'content';
+const controlsEl = document.createElement('div');
+controlsEl.className = 'toolbar';
+app.replaceChildren(contentEl, controlsEl);
+let controlsFor = '';
+
+/** Put `html` in the view; `tier`: the toolbar for that size, or none (a panel). */
+function show(html: string, tier: Tier | undefined): void {
+  contentEl.innerHTML = html;
+  const want = tier ?? '';
+  if (want !== controlsFor) { controlsFor = want; controlsEl.innerHTML = tier ? controlsView(tier, T) : ''; }
+}
+
 function render(): void {
   const tier = tierOf(app.clientHeight);
   // A result in a court-sized window keeps the court's layout: the score where it always is, the
   // points per period and the leaders where the court would be.
   app.dataset.tier = panel ? 'panel' : tier;
   if (panel === 'settings') {
-    app.innerHTML = settingsView(teams, settings, T, pickerOpen);
+    show(settingsView(teams, settings, T, pickerOpen), undefined);
     // The list opens on the current choice: scroll the list only (scrollIntoView would move the page too).
     const list = app.querySelector<HTMLElement>('.fav-list'), on = app.querySelector<HTMLElement>('.fav-item.on');
     if (list && on) list.scrollTop = on.offsetTop - (list.clientHeight - on.offsetHeight) / 2;
     return;
   }
-  if (panel === 'games') { app.innerHTML = gamesView(dayLabel(gamesDay), dayList, T, tipOff, currentId, settings.favourites); return; }
+  if (panel === 'games') { show(gamesView(dayLabel(gamesDay), dayList, T, tipOff, currentId, settings.favourites), undefined); return; }
   const tag = replaying ? T.replay : undefined;
   // The toolbar has a row of its own along the bottom.
   const contentHeight = app.clientHeight - TOOLBAR_H;
@@ -183,7 +200,7 @@ function render(): void {
       : barView(state, T, playLinesAt(contentHeight), tag, settings.favourites, resultOnly, ages, tier === 'court');
   }
   else body = messageView(message, tier === 'bar' ? messageSub : undefined);
-  app.innerHTML = `<div class="content">${body}</div>${controlsView(tier, T)}`;
+  show(body, tier);
   if (state && tier === 'court' && !resultOnly && !frame) frame = requestAnimationFrame(animate);
 }
 
@@ -395,8 +412,9 @@ app.addEventListener('click', (e) => {
 // switches the size and opens the panels. Outside the desktop shell (npm run dev in a browser)
 // there is no window to move or resize.
 app.addEventListener('mousedown', async (e) => {
-  if ((e.target as HTMLElement).closest('button, input, label')) return;
-  if (shell && !panel && e.button === 0 && e.detail === 1) await (await win()).startDragging();
+  // Anything to click or scroll keeps the press; everywhere else moves the window, panels included.
+  if ((e.target as HTMLElement).closest('button, input, label, .fav-list, .list')) return;
+  if (shell && e.button === 0 && e.detail === 1) await (await win()).startDragging();
 });
 if (shell) void import('@tauri-apps/api/event').then(({ listen }) => {
   void listen('open-settings', () => void openPanel('settings'));

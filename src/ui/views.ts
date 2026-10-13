@@ -216,11 +216,12 @@ const icon = (k: keyof typeof ICON) => `<svg width="14" height="14" viewBox="0 0
  * lit), dark or light, the games list and the settings. Buttons carry data-* attributes; src/ui/main.ts handles them.
  */
 export function controlsView(tier: Tier, T: Strings): string {
-  const size = (t: Tier) => `<button class="icon${t === tier ? ' on' : ''}" data-tier="${t}" title="${esc(T.tierName(t))}">${icon(t)}</button>`;
+  // Each button's tip is drawn by app.css from data-tip (a native title shows late and plain).
+  const size = (t: Tier) => `<button class="icon${t === tier ? ' on' : ''}" data-tier="${t}" data-tip="${esc(T.tip[t])}" aria-label="${esc(T.tip[t])}">${icon(t)}</button>`;
   return `<div class="controls">${size('bar')}${size('court')}<span class="sep"></span>`
-    + `<button class="icon" data-theme-toggle title="${esc(T.switchTheme)}">${icon('theme')}</button>`
-    + `<button class="icon" data-open="games" title="${esc(T.games)}">${icon('games')}</button>`
-    + `<button class="icon" data-open="settings" title="${esc(T.settings)}">${icon('settings')}</button></div>`;
+    + `<button class="icon" data-theme-toggle data-tip="${esc(T.tip.theme)}" aria-label="${esc(T.tip.theme)}">${icon('theme')}</button>`
+    + `<button class="icon" data-open="games" data-tip="${esc(T.tip.games)}" aria-label="${esc(T.tip.games)}">${icon('games')}</button>`
+    + `<button class="icon" data-open="settings" data-tip="${esc(T.tip.settings)}" aria-label="${esc(T.tip.settings)}">${icon('settings')}</button></div>`;
 }
 
 /** Where a listed game is: "Q4 2:31", "Final", or its tip-off time. */

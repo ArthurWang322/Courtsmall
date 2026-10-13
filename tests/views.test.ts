@@ -137,6 +137,8 @@ describe('toolbar and games list', () => {
     const html = controlsView('bar', zh);
     expect(html.match(/class="icon on" data-tier="(\w+)"/)![1]).toBe('bar');
     expect([...html.matchAll(/data-tier="(\w+)"/g)].map((m) => m[1])).toEqual(['bar', 'court']);
+    // Every button says what it does on hover, in the maintainer's words.
+    expect([...html.matchAll(/data-tip="([^"]+)"/g)].map((m) => m[1])).toEqual(['簡易模式', '球場模式', '主題切換', '比賽列表', '設定']);
     expect(html).toContain('data-open="games"');
     expect(html).toContain('data-open="settings"');
   });

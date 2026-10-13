@@ -49,10 +49,8 @@ export interface Strings {
   notifyFinal: string;
   notifyClutch: string;
   done: string;
-  /** The hover toolbar and the games list. */
-  tierName(tier: 'dot' | 'bar' | 'court'): string;
-  games: string;
-  settings: string;
+  /** The toolbar's tips, one per button. */
+  tip: { bar: string; court: string; theme: string; games: string; settings: string };
   noGames: string;
   prevDay: string;
   nextDay: string;
@@ -63,8 +61,6 @@ export interface Strings {
   tipOffSoon: string;
   theme: string;
   themeName(t: 'system' | 'dark' | 'light'): string;
-  /** The toolbar button: switch to the other theme. */
-  switchTheme: string;
 }
 
 export const STRINGS: Record<Lang, Strings> = {
@@ -103,9 +99,7 @@ export const STRINGS: Record<Lang, Strings> = {
     notifyFinal: 'Notify at the final',
     notifyClutch: 'Notify in a close finish (last 2 min, within 5)',
     done: 'Done',
-    tierName: (t) => ({ dot: 'Dot', bar: 'Bar', court: 'Court' })[t],
-    games: 'Games',
-    settings: 'Team and notices',
+    tip: { bar: 'Simple', court: 'Court', theme: 'Dark / light', games: 'Games', settings: 'Settings' },
     noGames: 'No games this day',
     prevDay: 'Previous day',
     nextDay: 'Next day',
@@ -114,7 +108,6 @@ export const STRINGS: Record<Lang, Strings> = {
     tipOffSoon: 'Tip-off soon',
     theme: 'Theme',
     themeName: (t) => ({ system: 'System', dark: 'Dark', light: 'Light' })[t],
-    switchTheme: 'Dark / light',
   },
   'zh-TW': {
     period: (n) => (n <= 4 ? `第${n}節` : n === 5 ? '延長' : `第${n - 4}延長`),
@@ -151,9 +144,7 @@ export const STRINGS: Record<Lang, Strings> = {
     notifyFinal: '終場時通知',
     notifyClutch: '關鍵時刻通知（最後 2 分鐘、差距 5 分內）',
     done: '完成',
-    tierName: (t) => ({ dot: '點', bar: '條', court: '球場' })[t],
-    games: '比賽',
-    settings: '主隊與通知',
+    tip: { bar: '簡易模式', court: '球場模式', theme: '主題切換', games: '比賽列表', settings: '設定' },
     noGames: '這天沒有比賽',
     prevDay: '前一天',
     nextDay: '後一天',
@@ -162,7 +153,6 @@ export const STRINGS: Record<Lang, Strings> = {
     tipOffSoon: '即將開賽',
     theme: '外觀',
     themeName: (t) => ({ system: '跟隨系統', dark: '深色', light: '淺色' })[t],
-    switchTheme: '深色／淺色',
   },
 };
 
