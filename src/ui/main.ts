@@ -18,7 +18,8 @@ import { langOf, STRINGS } from '../i18n/index.ts';
 import { Notifier } from '../notify/notifier.ts';
 import { notices } from '../notify/rules.ts';
 import { nextTier, playLinesAt, TIER_PRESET, tierOf } from '../render/tiers.ts';
-import { SHOT_ANIMATION_MS } from '../render/court.ts';
+import { drawFlights, shotSeconds } from '../render/court.ts';
+import { gameColours } from '../render/colour.ts';
 import { loadSettings, saveSettings, type Settings } from '../settings/store.ts';
 import { barView, courtView, dotView, messageView, settingsView, upcomingView } from './views.ts';
 
@@ -73,17 +74,42 @@ function whenOf(g: GameCard): string {
   return new Intl.DateTimeFormat(undefined, { weekday: 'short', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }).format(g.start);
 }
 
+// ---- Court animation ----------------------------------------------------------------------------
+// The court's flights are drawn every frame from each shot's age; marks land with a full render.
+
+const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+let frame = 0;
+let flyingIds = '';
+const ageOf = (id: string, now = Date.now()) => { const at = shotSeen.get(id); return at === undefined ? undefined : (now - at) / 1000; };
+const inAir = (id: string) => {
+  const shot = state?.recentShots?.find((s) => s.id === id);
+  const t = ageOf(id);
+  return !reducedMotion.matches && shot !== undefined && t !== undefined && t < shotSeconds(shot);
+};
+const landed = (id: string) => !inAir(id);
+
+function animate(): void {
+  frame = 0;
+  if (!state || settingsOpen || tierOf(app.clientHeight) !== 'court') return;
+  const shots = state.recentShots ?? [];
+  const flying = shots.filter((s) => inAir(s.id)).map((s) => s.id).join();
+  // A flight just ended: redraw so its mark is on the floor.
+  if (flying !== flyingIds) { flyingIds = flying; render(); }
+  const now = Date.now();
+  if (!reducedMotion.matches && drawFlights(app, shots, gameColours(state.teams, settings.team), (id) => ageOf(id, now)) && !frame)
+    frame = requestAnimationFrame(animate);
+}
+
 function render(): void {
   const tier = tierOf(app.clientHeight);
   app.dataset.tier = settingsOpen ? 'settings' : tier;
   if (settingsOpen) { app.innerHTML = settingsView(teams, settings, T); return; }
   const tag = replaying ? T.replay : undefined;
   if (state) {
-    const now = Date.now();
-    const ages = new Map([...shotSeen].map(([id, at]) => [id, now - at]));
     app.innerHTML = tier === 'dot' ? dotView(state, T, tag, settings.team)
-      : tier === 'court' ? courtView(state, T, ages, tag, settings.team)
+      : tier === 'court' ? courtView(state, T, landed, tag, settings.team)
       : barView(state, T, playLinesAt(app.clientHeight), tag, settings.team);
+    if (tier === 'court' && !frame) frame = requestAnimationFrame(animate);
   }
   else if (upcoming) app.innerHTML = upcomingView(upcoming, whenOf(upcoming), tier === 'dot');
   else app.innerHTML = messageView(message, tier === 'bar' ? messageSub : undefined);
@@ -120,7 +146,7 @@ function follow(id: string, how: 'live' | 'replay'): void {
       if (!replaying) notifier.send(notices(state, s, settings.notify));
       if (s.status === 'final' && finalAt === undefined) finalAt = Date.now();
       // Shots already on the court when the game is first shown do not fly in.
-      const seenAt = state ? Date.now() : Date.now() - SHOT_ANIMATION_MS;
+      const seenAt = state ? Date.now() : Date.now() - 60_000;
       const onCourt = new Set((s.recentShots ?? []).map((shot) => shot.id));
       for (const id of shotSeen.keys()) if (!onCourt.has(id)) shotSeen.delete(id);
       for (const id of onCourt) if (!shotSeen.has(id)) shotSeen.set(id, seenAt);

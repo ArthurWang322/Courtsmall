@@ -94,9 +94,12 @@ export function barView(s: GameState, T: Strings, lines: number, tag?: string, f
     </div>`;
 }
 
-/** Court tier: the bar on top, the half court with the latest shots below. `ages`: src/render/court.ts. */
-export function courtView(s: GameState, T: Strings, ages: ReadonlyMap<string, number>, tag?: string, favourite?: string): string {
-  return `<div class="courtwrap">${barView(s, T, 2, tag, favourite)}${courtSvg(s, gameColours(s.teams, favourite), ages)}</div>`;
+/**
+ * Court tier: the bar on top, the half court in 3D below. `landed`: whether a shot's flight is
+ * over, so its mark is on the floor (src/render/court.ts draws the flights every frame).
+ */
+export function courtView(s: GameState, T: Strings, landed: (id: string) => boolean, tag?: string, favourite?: string): string {
+  return `<div class="courtwrap">${barView(s, T, 2, tag, favourite)}${courtSvg(s, gameColours(s.teams, favourite), landed)}</div>`;
 }
 
 /** No game to show: a message, and when the next one tips off. */

@@ -7,7 +7,7 @@ export type Tier = 'dot' | 'bar' | 'court';
 const BAR_AT = 44;
 const COURT_AT = 200;
 
-export const TIER_PRESET: Record<Tier, { w: number; h: number }> = { dot: { w: 200, h: 28 }, bar: { w: 360, h: 96 }, court: { w: 360, h: 280 } };
+export const TIER_PRESET: Record<Tier, { w: number; h: number }> = { dot: { w: 200, h: 28 }, bar: { w: 360, h: 96 }, court: { w: 360, h: 320 } };
 
 /** How many play lines the bar has room for at a content height. */
 export const playLinesAt = (height: number): number => (height >= 88 ? 2 : 1);

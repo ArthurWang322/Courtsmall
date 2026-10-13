@@ -50,20 +50,18 @@ body { color: var(--text); font: 13px/1.35 var(--font); user-select: none; -webk
 .settings .none { justify-content: center; }
 .settings .check { font-size: 12px; color: var(--muted); display: flex; align-items: center; gap: 6px; }
 
-/* Court tier (src/render/court.ts). One SVG unit is one foot. */
+/* Court tier (src/render/court.ts): a half court in 3D, the basket at the far end. */
 #app[data-tier='court'] { align-items: stretch; }
 .courtwrap { display: flex; flex-direction: column; gap: 6px; width: 100%; min-width: 0; }
 .court { flex: 1; min-height: 0; width: 100%; }
-.court .lines path, .court .lines circle { fill: none; stroke: var(--border); stroke-width: 0.3; }
-.court .lines .rim { stroke: var(--muted); }
-.court .mark.miss { stroke-width: 0.4; }
-.court .ball { fill: var(--accent); transform-box: view-box; animation: fly 550ms ease-in both; }
-.court .mark.fresh { animation: appear 350ms ease-out both; }
-/* A shot's ball travels to the rim on a short arc, then goes. */
-@keyframes fly {
-  0% { transform: translate(0, 0); }
-  50% { transform: translate(calc(var(--dx) * .5), calc(var(--dy) * .5 - 4px)); }
-  100% { transform: translate(var(--dx), var(--dy)); opacity: 0; }
-}
-@keyframes appear { from { opacity: 0; } }
-@media (prefers-reduced-motion: reduce) { .court .ball { display: none; } .court .mark.fresh { animation: none; } }
+.court .floor { fill: color-mix(in srgb, var(--panel) 80%, #3a2a1c); stroke: var(--border); stroke-width: 0.6; }
+.court .lines path { fill: none; stroke: color-mix(in srgb, var(--muted) 45%, transparent); stroke-width: 0.6; }
+.court .post { fill: none; stroke: var(--muted); stroke-width: 0.9; }
+.court .board { fill: color-mix(in srgb, var(--text) 10%, transparent); stroke: var(--muted); stroke-width: 0.6; }
+.court .rim { fill: none; stroke: #e8823a; stroke-width: 0.9; }
+.court .rim-shadow { fill: rgba(0, 0, 0, .35); stroke: none; }
+.court .mark.miss { stroke-width: 0.7; }
+.court .shadow { fill: #000; }
+.court .ball { fill: #e8823a; stroke: rgba(0, 0, 0, .35); stroke-width: 0.3; }
+.court .shooter .cap { filter: brightness(1.25); }
+.court .swish { stroke-width: 0.8; }
