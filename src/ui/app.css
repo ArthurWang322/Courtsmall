@@ -5,7 +5,7 @@
 :root {
   --background: #141317; --surface: #1c1b20; --panel: #222127; --border: #2e2d34; --edge: rgba(255, 255, 255, .07);
   --text: #f3efe7; --muted: #9b98a2; --faint: #6c6973; --accent: #f2b544; --glow: rgba(242, 181, 68, .07);
-  --wood: #2b2119; --wood-hi: #3a2c20; --court-line: rgba(243, 239, 231, .42); --court-edge: rgba(243, 239, 231, .18);
+  --wood: #5a3f27; --wood-hi: #7a5735; --plank: rgba(0, 0, 0, .16); --court-line: rgba(243, 239, 231, .55); --court-edge: rgba(243, 239, 231, .22);
   --board-fill: rgba(243, 239, 231, .08); --board-line: rgba(243, 239, 231, .55); --points-stroke: rgba(0, 0, 0, .6);
   --display: 'Big Shoulders Display', 'Barlow Condensed', 'PingFang TC', system-ui, sans-serif;
   --label: 'Barlow Condensed', 'PingFang TC', 'Microsoft JhengHei UI', system-ui, sans-serif;
@@ -18,7 +18,7 @@
   /* Paper and ink; a maple floor. */
   --background: #f4f1ea; --surface: #fbf9f4; --panel: #ffffff; --border: #dcd5c9; --edge: rgba(255, 255, 255, .9);
   --text: #1d1b20; --muted: #6d6873; --faint: #a39ea8; --accent: #b07408; --glow: rgba(176, 116, 8, .06);
-  --wood: #d6b287; --wood-hi: #ead0a8; --court-line: rgba(70, 45, 20, .55); --court-edge: rgba(70, 45, 20, .3);
+  --wood: #d6b287; --wood-hi: #ead0a8; --plank: rgba(90, 60, 30, .12); --court-line: rgba(70, 45, 20, .55); --court-edge: rgba(70, 45, 20, .3);
   --board-fill: rgba(255, 255, 255, .55); --board-line: rgba(70, 45, 20, .6); --points-stroke: rgba(255, 255, 255, .85);
 }
 * { box-sizing: border-box; }
@@ -104,6 +104,7 @@ button { font: inherit; color: inherit; border: 0; background: transparent; padd
 .court { flex: 1; min-height: 0; width: 100%; filter: drop-shadow(0 6px 10px rgba(0, 0, 0, .45)); }
 .court .floor { fill: url(#wood); stroke: var(--court-edge); stroke-width: 0.6; }
 .court .paint { fill: rgba(0, 0, 0, .22); }
+.court .planks path { fill: none; stroke: var(--plank); stroke-width: 0.25; }
 .court .lines path { fill: none; stroke: var(--court-line); stroke-width: 0.6; }
 .court .post { fill: none; stroke: var(--muted); stroke-width: 0.9; }
 .court .board { fill: var(--board-fill); stroke: var(--board-line); stroke-width: 0.6; }
