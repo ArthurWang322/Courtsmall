@@ -17,6 +17,9 @@
 html, body { margin: 0; height: 100%; background: transparent; overflow: hidden; }
 body { color: var(--text); font: 13px/1.35 var(--font); user-select: none; -webkit-user-select: none; -webkit-font-smoothing: antialiased; }
 button { font: inherit; color: inherit; border: 0; background: transparent; padding: 0; cursor: pointer; }
+/* Thin scrollbars in the theme's colours. On macOS they are the system's overlay ones anyway; on
+   Windows the default is a wide grey bar that is always there. */
+* { scrollbar-width: thin; scrollbar-color: color-mix(in srgb, var(--muted) 45%, transparent) transparent; }
 
 /* The window: a dark panel with a warm glow from the top left, grain, and a lit top edge. */
 #app { position: absolute; inset: 0; display: flex; align-items: center; overflow: hidden; border-radius: 14px; padding: 10px 16px; cursor: default;
@@ -128,17 +131,17 @@ button { font: inherit; color: inherit; border: 0; background: transparent; padd
 /* ---- Panels: the games list and the settings ---------------------------------------------------- */
 #app[data-tier='panel'] { align-items: stretch; }
 .panel, .settings { display: flex; flex-direction: column; gap: 8px; width: 100%; min-width: 0; height: 100%; padding: 4px 0; }
-.settings { overflow: auto; }
+.settings { overflow-x: hidden; overflow-y: auto; }
 .panel .head, .settings .head { display: flex; align-items: center; gap: 4px; }
 .settings .head { justify-content: space-between; }
 .panel .head b, .settings .head b { font: 600 16px var(--label); letter-spacing: .08em; text-transform: uppercase; }
 .panel .head .icon { font-size: 16px; }
 .panel .done, .settings button.done { padding: 4px 10px; border-radius: 8px; border: 1px solid var(--accent); color: var(--accent);
   background: color-mix(in srgb, var(--accent) 8%, var(--panel)); font: 600 12px var(--label); letter-spacing: .08em; text-transform: uppercase; }
-.panel .list { display: flex; flex-direction: column; gap: 4px; overflow: auto; min-height: 0; }
+.panel .list { display: flex; flex-direction: column; gap: 4px; overflow-x: hidden; overflow-y: auto; min-height: 0; }
 .panel .game { display: flex; align-items: center; gap: 8px; padding: 7px 10px; border-radius: 8px; border: 1px solid var(--border);
-  background: linear-gradient(180deg, var(--panel), var(--surface)); color: var(--text); text-align: left; transition: border-color .12s, transform .12s; }
-.panel .game:hover { border-color: var(--muted); transform: translateX(2px); }
+  background: linear-gradient(180deg, var(--panel), var(--surface)); color: var(--text); text-align: left; transition: border-color .12s; }
+.panel .game:hover { border-color: var(--muted); }
 .panel .game.on { border-color: var(--accent); }
 .panel .game .who { display: inline-flex; align-items: center; gap: 6px; font: 600 14px var(--label); letter-spacing: .05em; }
 .panel .game .who b { font: 800 17px var(--display); letter-spacing: .02em; }
@@ -191,7 +194,7 @@ button { font: inherit; color: inherit; border: 0; background: transparent; padd
 .settings .caret { width: 0; height: 0; border-left: 4px solid transparent; border-right: 4px solid transparent; border-top: 5px solid var(--muted); }
 .settings .dot.none { background: transparent; box-shadow: 0 0 0 1.5px var(--muted); }
 /* About five teams tall, inside the settings window; the wheel scrolls the rest. */
-.settings .fav-list { position: absolute; z-index: 2; top: calc(100% + 4px); left: 0; right: 0; max-height: 150px; overflow-y: auto; padding: 3px;
+.settings .fav-list { position: absolute; z-index: 2; top: calc(100% + 4px); left: 0; right: 0; max-height: 150px; overflow-x: hidden; overflow-y: auto; padding: 3px;
   border-radius: 8px; border: 1px solid var(--border); background: var(--surface); box-shadow: 0 10px 24px rgba(0, 0, 0, .45); }
 .settings .fav-item { width: 100%; display: block; padding: 5px 10px; border-radius: 6px; border: 0;
   background: transparent; color: var(--text); font: 500 13px var(--font); text-align: left; }
