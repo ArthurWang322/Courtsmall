@@ -32,10 +32,17 @@ body { color: var(--text); font: 13px/1.35 var(--font); user-select: none; -webk
 .pill .tag { margin: 0; }
 .bar { display: flex; flex-direction: column; gap: 4px; width: 100%; min-width: 0; }
 .bar .row { display: flex; align-items: center; white-space: nowrap; overflow: hidden; }
-.bar .row:first-child { font-size: 15px; }
-/* The score is what a glance is for; the period and clock come second. */
-.bar .sc b { font-size: 22px; font-weight: 700; line-height: 1.1; }
-.bar .row:first-child .when { font-size: 12px; color: var(--muted); }
+/* The bar's score bug: a cell per team with a stripe in its colour, then the period and clock.
+   The score is what a glance is for; the period and clock come second. */
+.bug { display: flex; align-items: stretch; gap: 3px; min-width: 0; }
+.bug .cell { display: flex; align-items: center; background: var(--panel); border: 1px solid var(--border); border-radius: 6px; overflow: hidden; }
+.bug .team { gap: 7px; padding-right: 6px; min-width: 0; }
+.bug .stripe { align-self: stretch; width: 4px; flex: 0 0 4px; }
+.bug .abbr { font-size: 12px; letter-spacing: .02em; }
+.bug b { font-size: 22px; font-weight: 700; line-height: 1.15; font-variant-numeric: tabular-nums; min-width: 2.2ch; text-align: right; }
+.bug .ball-mark { width: 10px; font-size: 13px; color: var(--text); }
+.bug .clock { padding: 0 8px; font-size: 12px; color: var(--muted); white-space: nowrap; }
+.bug .tag { align-self: center; margin: 0 6px 0 auto; }
 .pill .sc b { font-size: 15px; font-weight: 700; }
 .pill .when { font-size: 11px; }
 .bar .play { font-size: 12px; min-height: 16px; text-overflow: ellipsis; }

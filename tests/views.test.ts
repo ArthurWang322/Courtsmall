@@ -111,6 +111,15 @@ describe('possession', () => {
     expect(dotView({ ...base, status: 'break', possession: 'away' }, en)).not.toContain('dot ball');
   });
 
+  // In the bar the mark is a "◂" in the team's cell, beside its score: the dot's ring would be lost in the bug.
+  it("marks the team with the ball in its own cell of the bar's score bug, and nobody during a break", () => {
+    const html = barView({ ...base, possession: 'home' }, en, 1);
+    const home = html.slice(html.indexOf('>UTAH<'));
+    expect(home.slice(0, home.indexOf('</div>'))).toContain('◂');
+    expect(html.match(/◂/g)).toHaveLength(1);
+    expect(barView({ ...base, status: 'break', possession: 'home' }, en, 1)).not.toContain('◂');
+  });
+
   it('escapes names from the feed', () => {
     const html = barView({ ...base, recentPlays: [{ type: 'foul', kind: 'personal', side: 'away', player: { id: 'x', name: '<b>', short: '<b>' } }] }, en, 1);
     expect(html).toContain('[SA] &lt;b&gt; foul');

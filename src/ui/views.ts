@@ -37,11 +37,21 @@ export function whenText(s: GameState, T: Strings, tipOff?: string): string {
 const dot = (s: GameState, side: Side, colour: string) =>
   `<i class="dot${s.possession === side && s.status === 'live' ? ' ball' : ''}" style="background:#${esc(colour)}"></i>`;
 
-/** `favourite`: the chosen team's id; in a colour clash it keeps its own colour. */
-function scoreHtml(s: GameState, withAbbr: boolean, favourite?: string): string {
+/** The dot's score: team dots and the two numbers. `favourite`: in a colour clash it keeps its colour. */
+function scoreHtml(s: GameState, favourite?: string): string {
   const c = gameColours(s.teams, favourite);
-  const ab = (side: Side) => (withAbbr ? `<span class="abbr">${esc(s.teams[side].abbr)}</span>` : '');
-  return `${dot(s, 'away', c.away)}${ab('away')}<b>${s.score.away}</b><span class="muted">–</span><b>${s.score.home}</b>${ab('home')}${dot(s, 'home', c.home)}`;
+  return `${dot(s, 'away', c.away)}<b>${s.score.away}</b><span class="muted">–</span><b>${s.score.home}</b>${dot(s, 'home', c.home)}`;
+}
+
+/**
+ * The bar's score, laid out like a broadcast score bug: one cell per team (a stripe in its colour,
+ * the abbreviation, the score; "◂" on the team with the ball), then a cell with the period and clock.
+ */
+function scoreBug(s: GameState, T: Strings, tag?: string, favourite?: string): string {
+  const c = gameColours(s.teams, favourite);
+  const cell = (side: Side) =>
+    `<div class="cell team"><i class="stripe" style="background:#${esc(c[side])}"></i><span class="abbr">${esc(s.teams[side].abbr)}</span><b>${s.score[side]}</b><span class="ball-mark">${s.possession === side && s.status === 'live' ? '◂' : ''}</span></div>`;
+  return `<div class="bug">${cell('away')}${cell('home')}${tag ? `<span class="tag">${esc(tag)}</span>` : '<span class="grow"></span>'}<div class="cell clock mono">${esc(whenText(s, T))}</div></div>`;
 }
 
 /** "[UTAH] I. Collier +2", "[PHI] J. Embiid shooting foul": the team first, so a glance at a
@@ -78,17 +88,17 @@ export function playLines(s: GameState, T: Strings, count: number): string[] {
  * A replay is marked with "↺" (the word does not fit): a replay mistaken for a live game misleads.
  */
 export function dotView(s: GameState, T: Strings, tag?: string, favourite?: string): string {
-  return `<div class="pill"><span class="sc">${scoreHtml(s, false, favourite)}</span><span class="when mono">${esc(whenText(s, T))}</span>${tag ? `<span class="tag" title="${esc(tag)}">↺</span>` : ''}</div>`;
+  return `<div class="pill"><span class="sc">${scoreHtml(s, favourite)}</span><span class="when mono">${esc(whenText(s, T))}</span>${tag ? `<span class="tag" title="${esc(tag)}">↺</span>` : ''}</div>`;
 }
 
 /**
- * Bar tier: score with team abbreviations and the period on top; below, the newest play, and
- * under a divider the one before it, quieter.
+ * Bar tier: the score bug on top; below, the newest play, and under a divider the one before it,
+ * quieter.
  */
 export function barView(s: GameState, T: Strings, lines: number, tag?: string, favourite?: string): string {
   const [newest = '', older = ''] = playLines(s, T, lines);
   return `<div class="bar">
-      <div class="row"><span class="sc">${scoreHtml(s, true, favourite)}</span><span class="grow"></span>${tag ? `<span class="tag">${esc(tag)}</span>` : ''}<span class="when mono">${esc(whenText(s, T))}</span></div>
+      ${scoreBug(s, T, tag, favourite)}
       <div class="row play new">${newest}</div>${lines > 1 ? `
       <hr class="divider"><div class="row play old">${older}</div>` : ''}
     </div>`;
