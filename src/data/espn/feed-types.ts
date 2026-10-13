@@ -88,6 +88,8 @@ export interface Scoreboard {
 
 /** The site API's `teams/{id}/schedule`. Status sits inside the competition, and the score is an object. */
 export interface TeamSchedule {
+  /** The team itself, with its first colour (the schedule is the one per-team request a web view can read). */
+  team?: { id: string; abbreviation: string; displayName: string; color?: string };
   events: {
     id: string;
     date: string;
@@ -102,9 +104,16 @@ export interface TeamSchedule {
   }[];
 }
 
-/** The site API's `teams`. */
-export interface TeamList {
-  sports: { leagues: { teams: { team: { id: string; abbreviation: string; displayName: string; color?: string; alternateColor?: string } }[] }[] }[];
+/**
+ * The site API's `groups`: conferences, then divisions, then teams (no colours). Used for the list
+ * of teams because the site API's `teams` sends no CORS header, so a web view cannot read it.
+ */
+export interface Groups {
+  groups: GroupNode[];
+}
+export interface GroupNode {
+  children?: GroupNode[];
+  teams?: { id: string; abbreviation: string; displayName: string }[];
 }
 
 /** What the adapter needs for one game: the summary once, plus the core API's plays. */

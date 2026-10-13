@@ -188,3 +188,20 @@ core API 投籃事件的 `coordinate`，單位是英尺，`x` 是 0–50（橫�
 座標是整數，所以誤差在 1.6 英尺以內是合理的。`tests/timeline.test.ts` 檢查每一次三分出手都在三分線外、兩分出手都在線內（允許 1.6 英尺的誤差）。
 - **x = 0 在哪一邊【未驗證】**：資料只給數字，事件文字也沒有「左邊底角」這類描述。球場畫面照一般投籃分布圖的慣例畫：籃框在上方時，x = 0 在左邊。如果其實是反的，畫面就會左右鏡像，但進球位置的遠近和三分內外不受影響。
 
+## 12. CORS：哪些端點 webview 讀得到
+
+App 是在 webview 裡用 `fetch` 抓資料，回應沒有 `access-control-allow-origin` 的話會被擋。M0 只驗了 summary 與 scoreboard，就以為整個 site API 都有；結果 `teams` 沒有，App 的最愛球隊下拉選單是空的（瀏覽器開發時用的是本機夾具，所以沒發現）。2026-10-13 帶 `Origin: tauri://localhost` 實測：
+
+| 端點 | CORS | App 用途 |
+| --- | --- | --- |
+| site `summary?event=` | ✓ | 一場比賽的隊伍、名單、boxscore |
+| site `scoreboard` | ✓ | 今日賽程、比賽選單 |
+| site `teams/{id}/schedule` | ✓ | 最愛球隊的賽程；回應裡的 `team.color` 是隊色 |
+| site `groups` | ✓ | 30 隊的列表（沒有隊色） |
+| site `teams` | ✗ | 不用 |
+| site `teams/{id}` | ✗ | 不用 |
+| site `apis/v2/.../standings` | ✓ | 目前不用 |
+| core `.../plays`、`.../status` | ✓ | 直播 |
+
+新增端點時，要先用 `curl -H "Origin: tauri://localhost"` 確認有這個標頭。
+

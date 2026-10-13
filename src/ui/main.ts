@@ -14,7 +14,7 @@ import '@fontsource/barlow-condensed/latin-500';
 import '@fontsource/barlow-condensed/latin-600';
 import type { GameCard, GameState, Side, TeamRef, Unsubscribe } from '../model/types.ts';
 import type { GameFeed } from '../data/espn/feed-types.ts';
-import { allTeams, dayGames, loadFeed, teamGames, type FetchJson } from '../data/espn/fetch.ts';
+import { allTeams, dayGames, loadFeed, teamColour, teamGames, type FetchJson } from '../data/espn/fetch.ts';
 import { EspnLiveSource } from '../data/espn/live-source.ts';
 import { buildTimeline, initialState } from '../data/espn/timeline.ts';
 import { EspnReplaySource } from '../data/replay/espn-replay-source.ts';
@@ -313,6 +313,17 @@ async function openPanel(kind: 'games' | 'settings'): Promise<void> {
     try { teams = await allTeams(fromFixture ? () => fetch('/fixtures/nba/teams.json').then((r) => r.json()) : fetchJson); } catch (e) { console.warn(e); }
     render();
   }
+  if (kind === 'settings') void colourFavourite();
+}
+
+/** The team list has no colours; the favourite's comes with its schedule, for the dot beside the drop-down. */
+async function colourFavourite(): Promise<void> {
+  const fav = teams.find((t) => settings.favourites.includes(t.id));
+  if (!fav || fav.color) return;
+  try {
+    const color = await teamColour(fetchJson, fav.id);
+    if (color) { teams = teams.map((t) => (t.id === fav.id ? { ...t, color } : t)); if (panel === 'settings') render(); }
+  } catch (e) { console.warn(e); }
 }
 
 async function closePanel(): Promise<void> {
@@ -363,6 +374,7 @@ app.addEventListener('change', (e) => {
   settings = { ...settings, favourites: el.value ? [el.value] : [] };
   saveSettings(settings);
   render();
+  void colourFavourite();
   // A new favourite: drop the game on screen unless it is in progress (decide() never leaves one).
   if (!params.has('game')) { teamCache = undefined; void decideNow(); }
 });

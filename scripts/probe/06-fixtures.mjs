@@ -7,8 +7,8 @@ import { get, CACHE_DIR } from './lib.mjs';
 import { FIXTURES } from '../../tests/fixtures.ts';
 
 const SITE = 'https://site.api.espn.com/apis/site/v2/sports/basketball/nba';
-// The team list, for the settings page under `npm run dev` with &fixture.
-writeFileSync(join(CACHE_DIR, '..', 'teams.json'), JSON.stringify((await get(`${SITE}/teams`)).json));
+// The team list (`groups`, as the app reads it), for the settings page under `npm run dev` with &fixture.
+writeFileSync(join(CACHE_DIR, '..', 'teams.json'), JSON.stringify((await get(`${SITE}/groups`)).json));
 // A day's scoreboard with overtime games in it, for the games list under `npm run dev` with &fixture.
 writeFileSync(join(CACHE_DIR, '..', 'scoreboard.json'), JSON.stringify((await get(`${SITE}/scoreboard?dates=20260107`)).json));
 for (const { id, note } of FIXTURES) {

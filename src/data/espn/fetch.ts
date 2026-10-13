@@ -2,7 +2,7 @@
 // its requests, the app passes a polite fetcher, the tests pass recorded responses.
 
 import type { GameCard, Side, TeamRef } from '../../model/types.ts';
-import type { CorePlay, CorePlayPage, GameFeed, Scoreboard, Summary, TeamList, TeamSchedule } from './feed-types.ts';
+import type { CorePlay, CorePlayPage, GameFeed, GroupNode, Groups, Scoreboard, Summary, TeamSchedule } from './feed-types.ts';
 import { gameStatus, teamRef } from './timeline.ts';
 
 export type FetchJson = (url: string) => Promise<unknown>;
@@ -40,10 +40,21 @@ export async function dayGames(get: FetchJson, date?: string): Promise<GameCard[
   });
 }
 
-/** The league's teams, with their colours. */
+/**
+ * The league's teams, by abbreviation, without colours: from `groups`, since `teams` sends no CORS
+ * header (docs/PROBE_REPORT.md §12). A team's colour comes with its schedule (`teamColour`).
+ */
 export async function allTeams(get: FetchJson): Promise<TeamRef[]> {
-  const list = (await get(`${SITE}/teams`)) as TeamList;
-  return (list.sports[0]?.leagues[0]?.teams ?? []).map((t) => teamRef(t.team)).sort((a, b) => a.abbr.localeCompare(b.abbr));
+  const { groups } = (await get(`${SITE}/groups`)) as Groups;
+  const out: TeamRef[] = [];
+  const walk = (n: GroupNode) => { for (const t of n.teams ?? []) out.push(teamRef(t)); for (const c of n.children ?? []) walk(c); };
+  groups.forEach(walk);
+  return [...new Map(out.map((t) => [t.id, t])).values()].sort((a, b) => a.abbr.localeCompare(b.abbr));
+}
+
+/** One team's first colour, "rrggbb", from its schedule. */
+export async function teamColour(get: FetchJson, teamId: string): Promise<string | undefined> {
+  return ((await get(`${SITE}/teams/${teamId}/schedule`)) as TeamSchedule).team?.color;
 }
 
 /**
