@@ -1,0 +1,42 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Courtsmall",
+  "version": "0.0.0",
+  "identifier": "io.github.zaious.courtsmall",
+  "build": {
+    "devUrl": "http://localhost:1420",
+    "frontendDist": "../dist",
+    "beforeDevCommand": "npm run dev",
+    "beforeBuildCommand": "npm run build"
+  },
+  "app": {
+    "windows": [
+      {
+        "label": "main",
+        "title": "Courtsmall",
+        "width": 360,
+        "height": 64,
+        "minWidth": 150,
+        "minHeight": 24,
+        "decorations": false,
+        "transparent": true,
+        "shadow": false,
+        "alwaysOnTop": true,
+        "resizable": true
+      }
+    ],
+    "security": {
+      "csp": "default-src 'self'; connect-src 'self' ipc: http://ipc.localhost https://site.api.espn.com https://sports.core.api.espn.com; style-src 'self' 'unsafe-inline'; img-src 'self' data:"
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": ["dmg", "nsis", "appimage", "deb"],
+    "category": "Sports",
+    "shortDescription": "Basketball, but small.",
+    "longDescription": "An unofficial desktop companion that follows live NBA games in a quiet corner of your screen.",
+    "resources": { "../LICENSE": "LICENSE.txt" },
+    "macOS": { "signingIdentity": "-" },
+    "icon": ["icons/32x32.png", "icons/128x128.png", "icons/128x128@2x.png", "icons/icon.icns", "icons/icon.ico"]
+  }
+}

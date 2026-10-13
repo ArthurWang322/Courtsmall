@@ -10,15 +10,12 @@
 
 import type { GameHandlers, GameSource, GameState, TimelineEntry, Unsubscribe } from '../../model/types.ts';
 import type { CorePlay, CorePlayPage, GameFeed, Summary } from './feed-types.ts';
+import { allPlays, competition, loadFeed, type FetchJson } from './fetch.ts';
 import { buildTimeline, gameStatus, initialState } from './timeline.ts';
 import { systemClock, type Clock } from '../replay/player.ts';
 
-/** GET a URL and return parsed JSON. */
-export type FetchJson = (url: string) => Promise<unknown>;
+export type { FetchJson };
 
-const SITE = 'https://site.api.espn.com/apis/site/v2/sports/basketball/nba';
-const CORE = 'https://sports.core.api.espn.com/v2/sports/basketball/leagues/nba';
-const competition = (id: string) => `${CORE}/events/${id}/competitions/${id}`;
 const TAIL_PAGE = 25;
 
 export interface LiveOptions {
@@ -130,25 +127,15 @@ class LiveGame {
     return this.fetchJson(url);
   }
 
-  private async allPlays(): Promise<CorePlay[]> {
-    const out: CorePlay[] = [];
-    for (let page = 1; ; page++) {
-      const res = (await this.get(`${competition(this.id)}/plays?limit=1000&page=${page}`)) as CorePlayPage;
-      out.push(...res.items);
-      if (page >= res.pageCount) return out;
-    }
-  }
-
   private async refresh(): Promise<void> {
     if (!this.summary) {
-      this.summary = (await this.get(`${SITE}/summary?event=${this.id}`)) as Summary;
-      this.plays = await this.allPlays();
+      ({ summary: this.summary, plays: this.plays } = await loadFeed((u) => this.get(u), this.id));
       this.lastFull = this.o.clock.now();
       return;
     }
     this.core = (await this.get(`${competition(this.id)}/status`)) as CoreStatus;
     if (this.o.clock.now() - this.lastFull >= this.o.fullRefreshMs) {
-      this.plays = await this.allPlays();
+      this.plays = await allPlays((u) => this.get(u), this.id);
       this.lastFull = this.o.clock.now();
       return;
     }

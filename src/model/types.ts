@@ -28,6 +28,8 @@ export interface TeamRef {
   id: string;
   abbr: string;
   name: string;
+  /** The league's team colour, "rrggbb". */
+  color?: string;
 }
 
 /** 1 free throw, 2 two-pointer (goaltending included), 3 three-pointer. */
@@ -89,6 +91,18 @@ export interface TimelineEntry {
   id: string;
   events: GameEvent[];
   state: GameState;
+}
+
+/** One game on a day's schedule, for choosing what to follow. */
+export interface GameCard {
+  id: string;
+  status: GameStatus;
+  teams: Record<Side, TeamRef>;
+  /** Epoch ms of the scheduled tip-off. */
+  start: number;
+  period: number;
+  clock: number;
+  score: Record<Side, number>;
 }
 
 export type Unsubscribe = () => void;

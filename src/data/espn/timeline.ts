@@ -19,6 +19,9 @@ const STATUS: Record<string, GameStatus> = {
   STATUS_FINAL: 'final',
 };
 
+export const teamRef = (t: { id: string; abbreviation: string; displayName: string; color?: string }): TeamRef =>
+  ({ id: t.id, abbr: t.abbreviation, name: t.displayName, ...(t.color ? { color: t.color } : {}) });
+
 /** ESPN's status name, e.g. STATUS_HALFTIME, as a GameStatus. */
 export const gameStatus = (name: string): GameStatus => STATUS[name] ?? 'unknown';
 
@@ -26,7 +29,7 @@ export const gameStatus = (name: string): GameStatus => STATUS[name] ?? 'unknown
 export function initialState(feed: GameFeed): GameState {
   const comp = feed.summary.header.competitions[0]!;
   const teams = {} as Record<Side, TeamRef>;
-  for (const c of comp.competitors) teams[c.homeAway] = { id: c.team.id, abbr: c.team.abbreviation, name: c.team.displayName };
+  for (const c of comp.competitors) teams[c.homeAway] = teamRef(c.team);
   return {
     gameId: feed.summary.header.id,
     season: feed.summary.header.season.year,

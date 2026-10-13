@@ -43,7 +43,7 @@ export interface Summary {
     competitions: {
       competitors: {
         homeAway: 'home' | 'away';
-        team: { id: string; abbreviation: string; displayName: string };
+        team: { id: string; abbreviation: string; displayName: string; color?: string };
         score?: string;
         linescores?: { displayValue: string }[];
       }[];
@@ -59,6 +59,22 @@ export interface Summary {
       }[];
     }[];
   };
+}
+
+/** The site API's `scoreboard?dates=YYYYMMDD`. */
+export interface Scoreboard {
+  events: {
+    id: string;
+    date: string;
+    status: { clock: number; period: number; type: { name: string } };
+    competitions: {
+      competitors: {
+        homeAway: 'home' | 'away';
+        team: { id: string; abbreviation: string; displayName: string; color?: string };
+        score?: string;
+      }[];
+    }[];
+  }[];
 }
 
 /** What the adapter needs for one game: the summary once, plus the core API's plays. */
