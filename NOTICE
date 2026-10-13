@@ -1,0 +1,20 @@
+Courtsmall
+Copyright 2026 ArthurWang322 (https://github.com/ArthurWang322)
+https://github.com/ArthurWang322/Courtsmall
+
+This product is licensed under the Apache License, Version 2.0 (see LICENSE).
+
+Based on Basesmall by Zaious, ChronicleCore Studio
+(https://github.com/Zaious/basesmall, Apache License 2.0). Some files come from
+Basesmall: the replay player (src/data/replay/player.ts), the test clock
+(tests/fake-clock.ts) and parts of tests/replay.test.ts.
+
+Courtsmall shows game data from ESPN's public site and core APIs, fetched by
+each user's own computer. That data is not part of this product and is not
+covered by its licence. Courtsmall is not affiliated with or endorsed by the
+NBA, its teams or ESPN.
+
+Fonts bundled with the app, under the SIL Open Font License 1.1
+(see LICENSES/OFL-1.1.txt):
+  Barlow Condensed       Copyright 2017 The Barlow Project Authors
+  Big Shoulders Display  Google Inc. (as given by Google Fonts)
