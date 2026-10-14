@@ -9,8 +9,9 @@ use tauri_plugin_window_state::StateFlags;
 
 pub fn run() {
     tauri::Builder::default()
-        // Size is the tier (dot or bar) and is set by the web view; only the position is kept.
-        .plugin(tauri_plugin_window_state::Builder::default().with_state_flags(StateFlags::POSITION).build())
+        // Size is the tier (dot or bar) and is set by the web view; only the position is kept. Not the
+        // stats and line score: they open beside the main window wherever it is now.
+        .plugin(tauri_plugin_window_state::Builder::default().with_state_flags(StateFlags::POSITION).with_denylist(&["players", "linescore"]).build())
         .plugin(tauri_plugin_notification::init())
         .setup(|app| {
             let toggle = MenuItem::with_id(app, "toggle", "Show / hide", true, None::<&str>)?;
