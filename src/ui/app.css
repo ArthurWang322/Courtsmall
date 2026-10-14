@@ -63,9 +63,9 @@ button { font: inherit; color: inherit; border: 0; background: transparent; padd
 .bug .cell { display: flex; align-items: center; border: 1px solid var(--border); border-radius: 7px; overflow: hidden;
   background: linear-gradient(90deg, color-mix(in srgb, var(--team, var(--panel)) 45%, var(--panel)) 0%, var(--panel) 100%);
   box-shadow: inset 0 1px 0 var(--edge); }
-.bug .team { gap: 8px; padding: 0 7px; min-width: 0; }
+.bug .team { gap: 6px; padding: 0 7px; min-width: 0; }
 .bug .abbr { font: 600 13px var(--label); letter-spacing: .08em; color: var(--muted); }
-.bug .logo { width: 24px; height: 24px; flex: 0 0 24px; object-fit: contain; }
+.bug .logo { width: 20px; height: 20px; flex: 0 0 20px; object-fit: contain; }
 /* A team without a logo: its initial on a disc in its colour, the logo's size. */
 .logo.badge { display: inline-grid; place-items: center; border-radius: 50%; font: 700 12px var(--label); font-style: normal; color: #fff; text-shadow: 0 1px 1px rgba(0, 0, 0, .5); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .25); }
 .bug b { font: 800 27px/1.05 var(--display); letter-spacing: .02em; min-width: 2.1ch; text-align: right; font-variant-numeric: tabular-nums; }
