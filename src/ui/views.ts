@@ -191,9 +191,8 @@ export function settingsView(teams: readonly TeamRef[], s: Settings, T: Strings,
   const check = (key: keyof Settings['notify'], label: string) =>
     `<label class="check"><input type="checkbox" data-notify="${key}"${s.notify[key] ? ' checked' : ''}> ${esc(label)}</label>`;
   return `<div class="settings">
-      <div class="head"><b>${esc(T.chooseTeam)}</b><button class="done" data-done>${esc(T.save)}</button></div>
-      ${picker}
-      <span class="hint muted">${esc(fav ? T.favouritesHint : T.noTeam)}</span>
+      <div class="head"><b>${esc(T.tip.settings)}</b><button class="done" data-done>${esc(T.save)}</button></div>
+      <div class="fav-row"><span class="label">${esc(T.chooseTeam)}</span>${picker}</div>
       ${check('start', T.notifyStart)}${check('final', T.notifyFinal)}${check('clutch', T.notifyClutch)}
       <label class="check"><input type="checkbox" data-shortcuts${s.shortcuts ? ' checked' : ''}> ${esc(T.shortcuts)}</label>
       <span class="keys">${(Object.keys(SHORTCUTS) as ShortcutAction[]).map((a) => `<kbd>${esc(keyLabel(SHORTCUTS[a], mac))}</kbd> ${esc(T.shortcut[a])}`).join('<i>·</i>')}</span>

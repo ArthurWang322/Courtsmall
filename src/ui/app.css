@@ -192,7 +192,9 @@ button { font: inherit; color: inherit; border: 0; background: transparent; padd
   background: linear-gradient(90deg, color-mix(in srgb, var(--accent) 10%, var(--panel)), var(--surface)); }
 
 /* The favourite team's drop-down (our own: a native one opens all 30 teams at once). */
-.settings .favourite { position: relative; }
+.settings .fav-row { display: flex; align-items: center; gap: 10px; }
+.settings .fav-row .label { font-size: 12.5px; color: var(--muted); white-space: nowrap; }
+.settings .favourite { position: relative; flex: 1; min-width: 0; }
 .settings .fav-current { width: 100%; display: flex; align-items: center; gap: 8px; padding: 7px 10px; border-radius: 8px; border: 1px solid var(--border);
   background: linear-gradient(180deg, var(--panel), var(--surface)); color: var(--text); font: 600 14px var(--label); letter-spacing: .04em; text-align: left; }
 .settings .fav-current[aria-expanded='true'] { border-color: var(--accent); }

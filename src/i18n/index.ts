@@ -42,8 +42,6 @@ export interface Strings {
   tomorrow: string;
   /** Settings. */
   chooseTeam: string;
-  noTeam: string;
-  favouritesHint: string;
   noFavourite: string;
   notifyStart: string;
   notifyFinal: string;
@@ -102,8 +100,6 @@ export const STRINGS: Record<Lang, Strings> = {
     today: 'Today',
     tomorrow: 'Tomorrow',
     chooseTeam: 'Favourite team',
-    noTeam: 'No favourite: the closest game is followed.',
-    favouritesHint: 'Its games are followed, and starred wherever they appear.',
     noFavourite: 'None (follow the closest game)',
     notifyStart: 'Notify at tip-off',
     notifyFinal: 'Notify at the final',
@@ -152,8 +148,6 @@ export const STRINGS: Record<Lang, Strings> = {
     today: '今天',
     tomorrow: '明天',
     chooseTeam: '最愛球隊',
-    noTeam: '沒有最愛球隊時，自動跟最緊張的比賽。',
-    favouritesHint: '會自動跟它的比賽，並在各處加上星號。',
     noFavourite: '無（自動跟最緊張的比賽）',
     notifyStart: '開賽時通知',
     notifyFinal: '終場時通知',
