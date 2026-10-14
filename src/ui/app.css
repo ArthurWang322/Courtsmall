@@ -224,20 +224,22 @@ button { font: inherit; color: inherit; border: 0; background: transparent; padd
 .panel.box .close { font-size: 13px; }
 /* The stats windows unfold out of the main window: the stats from its left edge, the line score
    from its top edge a beat later, sharpening as they open; leaving, they fold back the same way. */
-.players-page #app { animation: unfold-right .38s cubic-bezier(.16, 1, .3, 1) both; }
-.linescore-page #app { animation: unfold-down .38s .08s cubic-bezier(.16, 1, .3, 1) both; }
-.players-page #app.leaving { animation: fold-left .26s cubic-bezier(.7, 0, .84, 0) both; }
-.linescore-page #app.leaving { animation: fold-up .26s cubic-bezier(.7, 0, .84, 0) both; }
+.players-page #app { animation: unfold-right .6s cubic-bezier(.16, 1, .3, 1) both; transform-origin: left center; }
+.linescore-page #app { animation: unfold-down .6s .12s cubic-bezier(.16, 1, .3, 1) both; transform-origin: center top; }
+.players-page #app.leaving { animation: fold-left .38s cubic-bezier(.7, 0, .84, 0) both; }
+.linescore-page #app.leaving { animation: fold-up .38s cubic-bezier(.7, 0, .84, 0) both; }
 @keyframes unfold-right {
-  from { clip-path: inset(0 100% 0 0 round 14px); transform: translateX(-18px); filter: blur(6px); opacity: .3; }
+  from { clip-path: inset(0 100% 0 0 round 14px); transform: translateX(-48px) scale(.9); filter: blur(10px) brightness(1.8); opacity: 0; }
+  60% { filter: blur(0) brightness(1.15); opacity: 1; }
   to { clip-path: inset(0 0 0 0 round 14px); transform: none; filter: none; opacity: 1; }
 }
 @keyframes unfold-down {
-  from { clip-path: inset(0 0 100% 0 round 14px); transform: translateY(-14px); filter: blur(6px); opacity: .3; }
+  from { clip-path: inset(0 0 100% 0 round 14px); transform: translateY(-36px) scale(.9); filter: blur(10px) brightness(1.8); opacity: 0; }
+  60% { filter: blur(0) brightness(1.15); opacity: 1; }
   to { clip-path: inset(0 0 0 0 round 14px); transform: none; filter: none; opacity: 1; }
 }
-@keyframes fold-left { to { clip-path: inset(0 100% 0 0 round 14px); transform: translateX(-18px); filter: blur(6px); opacity: 0; } }
-@keyframes fold-up { to { clip-path: inset(0 0 100% 0 round 14px); transform: translateY(-14px); filter: blur(6px); opacity: 0; } }
+@keyframes fold-left { to { clip-path: inset(0 100% 0 0 round 14px); transform: translateX(-48px) scale(.9); filter: blur(10px); opacity: 0; } }
+@keyframes fold-up { to { clip-path: inset(0 0 100% 0 round 14px); transform: translateY(-36px) scale(.9); filter: blur(10px); opacity: 0; } }
 @media (prefers-reduced-motion: reduce) { .players-page #app, .linescore-page #app { animation-duration: .01s; } }
 
 /* The teams' stats (src/ui/views.ts teamView): a butterfly chart, the away bar left of the middle,

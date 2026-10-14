@@ -2,7 +2,7 @@
 // the main window they animate out, then close themselves.
 
 /** How long the leaving animation takes, ms (app.css .leaving). */
-export const LEAVE_MS = 260;
+export const LEAVE_MS = 380;
 
 export async function closeOnRequest(app: HTMLElement): Promise<void> {
   if (!('__TAURI_INTERNALS__' in window)) return;
