@@ -233,10 +233,9 @@ async function sendStats(force = false): Promise<void> {
 
 if (shell) void (async () => {
   const { listen } = await import('@tauri-apps/api/event');
-  // Each asks for the game when it starts; the stats' own button closes the pair.
+  // Each asks for the game when it starts.
   await listen('players-ready', () => { playersSent = ''; void sendStats(); });
   await listen('linescore-ready', () => { lineSent = ''; void sendStats(); });
-  await listen('players-closed', () => void closeStats());
   // They stay in place, and in shape, as the main window moves or changes size. On macOS a child
   // window already moves with its parent; elsewhere each move places them again, both at once, and
   // a move that comes while the last is still being placed waits, only the latest kept.

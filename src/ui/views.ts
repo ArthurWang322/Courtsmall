@@ -308,16 +308,15 @@ export function teamView(teams: Record<Side, TeamRef>, stats: Partial<Record<Sid
 /**
  * The players' window: one side's box score, starters first, a line, then the bench, those who did
  * not play last and quieter. A "*" marks who is on the court now (`onCourt`, from the plays). The
- * buttons switch between the sides and the teams' stats (`stats`); "✕" closes it; `box` is
- * undefined while it loads.
+ * buttons switch between the sides and the teams' stats (`stats`); the main window's stats button
+ * opens and closes it. `box` is undefined while it loads.
  */
 export function boxView(teams: Record<Side, TeamRef> | undefined, box: Record<Side, BoxLine[]> | undefined, side: BoxTab, T: Strings, favs: readonly string[] = [], onCourt: ReadonlySet<string> = new Set(), stats?: Partial<Record<Side, TeamStats>>): string {
-  const close = `<button class="icon close" data-close aria-label="${esc(T.close)}">✕</button>`;
-  if (!teams) return `<div class="panel box"><div class="head"><span class="grow"></span>${close}</div><span class="muted">${esc(T.box.noGame)}</span></div>`;
+  if (!teams) return `<div class="panel box"><span class="muted">${esc(T.box.noGame)}</span></div>`;
   const c = gameColours(teams, favIn(teams, favs));
   const tab = (sd: Side) => `<button class="side${sd === side ? ' on' : ''}" data-box-side="${sd}">${colourDot(c[sd])}${star(teams[sd], favs)}${esc(teams[sd].abbr)}</button>`;
   const tabs = `${tab('away')}${tab('home')}<button class="side${side === 'team' ? ' on' : ''}" data-box-side="team">${esc(T.box.team)}</button>`;
-  if (side === 'team') return `<div class="panel box"><div class="head">${tabs}<span class="grow"></span>${close}</div>${stats ? teamView(teams, stats, T, favs) : `<span class="muted">${esc(T.loading)}</span>`}</div>`;
+  if (side === 'team') return `<div class="panel box"><div class="head">${tabs}</div>${stats ? teamView(teams, stats, T, favs) : `<span class="muted">${esc(T.loading)}</span>`}</div>`;
   const cols = ['min', ...STAT_KEYS] as const;
   const head = `<div class="row head-row"><span class="name">${esc(T.box.player)}</span>${cols.map((k) => `<span>${esc(k === 'min' ? T.box.min : T.stat(k))}</span>`).join('')}</div>`;
   const name = (l: BoxLine) => `<span class="name">${onCourt.has(l.player.id) ? '<b class="on-court">*</b>' : ''}${esc(l.player.short)}</span>`;
@@ -329,7 +328,7 @@ export function boxView(teams: Record<Side, TeamRef> | undefined, box: Record<Si
   const body = lines
     ? lines.map((l, i) => (i > 0 && lines[i - 1]!.starter && !l.starter ? '<hr class="bench">' : '') + row(l)).join('')
     : `<span class="muted">${esc(T.loading)}</span>`;
-  return `<div class="panel box"><div class="head">${tabs}<span class="grow"></span>${close}</div><div class="table">${head}<div class="list">${body}</div></div></div>`;
+  return `<div class="panel box"><div class="head">${tabs}</div><div class="table">${head}<div class="list">${body}</div></div></div>`;
 }
 
 /**

@@ -225,7 +225,6 @@ button { font: inherit; color: inherit; border: 0; background: transparent; padd
 /* A line under the starters; a star on who is on the court. */
 .panel.box hr.bench { border: 0; border-top: 1px solid var(--border); margin: 3px 4px; }
 .panel.box .on-court { color: var(--accent); margin-right: 3px; }
-.panel.box .close { font-size: 13px; }
 /* The stats windows unfold out of the main window: the stats from its left edge, the line score
    from its top edge a beat later, sharpening as they open; leaving, they fold back the same way. */
 .players-page #app { animation: unfold-right .6s cubic-bezier(.16, 1, .3, 1) both; transform-origin: left center; }

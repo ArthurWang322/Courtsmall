@@ -276,8 +276,10 @@ describe("players' window", () => {
     expect(html).toContain('<b class="on-court">*</b>K. Ellis');
   });
 
-  it('closes from its own button, and says so when no game is on or while it loads', () => {
-    expect(boxView(base.teams, box, 'away', zh)).toContain('data-close');
+  // One control opens and closes the stats: the main window's stats button, not a ✕ of its own.
+  it('has no close button of its own, and says so when no game is on or while it loads', () => {
+    expect(boxView(base.teams, box, 'away', zh)).not.toContain('data-close');
+    expect(boxView(base.teams, box, 'team', zh)).not.toContain('data-close');
     expect(boxView(undefined, undefined, 'away', zh)).toContain('目前沒有正在看的比賽');
     expect(boxView(base.teams, undefined, 'away', zh)).toContain('載入中');
   });
@@ -328,7 +330,7 @@ describe('line score', () => {
 });
 
 describe('games list close', () => {
-  it('closes from a ✕, like the stats window', () => {
+  it('closes from a ✕', () => {
     const html = gamesView('10/13', [], zh, () => '');
     expect(html).toContain('<button class="icon close" data-done aria-label="關閉">✕</button>');
     expect(html).not.toContain('完成');

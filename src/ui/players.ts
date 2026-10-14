@@ -1,7 +1,7 @@
 // The stats window: the game's box score, beside the main window. The main window opens it,
 // keeps it at its right edge and sends what it needs on every state (src/ui/main.ts sendStats):
 // which game, the teams, who is on the court, the favourite. This window reads the box score itself,
-// when the game changes and every 30 seconds while it is on, and closes from its own button.
+// when the game changes and every 30 seconds while it is on. The main window's stats button closes it.
 //
 // Under `npm run dev` in a browser (no desktop shell) it opens in a tab: ?game=<id>&fixture reads a
 // recorded game's box score, with no one starred.
@@ -76,14 +76,9 @@ function receive(next: PlayersState): void {
 
 setInterval(() => { if (game?.live) void load(); }, BOX_EVERY_MS);
 
-app.addEventListener('click', async (e) => {
-  const el = (e.target as HTMLElement).closest<HTMLElement>('[data-box-side], [data-close]');
-  if (!el) return;
-  if (el.dataset.boxSide) { side = el.dataset.boxSide as BoxTab; render(); return; }
-  if (!shell) { window.close(); return; }
-  // The main window closes the pair: both animate out (src/ui/side-window.ts).
-  const { emitTo } = await import('@tauri-apps/api/event');
-  await emitTo('main', 'players-closed');
+app.addEventListener('click', (e) => {
+  const el = (e.target as HTMLElement).closest<HTMLElement>('[data-box-side]');
+  if (el?.dataset.boxSide) { side = el.dataset.boxSide as BoxTab; render(); }
 });
 
 render();
