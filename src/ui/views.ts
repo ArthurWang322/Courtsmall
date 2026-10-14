@@ -53,19 +53,27 @@ const hasBall = (s: GameState, side: Side) => s.possession === side && s.status 
 export const favIn = (teams: Record<Side, TeamRef>, favs: readonly string[]) => favs.find((id) => id === teams.away.id || id === teams.home.id);
 /** A star before a favourite team's abbreviation. */
 const star = (t: TeamRef, favs: readonly string[]) => (favs.includes(t.id) ? '<span class="star">★</span>' : '');
+/** Abbreviations whose logo failed to load (a club from abroad on a preseason tour, or offline);
+ *  src/ui/main.ts adds them as the images fail. */
+export const noLogo = new Set<string>();
+/** The team's logo, loaded from ESPN by its abbreviation (the path its own feeds use: …/500/utah.png);
+ *  without one, its initial on a disc in its colour (`hex`). */
+export const logo = (t: TeamRef, hex: string) => noLogo.has(t.abbr)
+  ? `<i class="logo badge" style="background:#${esc(hex)}">${esc(t.abbr.charAt(0))}</i>`
+  : `<img class="logo" data-abbr="${esc(t.abbr)}" src="https://a.espncdn.com/i/teamlogos/nba/500/${esc(t.abbr.toLowerCase())}.png" alt="">`;
 
 
 /**
- * The bar's score, laid out like a broadcast score bug: one cell per team (a stripe in its colour,
- * the abbreviation, the score), then a cell with the period and clock.
+ * The bar's score, laid out like a broadcast score bug: one cell per team (shaded in its colour, the
+ * logo, the abbreviation, the score), then a cell with the period and clock.
  */
 function scoreBug(s: GameState, T: Strings, tag?: string, favs: readonly string[] = [], ages: ScoreAges = {}): string {
   const c = gameColours(s.teams, favIn(s.teams, favs));
   // The team with the ball: its whole cell is framed in its colour, with a triangle by the score.
-  // `--team` tints the cell (app.css); the stripe and the possession frame use it too.
+  // `--team` shades the cell (app.css); the possession frame uses it too.
   const cell = (side: Side) => hasBall(s, side)
-    ? `<div class="cell team ball" style="--team:#${esc(c[side])};border-color:#${esc(c[side])}"><i class="stripe"></i><span class="abbr">${star(s.teams[side], favs)}${esc(s.teams[side].abbr)}</span>${scoreNum(s.score[side], ages[side])}<span class="ball-mark">◀</span></div>`
-    : `<div class="cell team" style="--team:#${esc(c[side])}"><i class="stripe"></i><span class="abbr">${star(s.teams[side], favs)}${esc(s.teams[side].abbr)}</span>${scoreNum(s.score[side], ages[side])}<span class="ball-mark"></span></div>`;
+    ? `<div class="cell team ball" style="--team:#${esc(c[side])};border-color:#${esc(c[side])}">${logo(s.teams[side], c[side])}<span class="abbr">${star(s.teams[side], favs)}${esc(s.teams[side].abbr)}</span>${scoreNum(s.score[side], ages[side])}<span class="ball-mark">◀</span></div>`
+    : `<div class="cell team" style="--team:#${esc(c[side])}">${logo(s.teams[side], c[side])}<span class="abbr">${star(s.teams[side], favs)}${esc(s.teams[side].abbr)}</span>${scoreNum(s.score[side], ages[side])}<span class="ball-mark"></span></div>`;
   return `<div class="bug">${cell('away')}${cell('home')}${tag ? `<span class="tag">${esc(tag)}</span>` : '<span class="grow"></span>'}<div class="cell clock mono">${esc(whenText(s, T))}</div></div>`;
 }
 
@@ -165,7 +173,7 @@ export function countdownParts(ms: number): { d: number; h: number; m: number; s
  */
 export function pregameView(teams: GameCard['teams'], start: number, when: string, now: number, T: Strings, tier: Tier, favs: readonly string[] = []): string {
   const c = gameColours(teams, favIn(teams, favs));
-  const cell = (side: Side) => `<div class="cell team" style="--team:#${esc(c[side])}"><i class="stripe"></i><span class="abbr">${star(teams[side], favs)}${esc(teams[side].abbr)}</span><b class="muted">–</b><span class="ball-mark"></span></div>`;
+  const cell = (side: Side) => `<div class="cell team" style="--team:#${esc(c[side])}">${logo(teams[side], c[side])}<span class="abbr">${star(teams[side], favs)}${esc(teams[side].abbr)}</span><b class="muted">–</b><span class="ball-mark"></span></div>`;
   const bug = `<div class="bug">${cell('away')}${cell('home')}<span class="grow"></span><div class="cell clock mono">${esc(when)}</div></div>`;
   const left = start - now;
   const p = countdownParts(left);
@@ -274,12 +282,12 @@ export function gamesView(day: string, games: readonly GameCard[], T: Strings, t
   const row = (g: GameCard) => {
     const how = g.status === 'final' ? 'result' : 'live';
     const showScore = g.status !== 'scheduled' && g.status !== 'postponed' && g.status !== 'cancelled';
-    const abbr = (sd: Side) => `<span>${star(g.teams[sd], favs)}${esc(g.teams[sd].abbr)}</span>`;
-    // Two teams in one row: the same clash rule as on the score (src/render/colour.ts).
+    // Two teams in one row: the same clash rule as on the score (src/render/colour.ts), for a logo's stand-in.
     const c = gameColours(g.teams, favIn(g.teams, favs));
+    const abbr = (sd: Side) => `${logo(g.teams[sd], c[sd])}<span>${star(g.teams[sd], favs)}${esc(g.teams[sd].abbr)}</span>`;
     const mid = showScore ? `<b>${g.score.away}</b><span class="muted">–</span><b>${g.score.home}</b>` : '<span class="muted">@</span>';
     return `<button class="game${g.id === current ? ' on' : ''}${how === 'live' && g.status !== 'scheduled' ? ' live' : ''}${favIn(g.teams, favs) ? ' fav' : ''}" data-game="${esc(g.id)}" data-how="${how}">`
-      + `<span class="who">${colourDot(c.away)}${abbr('away')}${mid}${abbr('home')}${colourDot(c.home)}</span>`
+      + `<span class="who">${abbr('away')}${mid}${abbr('home')}</span>`
       + `<span class="when mono">${esc(cardWhen(g, T, tipOff))}</span></button>`;
   };
   return `<div class="panel games">

@@ -3,7 +3,7 @@
 import { describe, expect, it } from 'vitest';
 import { STRINGS } from '../src/i18n/index.ts';
 import { playLinesAt, TIER_PRESET, TOOLBAR_H } from '../src/render/tiers.ts';
-import { barView, boxView, clockText, lineScoreView, teamView, controlsView, countdownParts, gamesView, JUMP_MS, leadersTable, playLines, pregameView, RUN_MIN, settingsView, whenText } from '../src/ui/views.ts';
+import { barView, boxView, clockText, lineScoreView, teamView, controlsView, countdownParts, gamesView, JUMP_MS, leadersTable, noLogo, playLines, pregameView, RUN_MIN, settingsView, whenText } from '../src/ui/views.ts';
 import type { BoxLine, GameCard, GameState, PlayLine, TeamStats } from '../src/model/types.ts';
 
 const en = STRINGS.en, zh = STRINGS['zh-TW'];
@@ -378,3 +378,19 @@ describe('games list close', () => {
     expect(html).not.toContain('完成');
   });
 });
+
+describe('team logos', () => {
+  // A club ESPN has no NBA logo for (a preseason visitor) must not leave a broken image in the
+  // score: once its image has failed, its initial on a disc in its colour stands in.
+  it('shows the logo, then the initial once the logo has failed', () => {
+    expect(barView(base, en, 1)).toContain('src="https://a.espncdn.com/i/teamlogos/nba/500/utah.png"');
+    noLogo.add('UTAH');
+    try {
+      const html = barView(base, en, 1);
+      expect(html).not.toContain('utah.png');
+      expect(html).toMatch(/<i class="logo badge" style="background:#\w+">U<\/i>/);
+      expect(html).toContain('sa.png');
+    } finally { noLogo.delete('UTAH'); }
+  });
+});
+

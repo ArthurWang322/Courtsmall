@@ -32,7 +32,7 @@ import { playLinesAt, TIER_PRESET, tierOf, TOOLBAR_H, type Tier } from '../rende
 import { drawFlights, flightSeconds, LANDED, shotSeconds, WINDUP_SECONDS } from '../render/court.ts';
 import { gameColours } from '../render/colour.ts';
 import { loadSettings, saveSettings, type Settings } from '../settings/store.ts';
-import { barView, controlsView, courtView, favIn, gamesView, JUMP_MS, messageView, pregameView, settingsView, type ScoreAges } from './views.ts';
+import { barView, controlsView, courtView, favIn, gamesView, JUMP_MS, messageView, noLogo, pregameView, settingsView, type ScoreAges } from './views.ts';
 
 // In `npm run dev`, VITE_PARAMS fills in for the URL, which the desktop window does not have:
 // VITE_PARAMS='game=401898721&replay' npx tauri dev
@@ -376,6 +376,12 @@ function render(): void {
 const live = new EspnLiveSource(fetchJson);
 const notifier = new Notifier(T);
 document.addEventListener('visibilitychange', () => live.setBackground(document.hidden));
+// A logo that does not load (no such team at ESPN, or offline): from now on its initial stands in.
+// Image errors do not bubble, so this listens while they go down.
+document.addEventListener('error', (e) => {
+  const abbr = e.target instanceof HTMLImageElement ? e.target.dataset.abbr : undefined;
+  if (abbr && !noLogo.has(abbr)) { noLogo.add(abbr); render(); }
+}, true);
 
 function pace(): PaceMode {
   const p = params.get('pace');
