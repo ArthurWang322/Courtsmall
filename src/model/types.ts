@@ -162,6 +162,11 @@ export interface GameState {
   /** The latest free throws, oldest first, at most `RECENT_FREE_THROWS`: flown, never marked. */
   recentFreeThrows?: readonly Shot[];
   run?: Run;
+  /**
+   * Each side's players on the court, by id: the starters (box score), then every substitution in
+   * the plays. ESPN logs them all; on the fixtures it is always five a side (tests/timeline.test.ts).
+   */
+  onCourt?: Record<Side, readonly string[]>;
   /** Each side's leaders, from the box score (official for a finished game; src/data/espn/timeline.ts boxLeaders). */
   leaders?: Record<Side, Leaders>;
   /** Epoch ms of the moment this state describes. */

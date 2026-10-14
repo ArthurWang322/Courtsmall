@@ -1,0 +1,10 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "players",
+  "description": "The players' window: it draws what the main window sends and closes itself.",
+  "windows": ["players"],
+  "permissions": [
+    "core:default",
+    "core:window:allow-close"
+  ]
+}

@@ -137,6 +137,12 @@ for (const fx of FIXTURES) {
       }
     });
 
+    // The players' window stars who is on the court: the starters, then every substitution. That is
+    // only right if ESPN logs them all, which shows as five a side at every moment of the game.
+    it('keeps five players on the court a side throughout', () => {
+      for (const e of timeline) for (const side of SIDES) expect({ side, n: e.state.onCourt?.[side].length }).toEqual({ side, n: 5 });
+    });
+
     it('every basket event agrees with the score change it came from', () => {
       let prev = { away: 0, home: 0 };
       for (const e of timeline) {

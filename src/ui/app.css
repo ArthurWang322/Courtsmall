@@ -216,3 +216,10 @@ button { font: inherit; color: inherit; border: 0; background: transparent; padd
 .panel.box .row.dnp { color: var(--faint); grid-template-columns: minmax(0, 1fr) auto; }
 .panel.box .row.dnp .why { font-size: 11px; }
 .panel.box .list { gap: 0; }
+/* A line under the starters; a star on who is on the court. */
+.panel.box hr.bench { border: 0; border-top: 1px solid var(--border); margin: 3px 4px; }
+.panel.box .on-court { color: var(--accent); margin-right: 3px; }
+.panel.box .close { font-size: 13px; }
+/* The players' window slides in from the main window's side. */
+.players-page #app { animation: slide-in .22s ease-out both; }
+@keyframes slide-in { from { transform: translateX(-24px); opacity: 0; } }

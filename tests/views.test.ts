@@ -241,7 +241,7 @@ describe('settings page', () => {
   });
 });
 
-describe("players' panel", () => {
+describe("players' window", () => {
   const line = (id: string, short: string, o: Partial<BoxLine> = {}): BoxLine => ({
     player: { id, name: short, short }, starter: false, dnp: false, min: 20, pts: 10, reb: 5, ast: 3, stl: 1, blk: 0, to: 2, ...o,
   });
@@ -258,9 +258,18 @@ describe("players' panel", () => {
     expect(html).toContain('class="side on" data-box-side="away"');
   });
 
-  it('says so when no game is on screen, and that it is loading before the box score comes', () => {
+  // The maintainer asked for these (2026-10-14): a line under the starters, a star on who is playing.
+  it('draws a line between the starters and the bench, and stars the players on the court', () => {
+    const html = boxView(base.teams, box, 'away', zh, [], new Set(['2']));
+    expect(html.indexOf('<hr class="bench">')).toBeGreaterThan(html.indexOf('D. Fox'));
+    expect(html.indexOf('<hr class="bench">')).toBeLessThan(html.indexOf('K. Ellis'));
+    expect(html.match(/class="on-court"/g)).toHaveLength(1);
+    expect(html).toContain('<b class="on-court">*</b>K. Ellis');
+  });
+
+  it('closes from its own button, and says so when no game is on or while it loads', () => {
+    expect(boxView(base.teams, box, 'away', zh)).toContain('data-close');
     expect(boxView(undefined, undefined, 'away', zh)).toContain('目前沒有正在看的比賽');
     expect(boxView(base.teams, undefined, 'away', zh)).toContain('載入中');
   });
 });
-

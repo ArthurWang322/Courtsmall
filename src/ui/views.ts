@@ -213,12 +213,12 @@ const icon = (k: keyof typeof ICON) => `<svg width="14" height="14" viewBox="0 0
  * The toolbar along the bottom of the window: the two sizes (the current one
  * lit), the games list and the settings. Buttons carry data-* attributes; src/ui/main.ts handles them.
  */
-export function controlsView(tier: Tier, T: Strings): string {
+export function controlsView(tier: Tier, T: Strings, playersOpen = false): string {
   // Each button's tip is drawn by app.css from data-tip (a native title shows late and plain).
   const size = (t: Tier) => `<button class="icon${t === tier ? ' on' : ''}" data-tier="${t}" data-tip="${esc(T.tip[t])}" aria-label="${esc(T.tip[t])}">${icon(t)}</button>`;
   return `<div class="controls">${size('bar')}${size('court')}<span class="sep"></span>`
     + `<button class="icon" data-open="games" data-tip="${esc(T.tip.games)}" aria-label="${esc(T.tip.games)}">${icon('games')}</button>`
-    + `<button class="icon" data-open="box" data-tip="${esc(T.tip.box)}" aria-label="${esc(T.tip.box)}">${icon('box')}</button>`
+    + `<button class="icon${playersOpen ? ' on' : ''}" data-players data-tip="${esc(T.tip.box)}" aria-label="${esc(T.tip.box)}">${icon('box')}</button>`
     + `<button class="icon" data-open="settings" data-tip="${esc(T.tip.settings)}" aria-label="${esc(T.tip.settings)}">${icon('settings')}</button></div>`;
 }
 
@@ -263,20 +263,25 @@ export function gamesView(day: string, games: readonly GameCard[], T: Strings, t
 }
 
 /**
- * The players' panel: one side's box score, starters first, those who did not play last and
- * quieter. Two buttons switch the side; `box` is undefined while it loads.
+ * The players' window: one side's box score, starters first, a line, then the bench, those who did
+ * not play last and quieter. A "*" marks who is on the court now (`onCourt`, from the plays). Two
+ * buttons switch the side, "✕" closes it; `box` is undefined while it loads.
  */
-export function boxView(teams: Record<Side, TeamRef> | undefined, box: Record<Side, BoxLine[]> | undefined, side: Side, T: Strings, favs: readonly string[] = []): string {
-  const done = `<button class="done" data-done>${esc(T.done)}</button>`;
-  if (!teams) return `<div class="panel box"><div class="head"><span class="grow"></span>${done}</div><span class="muted">${esc(T.box.noGame)}</span></div>`;
+export function boxView(teams: Record<Side, TeamRef> | undefined, box: Record<Side, BoxLine[]> | undefined, side: Side, T: Strings, favs: readonly string[] = [], onCourt: ReadonlySet<string> = new Set()): string {
+  const close = `<button class="icon close" data-close aria-label="${esc(T.close)}">✕</button>`;
+  if (!teams) return `<div class="panel box"><div class="head"><span class="grow"></span>${close}</div><span class="muted">${esc(T.box.noGame)}</span></div>`;
   const c = gameColours(teams, favIn(teams, favs));
   const tab = (sd: Side) => `<button class="side${sd === side ? ' on' : ''}" data-box-side="${sd}">${colourDot(c[sd])}${star(teams[sd], favs)}${esc(teams[sd].abbr)}</button>`;
   const cols = ['min', ...STAT_KEYS] as const;
   const head = `<div class="row head-row"><span class="name">${esc(T.box.player)}</span>${cols.map((k) => `<span>${esc(k === 'min' ? T.box.min : T.stat(k))}</span>`).join('')}</div>`;
+  const name = (l: BoxLine) => `<span class="name">${onCourt.has(l.player.id) ? '<b class="on-court">*</b>' : ''}${esc(l.player.short)}</span>`;
   const row = (l: BoxLine) => l.dnp
-    ? `<div class="row dnp"><span class="name">${esc(l.player.short)}</span><span class="why">${esc(T.box.dnp)}</span></div>`
-    : `<div class="row${l.starter ? ' starter' : ''}"><span class="name">${esc(l.player.short)}</span>${cols.map((k) => `<span>${l[k]}</span>`).join('')}</div>`;
-  const body = box ? box[side].map(row).join('') : `<span class="muted">${esc(T.loading)}</span>`;
-  return `<div class="panel box"><div class="head">${tab('away')}${tab('home')}<span class="grow"></span>${done}</div><div class="table">${head}<div class="list">${body}</div></div></div>`;
+    ? `<div class="row dnp">${name(l)}<span class="why">${esc(T.box.dnp)}</span></div>`
+    : `<div class="row${l.starter ? ' starter' : ''}">${name(l)}${cols.map((k) => `<span>${l[k]}</span>`).join('')}</div>`;
+  // A line between the starters and the bench.
+  const lines = box?.[side];
+  const body = lines
+    ? lines.map((l, i) => (i > 0 && lines[i - 1]!.starter && !l.starter ? '<hr class="bench">' : '') + row(l)).join('')
+    : `<span class="muted">${esc(T.loading)}</span>`;
+  return `<div class="panel box"><div class="head">${tab('away')}${tab('home')}<span class="grow"></span>${close}</div><div class="table">${head}<div class="list">${body}</div></div></div>`;
 }
-

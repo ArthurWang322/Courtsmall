@@ -42,7 +42,19 @@ export function initialState(feed: GameFeed): GameState {
     score: { away: 0, home: 0 },
     periodScores: { away: [], home: [] },
     leaders: boxLeaders(feed),
+    onCourt: starters(feed),
   };
+}
+
+/** Each side's starters, by id, from the box score. */
+function starters(feed: GameFeed): Record<Side, string[]> {
+  const out: Record<Side, string[]> = { away: [], home: [] };
+  const sideOf = new Map(feed.summary.header.competitions[0]!.competitors.map((c) => [c.team.id, c.homeAway]));
+  for (const team of feed.summary.boxscore.players ?? []) {
+    const side = sideOf.get(team.team.id);
+    if (side) out[side] = (team.statistics[0]?.athletes ?? []).filter((a) => a.starter).map((a) => a.athlete.id);
+  }
+  return out;
 }
 
 const BOX_COLUMN: Record<StatKey, string> = { pts: 'PTS', reb: 'REB', ast: 'AST', stl: 'STL', blk: 'BLK', to: 'TO' };
@@ -179,6 +191,10 @@ export function buildTimeline(feed: GameFeed): TimelineEntry[] {
     for (const ev of playEvents(play, who, sideFor)) {
       if (ev.type === 'stoppage') next.stoppage = ev.kind;
       else remember(ev);
+      if (ev.type === 'substitution' && ev.side && next.onCourt) {
+        const { side, in: inn, out } = ev;
+        next.onCourt = { ...next.onCourt, [side]: [...next.onCourt[side].filter((id) => id !== out?.id), ...(inn ? [inn.id] : [])] };
+      }
       events.push(ev);
     }
 

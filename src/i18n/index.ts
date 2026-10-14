@@ -49,6 +49,7 @@ export interface Strings {
   notifyFinal: string;
   notifyClutch: string;
   done: string;
+  close: string;
   /** The toolbar's tips, one per button. */
   tip: { bar: string; court: string; games: string; box: string; settings: string };
   /** The players' panel. */
@@ -99,6 +100,7 @@ export const STRINGS: Record<Lang, Strings> = {
     notifyFinal: 'Notify at the final',
     notifyClutch: 'Notify in a close finish (last 2 min, within 5)',
     done: 'Done',
+    close: 'Close',
     tip: { bar: 'Simple', court: 'Court', games: 'Games', box: 'Players', settings: 'Settings' },
     box: { player: 'PLAYER', min: 'MIN', dnp: 'DNP', noGame: 'No game on screen' },
     noGames: 'No games this day',
@@ -143,6 +145,7 @@ export const STRINGS: Record<Lang, Strings> = {
     notifyFinal: '終場時通知',
     notifyClutch: '關鍵時刻通知（最後 2 分鐘、差距 5 分內）',
     done: '完成',
+    close: '關閉',
     tip: { bar: '簡易模式', court: '球場模式', games: '比賽列表', box: '球員數據', settings: '設定' },
     box: { player: '球員', min: '時間', dnp: '未上場', noGame: '目前沒有正在看的比賽' },
     noGames: '這天沒有比賽',
