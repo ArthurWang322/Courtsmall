@@ -193,7 +193,7 @@ button { font: inherit; color: inherit; border: 0; background: transparent; padd
 .countdown.big .unit span { font-size: 12px; }
 
 /* The favourite team: a star by its name, its games lit in the list (src/ui/views.ts). */
-.star { color: var(--accent); margin-right: 3px; font-size: .9em; }
+.star { color: var(--accent); margin-left: 3px; font-size: .9em; }
 .settings .hint { font-size: 12px; line-height: 1.4; }
 .settings .hint.warn { color: var(--accent); }
 .settings .keys { font-size: 11px; color: var(--faint); padding-left: 19px; display: flex; flex-wrap: wrap; align-items: center; gap: 3px 6px; }

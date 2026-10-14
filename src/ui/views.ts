@@ -51,7 +51,7 @@ const hasBall = (s: GameState, side: Side) => s.possession === side && s.status 
 
 /** The favourite playing in this game, if any (it keeps its colour in a clash). */
 export const favIn = (teams: Record<Side, TeamRef>, favs: readonly string[]) => favs.find((id) => id === teams.away.id || id === teams.home.id);
-/** A star before a favourite team's abbreviation. */
+/** A star after a favourite team's abbreviation. */
 const star = (t: TeamRef, favs: readonly string[]) => (favs.includes(t.id) ? '<span class="star">★</span>' : '');
 /** Abbreviations whose logo failed to load (a club from abroad on a preseason tour, or offline);
  *  src/ui/main.ts adds them as the images fail. */
@@ -72,8 +72,8 @@ function scoreBug(s: GameState, T: Strings, tag?: string, favs: readonly string[
   // The team with the ball: its whole cell is framed in its colour, with a triangle by the score.
   // `--team` shades the cell (app.css); the possession frame uses it too.
   const cell = (side: Side) => hasBall(s, side)
-    ? `<div class="cell team ball" style="--team:#${esc(c[side])};border-color:#${esc(c[side])}">${logo(s.teams[side], c[side])}<span class="abbr">${star(s.teams[side], favs)}${esc(s.teams[side].abbr)}</span>${scoreNum(s.score[side], ages[side])}<span class="ball-mark">◀</span></div>`
-    : `<div class="cell team" style="--team:#${esc(c[side])}">${logo(s.teams[side], c[side])}<span class="abbr">${star(s.teams[side], favs)}${esc(s.teams[side].abbr)}</span>${scoreNum(s.score[side], ages[side])}<span class="ball-mark"></span></div>`;
+    ? `<div class="cell team ball" style="--team:#${esc(c[side])};border-color:#${esc(c[side])}">${logo(s.teams[side], c[side])}<span class="abbr">${esc(s.teams[side].abbr)}${star(s.teams[side], favs)}</span>${scoreNum(s.score[side], ages[side])}<span class="ball-mark">◀</span></div>`
+    : `<div class="cell team" style="--team:#${esc(c[side])}">${logo(s.teams[side], c[side])}<span class="abbr">${esc(s.teams[side].abbr)}${star(s.teams[side], favs)}</span>${scoreNum(s.score[side], ages[side])}<span class="ball-mark"></span></div>`;
   return `<div class="bug">${cell('away')}${cell('home')}${tag ? `<span class="tag">${esc(tag)}</span>` : '<span class="grow"></span>'}<div class="cell clock mono">${esc(whenText(s, T))}</div></div>`;
 }
 
@@ -179,7 +179,7 @@ export function countdownParts(ms: number): { d: number; h: number; m: number; s
  */
 export function pregameView(teams: GameCard['teams'], start: number, when: string, now: number, T: Strings, tier: Tier, favs: readonly string[] = []): string {
   const c = gameColours(teams, favIn(teams, favs));
-  const cell = (side: Side) => `<div class="cell team" style="--team:#${esc(c[side])}">${logo(teams[side], c[side])}<span class="abbr">${star(teams[side], favs)}${esc(teams[side].abbr)}</span><b class="muted">–</b><span class="ball-mark"></span></div>`;
+  const cell = (side: Side) => `<div class="cell team" style="--team:#${esc(c[side])}">${logo(teams[side], c[side])}<span class="abbr">${esc(teams[side].abbr)}${star(teams[side], favs)}</span><b class="muted">–</b><span class="ball-mark"></span></div>`;
   const bug = `<div class="bug">${cell('away')}${cell('home')}<span class="grow"></span><div class="cell clock mono">${esc(when)}</div></div>`;
   const left = start - now;
   const p = countdownParts(left);
@@ -290,7 +290,7 @@ export function gamesView(day: string, games: readonly GameCard[], T: Strings, t
     const showScore = g.status !== 'scheduled' && g.status !== 'postponed' && g.status !== 'cancelled';
     // Two teams in one row: the same clash rule as on the score (src/render/colour.ts), for a logo's stand-in.
     const c = gameColours(g.teams, favIn(g.teams, favs));
-    const abbr = (sd: Side) => `${logo(g.teams[sd], c[sd])}<span>${star(g.teams[sd], favs)}${esc(g.teams[sd].abbr)}</span>`;
+    const abbr = (sd: Side) => `${logo(g.teams[sd], c[sd])}<span>${esc(g.teams[sd].abbr)}${star(g.teams[sd], favs)}</span>`;
     const mid = showScore ? `<b>${g.score.away}</b><span class="muted">–</span><b>${g.score.home}</b>` : '<span class="muted">@</span>';
     return `<button class="game${g.id === current ? ' on' : ''}${how === 'live' && g.status !== 'scheduled' ? ' live' : ''}${favIn(g.teams, favs) ? ' fav' : ''}" data-game="${esc(g.id)}" data-how="${how}">`
       + `<span class="who">${abbr('away')}${mid}${abbr('home')}</span>`
@@ -349,7 +349,7 @@ export function teamView(teams: Record<Side, TeamRef>, stats: Partial<Record<Sid
 export function boxView(teams: Record<Side, TeamRef> | undefined, box: Record<Side, BoxLine[]> | undefined, side: BoxTab, T: Strings, favs: readonly string[] = [], onCourt: ReadonlySet<string> = new Set(), stats?: Partial<Record<Side, TeamStats>>): string {
   if (!teams) return `<div class="panel box"><span class="muted">${esc(T.box.noGame)}</span></div>`;
   const c = gameColours(teams, favIn(teams, favs));
-  const tab = (sd: Side) => `<button class="side${sd === side ? ' on' : ''}" data-box-side="${sd}">${colourDot(c[sd])}${star(teams[sd], favs)}${esc(teams[sd].abbr)}</button>`;
+  const tab = (sd: Side) => `<button class="side${sd === side ? ' on' : ''}" data-box-side="${sd}">${colourDot(c[sd])}${esc(teams[sd].abbr)}${star(teams[sd], favs)}</button>`;
   const tabs = `${tab('away')}${tab('home')}<button class="side${side === 'team' ? ' on' : ''}" data-box-side="team">${esc(T.box.team)}</button>`;
   if (side === 'team') return `<div class="panel box"><div class="head">${tabs}</div>${stats ? teamView(teams, stats, T, favs) : `<span class="muted">${esc(T.loading)}</span>`}</div>`;
   const cols = ['min', ...STAT_KEYS] as const;
@@ -375,7 +375,7 @@ export function lineScoreView(s: Pick<GameState, 'teams' | 'periodScores' | 'sco
   const n = Math.max(4, s.period, s.periodScores.away.length, s.periodScores.home.length);
   const on = (p: number) => (s.status === 'live' || s.status === 'break') && p === s.period;
   const head = `<div class="lrow lhead"><span class="lteam"></span>${Array.from({ length: n }, (_, i) => `<span class="${on(i + 1) ? 'now' : ''}">${periodLabel(i + 1)}</span>`).join('')}<span class="ltotal">${esc(T.lineTotal)}</span></div>`;
-  const row = (side: Side) => `<div class="lrow"><span class="lteam"><i class="stripe" style="background:#${esc(c[side])}"></i>${star(s.teams[side], favs)}${esc(s.teams[side].abbr)}</span>`
+  const row = (side: Side) => `<div class="lrow"><span class="lteam"><i class="stripe" style="background:#${esc(c[side])}"></i>${esc(s.teams[side].abbr)}${star(s.teams[side], favs)}</span>`
     + Array.from({ length: n }, (_, i) => { const v = s.periodScores[side][i]; return `<span class="${on(i + 1) ? 'now' : ''}">${v === undefined ? '–' : v}</span>`; }).join('')
     + `<b class="ltotal">${s.score[side]}</b></div>`;
   return `<div class="linescore">${head}${row('away')}${row('home')}</div>`;

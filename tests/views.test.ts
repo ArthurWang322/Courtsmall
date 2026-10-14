@@ -235,13 +235,13 @@ describe('favourite team', () => {
     const html = gamesView('10/13', [card('1', 'a', 'b', 'live', 1), card('2', 'c', 'den', 'live', 2), card('3', 'd', 'e', 'final', 0)], zh, () => '', undefined, ['den']);
     expect([...html.matchAll(/data-game="(\d)"/g)].map((m) => m[1])).toEqual(['2', '1', '3']);
     expect(html).toContain('class="game live fav" data-game="2"');
-    expect(html).toMatch(/<span><span class="star">★<\/span>DEN<\/span>/);
+    expect(html).toMatch(/<span>DEN<span class="star">★<\/span><\/span>/);
     expect(html.match(/★/g)).toHaveLength(1);
   });
 
   it("stars the favourite in the score bug", () => {
     const html = barView(base, en, 1, undefined, [base.teams.home.id]);
-    expect(html).toMatch(/<span class="abbr"><span class="star">★<\/span>UTAH<\/span>/);
+    expect(html).toMatch(/<span class="abbr">UTAH<span class="star">★<\/span><\/span>/);
     expect(barView(base, en, 1)).not.toContain('★');
   });
 });
