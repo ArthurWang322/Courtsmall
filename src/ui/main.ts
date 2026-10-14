@@ -43,7 +43,7 @@ const DECIDE_EVERY_MS = 60_000;
 /** How long a team's schedule is reused, ms. */
 const TEAM_SCHEDULE_TTL_MS = 5 * 60_000;
 /** The window's size while a panel is open: the games list is long, the settings are short. */
-const PANEL_SIZE = { games: { w: 360, h: 420 }, settings: { w: 360, h: 250 } } as const;
+const PANEL_SIZE = { games: { w: 360, h: 330 }, settings: { w: 360, h: 250 } } as const;
 /** The stats window's width (at the main window's right edge), the line score's height (under it), the gap. */
 const PLAYERS_W = 360;
 const LINE_H = 96;
