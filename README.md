@@ -12,8 +12,9 @@
 ## What it does
 
 - **A score you can read at a glance.** Each team's cell in its colour, the period and the clock, and the team with the ball framed.
-- **The two latest plays**, newest on top: baskets, misses, fouls, turnovers, rebounds and substitutions, with timeouts and reviews by the clock.
-- **A 3D court**, seen from behind the arc: each shot flies to the rim on its real spot, makes drop through the net, misses bounce off, free throws come from the line.
+- **The two latest plays**, newest on top: baskets, misses, fouls, turnovers, rebounds and substitutions, with timeouts and reviews by the clock, and a run in brackets at the end of the line.
+- **A 3D court**, seen from behind the arc: each shot flies to the rim on its real spot, makes drop through the net, misses bounce off, free throws come from the line. The play's line and the score change as the ball reaches the rim, so the words and the court always tell the same play.
+- **Stats beside the window**: the box score of each side (who is on the court starred, the bench below a line), the teams side by side in bars, and the points per period underneath. They unfold from the main window and move with it.
 - **Your favourite team**, followed automatically and starred in the games list. Without one, Courtsmall follows the closest game on.
 - **Before tip-off**, a countdown; **after the final**, the points per period and each side's leaders.
 - **Notices** at tip-off, at the final and in a close finish, each a switch.
@@ -23,6 +24,11 @@
 <p>
   <img src="docs/media/games.png" width="300" alt="The games list, the favourite team's game first">
   <img src="docs/media/result.png" width="300" alt="A finished game: points per period and each side's leaders">
+</p>
+
+<p>
+  <img src="docs/media/stats.png" width="300" alt="The stats window: a side's box score, starters above the bench">
+  <img src="docs/media/team.png" width="300" alt="Team stats: the two sides' numbers as bars from the middle">
 </p>
 
 ## Install
@@ -78,8 +84,9 @@ Based on [Basesmall](https://github.com/Zaious/basesmall) by Zaious, ChronicleCo
 
 Courtsmall 是一個浮在桌面角落的小視窗，用 ESPN 公開的資料顯示 NBA 比賽。上班不能看直播，也能一眼知道比分、誰在持球、剛剛誰投進。
 
-- **簡易模式**：比分、節次與時間，加上最近兩筆事件（得分、沒進、犯規、失誤、籃板、換人）。
-- **球場模式**：45 度俯瞰的 3D 半場，每次出手照實際位置飛向籃框。
+- **簡易模式**：比分、節次與時間，加上最近兩筆事件（得分、沒進、犯規、失誤、籃板、換人），連續得分以括號標在行尾。
+- **球場模式**：45 度俯瞰的 3D 半場，每次出手照實際位置飛向籃框；球到籃框時文字直播和比分才更新，文字和動畫永遠對得上。
+- **數據視窗**：從主視窗旁展開，雙方球員本場數據（場上球員標 *、先發與替補以分隔線區隔）、團隊數據長條圖比較，下方是每節得分。
 - **最愛球隊**：自動跟它的比賽，在比賽列表裡標星號；沒設定時跟最緊張的比賽。
 - **開賽前**倒數，**終場後**顯示各節比分與雙方各項領先者。
 - **快捷鍵**（在任何程式裡都能用）：Ctrl+Alt+M（⌃⌥M）切換模式、Ctrl+Alt+S 數據、Ctrl+Alt+H 隱藏／顯示，可在設定關閉。
