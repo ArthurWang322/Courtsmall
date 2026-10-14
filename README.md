@@ -36,7 +36,7 @@
 Download the installer for your system from [Releases](https://github.com/ArthurWang322/Courtsmall/releases): nothing else to install.
 
 - **Windows**: the `-setup.exe`. It installs for your user, no admin needed. It is not code-signed, so the first time Windows SmartScreen may warn: choose *More info*, then *Run anyway*.
-- **macOS**: the `.dmg` (Apple silicon and Intel). It is not notarized, so the first time, right-click the app and choose *Open*.
+- **macOS**: the `.dmg` (Apple silicon and Intel); drag Courtsmall into Applications. It is not notarized, so the first time macOS says it cannot verify it: press *Done*, then open *System Settings → Privacy & Security*, scroll to *Security* and press *Open Anyway* beside Courtsmall. (Or in Terminal: `xattr -dr com.apple.quarantine /Applications/Courtsmall.app`.) After that it opens normally, and updates install from its settings.
 
 It is developed on macOS; the Windows build is new and less tried. New versions come out as it grows: get the latest from [Releases](https://github.com/ArthurWang322/Courtsmall/releases/latest).
 
@@ -92,6 +92,6 @@ Courtsmall 是一個浮在桌面角落的小視窗，用 ESPN 公開的資料顯
 - **快捷鍵**（在任何程式裡都能用）：Ctrl+Alt+M（⌃⌥M）切換模式、Ctrl+Alt+S 數據、Ctrl+Alt+H 隱藏／顯示，可在設定關閉。
 - 開賽、終場、關鍵時刻的通知，各自可以開關（目前系統通知還無法顯示，正在查原因）。
 
-**安裝**：到 [Releases](https://github.com/ArthurWang322/Courtsmall/releases) 下載安裝檔，不需要裝其他東西。Windows 下載 `-setup.exe`（第一次若出現 SmartScreen 警告，按「其他資訊 → 仍要執行」）；macOS 下載 `.dmg`（第一次請按右鍵 →「打開」）。版本會持續更新，最新版都在 [Releases](https://github.com/ArthurWang322/Courtsmall/releases/latest)。
+**安裝**：到 [Releases](https://github.com/ArthurWang322/Courtsmall/releases) 下載安裝檔，不需要裝其他東西。Windows 下載 `-setup.exe`（第一次若出現 SmartScreen 警告，按「其他資訊 → 仍要執行」）；macOS 下載 `.dmg`，把 Courtsmall 拖進「應用程式」。第一次開啟時 macOS 會說無法驗證：按「完成」，再到「系統設定 → 隱私權與安全性」，往下捲到「安全性」，按 Courtsmall 旁的「強制打開」（或在終端機執行 `xattr -dr com.apple.quarantine /Applications/Courtsmall.app`）。之後就能正常開啟，新版本也能在設定裡直接更新。版本會持續更新，最新版都在 [Releases](https://github.com/ArthurWang322/Courtsmall/releases/latest)。
 
 全部在你的電腦上執行，沒有伺服器。非 NBA、球隊或 ESPN 官方產品。

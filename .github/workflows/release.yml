@@ -1,7 +1,7 @@
 # A version tag (v0.1.0) builds Windows and macOS into a DRAFT release: nothing is public until the
 # maintainer reads it and presses Publish. Windows: an NSIS installer (per user, no admin). macOS: a
-# universal dmg, ad-hoc signed (not notarized: open it with right-click, Open, the first
-# time). Based on Basesmall's release workflow.
+# universal dmg, ad-hoc signed (not notarized: the first time, System Settings, Privacy &
+# Security, Open Anyway). Based on Basesmall's release workflow.
 name: Release
 
 on:
@@ -51,7 +51,8 @@ jobs:
           releaseName: Courtsmall ${{ github.ref_name }}
           releaseBody: |
             Windows: download the `-setup.exe` and run it. It is not code-signed, so Windows SmartScreen may warn the first time: choose More info, then Run anyway.
-            macOS: download the `.dmg`. It is not notarized: the first time, right-click the app and choose Open.
+            macOS: download the `.dmg` and drag Courtsmall into Applications. It is not notarized: the first time, press Done on the warning, then System Settings → Privacy & Security → Open Anyway (or run `xattr -dr com.apple.quarantine /Applications/Courtsmall.app`).
+            Already on 0.3.0 or later: Settings → Check for updates.
             Not affiliated with or endorsed by the NBA, its teams or ESPN.
           releaseDraft: true
           # latest.json: what the updater reads to find the newest version.
