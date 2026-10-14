@@ -132,6 +132,9 @@ button { font: inherit; color: inherit; border: 0; background: transparent; padd
   font: 600 12px var(--label); letter-spacing: .06em; color: var(--text); background: var(--surface); border: 1px solid var(--border);
   box-shadow: 0 6px 16px rgba(0, 0, 0, .4); opacity: 0; transform: translateY(3px); transition: opacity .12s, transform .12s; }
 .controls .icon[data-tip]:hover::after { opacity: 1; transform: none; }
+/* Back to the corner: at the row's left end; its tip opens to the right, inside the window. */
+.controls .icon.corner { margin-right: auto; }
+.controls .icon.corner[data-tip]::after { right: auto; left: -2px; }
 
 /* ---- Panels: the games list and the settings ---------------------------------------------------- */
 #app[data-tier='panel'] { align-items: stretch; }

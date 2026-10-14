@@ -226,8 +226,8 @@ const ICON: Record<Tier | 'games' | 'box' | 'settings' | 'corner', string> = {
   games: '<path d="M2.5 4h9M2.5 7h9M2.5 10h9"/>',
   // A small table: the players' lines.
   box: '<rect x="2" y="2.5" width="10" height="9" rx="1.5"/><path d="M2 5.5h10M5.5 5.5v6"/>',
-  // An arrow into the bottom-right corner.
-  corner: '<path d="M3 3l6.5 6.5M9.5 5.5v4h-4"/><path d="M12.5 7v5.5H7"/>',
+  // The screen, and a small window in its bottom-right corner.
+  corner: '<rect x="1.5" y="2" width="11" height="10" rx="1.5"/><rect x="7" y="7" width="3.5" height="3" rx=".5" fill="currentColor" stroke="none"/>',
   settings: '<circle cx="7" cy="7" r="2"/><path d="M7 1.5v2M7 10.5v2M1.5 7h2M10.5 7h2M3.1 3.1l1.4 1.4M9.5 9.5l1.4 1.4M3.1 10.9l1.4-1.4M9.5 4.5l1.4-1.4"/>',
 };
 const icon = (k: keyof typeof ICON) => `<svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true">${ICON[k]}</svg>`;
@@ -239,8 +239,9 @@ const icon = (k: keyof typeof ICON) => `<svg width="14" height="14" viewBox="0 0
 export function controlsView(tier: Tier, T: Strings, playersOpen = false, moved = false): string {
   // Each button's tip is drawn by app.css from data-tip (a native title shows late and plain).
   const size = (t: Tier) => `<button class="icon${t === tier ? ' on' : ''}" data-tier="${t}" data-tip="${esc(T.tip[t])}" aria-label="${esc(T.tip[t])}">${icon(t)}</button>`;
-  // Only once the window was dragged away from the screen's corner; first, so the others stay put.
-  const corner = moved ? `<button class="icon" data-corner data-tip="${esc(T.tip.corner)}" aria-label="${esc(T.tip.corner)}">${icon('corner')}</button><span class="sep"></span>` : '';
+  // Only once the window was dragged away from the screen's corner; at the row's left end, apart
+  // from the others, which stay put.
+  const corner = moved ? `<button class="icon corner" data-corner data-tip="${esc(T.tip.corner)}" aria-label="${esc(T.tip.corner)}">${icon('corner')}</button>` : '';
   return `<div class="controls">${corner}${size('bar')}${size('court')}<span class="sep"></span>`
     + `<button class="icon" data-open="games" data-tip="${esc(T.tip.games)}" aria-label="${esc(T.tip.games)}">${icon('games')}</button>`
     + `<button class="icon${playersOpen ? ' on' : ''}" data-players data-tip="${esc(T.tip.box)}" aria-label="${esc(T.tip.box)}">${icon('box')}</button>`
