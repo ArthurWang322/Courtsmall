@@ -9,6 +9,7 @@ import { gameColours, visibleColour } from '../render/colour.ts';
 import { courtSvg } from '../render/court.ts';
 import type { Strings } from '../i18n/index.ts';
 import { keyLabel, SHORTCUTS, type ShortcutAction } from './shortcuts.ts';
+import type { UpdateState } from './update.ts';
 
 /** How long a score that just changed keeps its jump, ms (app.css `.jump`). */
 export const JUMP_MS = 600;
@@ -174,7 +175,7 @@ export function pregameView(teams: GameCard['teams'], start: number, when: strin
 }
 
 /** Choosing a team and the notices. Buttons carry data-* attributes; src/ui/main.ts handles clicks. */
-export function settingsView(teams: readonly TeamRef[], s: Settings, T: Strings, pickerOpen = false, mac = true, shortcutsTaken = false): string {
+export function settingsView(teams: readonly TeamRef[], s: Settings, T: Strings, pickerOpen = false, mac = true, shortcutsTaken = false, version?: string, update: UpdateState = { kind: 'idle' }): string {
   // The favourite, from a drop-down of our own (a native one opens all 30 teams at once): a button
   // with the choice, and when `pickerOpen`, a short scrolling list under it, none first, then the
   // teams by full name.
@@ -197,7 +198,21 @@ export function settingsView(teams: readonly TeamRef[], s: Settings, T: Strings,
       <label class="check"><input type="checkbox" data-shortcuts${s.shortcuts ? ' checked' : ''}> ${esc(T.shortcuts)}</label>
       <span class="keys">${(Object.keys(SHORTCUTS) as ShortcutAction[]).map((a) => `<kbd>${esc(keyLabel(SHORTCUTS[a], mac))}</kbd> ${esc(T.shortcut[a])}`).join('<i>·</i>')}</span>
       ${s.shortcuts && shortcutsTaken ? `<span class="hint warn">${esc(T.shortcutsTaken)}</span>` : ''}
+      ${version ? updateRow(version, update, T) : ''}
     </div>`;
+}
+
+/** The version, and the one button that checks, then installs. */
+function updateRow(version: string, u: UpdateState, T: Strings): string {
+  const U = T.update;
+  const [note, button] =
+    u.kind === 'checking' ? [U.checking, ''] :
+    u.kind === 'latest' ? [U.latest, `<button data-update="check">${esc(U.check)}</button>`] :
+    u.kind === 'available' ? [U.available(u.version), `<button class="on" data-update="install">${esc(U.install)}</button>`] :
+    u.kind === 'installing' ? [U.installing(u.percent), ''] :
+    u.kind === 'failed' ? [U.failed, `<button data-update="check">${esc(U.check)}</button>`] :
+    ['', `<button data-update="check">${esc(U.check)}</button>`];
+  return `<div class="update"><span class="version">${esc(U.version(version))}</span><span class="note${u.kind === 'available' ? ' new' : ''}">${esc(note)}</span>${button}</div>`;
 }
 
 // ---- Hover toolbar and the games list ------------------------------------------------------------

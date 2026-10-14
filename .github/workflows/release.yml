@@ -20,10 +20,9 @@ jobs:
           - os: windows-latest
             args: --bundles nsis
             rust_targets: ''
-          # dmg only: with app too, the action also uploads the app as a .tar.gz, which only an
-          # in-app updater would read, and Courtsmall has none.
+          # app too: the in-app updater (src/ui/update.ts) installs the app's signed .tar.gz.
           - os: macos-latest
-            args: --target universal-apple-darwin --bundles dmg
+            args: --target universal-apple-darwin --bundles app,dmg
             rust_targets: aarch64-apple-darwin,x86_64-apple-darwin
     runs-on: ${{ matrix.os }}
     steps:
@@ -44,6 +43,9 @@ jobs:
       - uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Signs the updates; the public half is in tauri.conf.json. The key has no password.
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ''
         with:
           tagName: ${{ github.ref_name }}
           releaseName: Courtsmall ${{ github.ref_name }}
@@ -52,5 +54,7 @@ jobs:
             macOS: download the `.dmg`. It is not notarized: the first time, right-click the app and choose Open.
             Not affiliated with or endorsed by the NBA, its teams or ESPN.
           releaseDraft: true
+          # latest.json: what the updater reads to find the newest version.
+          includeUpdaterJson: true
           prerelease: false
           args: ${{ matrix.args }}

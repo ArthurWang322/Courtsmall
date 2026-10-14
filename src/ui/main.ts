@@ -24,6 +24,7 @@ import { langOf, STRINGS } from '../i18n/index.ts';
 import { Notifier } from '../notify/notifier.ts';
 import { assumedBefore, notices } from '../notify/rules.ts';
 import { SHORTCUTS, type ShortcutAction } from './shortcuts.ts';
+import { checkForUpdate, installUpdate, type UpdateState } from './update.ts';
 import { Pacer } from './pacer.ts';
 import { playLinesAt, TIER_PRESET, tierOf, TOOLBAR_H, type Tier } from '../render/tiers.ts';
 import { drawFlights, flightSeconds, LANDED, shotSeconds, WINDUP_SECONDS } from '../render/court.ts';
@@ -267,7 +268,7 @@ function render(): void {
   // points per period and the leaders where the court would be.
   app.dataset.tier = panel ? 'panel' : tier;
   if (panel === 'settings') {
-    show(settingsView(teams, settings, T, pickerOpen, isMac, shortcutsTaken), undefined);
+    show(settingsView(teams, settings, T, pickerOpen, isMac, shortcutsTaken, appVersion, updateState), undefined);
     // The list opens on the current choice: scroll the list only (scrollIntoView would move the page too).
     const list = app.querySelector<HTMLElement>('.fav-list'), on = app.querySelector<HTMLElement>('.fav-item.on');
     if (list && on) list.scrollTop = on.offsetTop - (list.clientHeight - on.offsetHeight) / 2;
@@ -493,7 +494,7 @@ async function setTier(t: Tier): Promise<void> {
 }
 
 app.addEventListener('click', (e) => {
-  const el = (e.target as HTMLElement).closest<HTMLElement>('[data-tier], [data-open], [data-day], [data-players], [data-game], [data-done], [data-notify], [data-shortcuts], [data-fav-open], [data-fav-pick]');
+  const el = (e.target as HTMLElement).closest<HTMLElement>('[data-tier], [data-open], [data-day], [data-players], [data-game], [data-done], [data-notify], [data-shortcuts], [data-update], [data-fav-open], [data-fav-pick]');
   // The favourite's list: its button opens and closes it, a team in it is picked, a click
   // anywhere else closes it.
   if (pickerOpen && !el?.closest('.favourite')) { pickerOpen = false; render(); }
@@ -522,6 +523,11 @@ app.addEventListener('click', (e) => {
     return;
   }
   if (panel !== 'settings') return;
+  if (el.dataset.update) {
+    const set = (u: UpdateState) => { updateState = u; if (panel === 'settings') render(); };
+    void (el.dataset.update === 'install' ? installUpdate(set) : checkForUpdate(set));
+    return;
+  }
   if (el.dataset.shortcuts !== undefined) {
     settings = { ...settings, shortcuts: (el as HTMLInputElement).checked };
     saveSettings(settings);
@@ -549,6 +555,12 @@ app.addEventListener('mousedown', async (e) => {
 // ---- Global shortcuts (src/ui/shortcuts.ts) ---------------------------------------------------------
 
 const isMac = navigator.userAgent.includes('Mac');
+
+// ---- Version and updates (src/ui/update.ts) ------------------------------------------------------
+
+let appVersion: string | undefined;
+let updateState: UpdateState = { kind: 'idle' };
+if (shell) void import('@tauri-apps/api/app').then(async ({ getVersion }) => { appVersion = await getVersion(); if (panel === 'settings') render(); });
 /** Another app holds some of the keys: the settings say so. */
 let shortcutsTaken = false;
 

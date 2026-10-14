@@ -15,6 +15,9 @@ pub fn run() {
         .plugin(tauri_plugin_notification::init())
         // The keys are taken and handled by the web view (src/ui/shortcuts.ts).
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
+        // Update from the settings (src/ui/update.ts): signed releases on GitHub, then a restart.
+        .plugin(tauri_plugin_updater::Builder::new().build())
+        .plugin(tauri_plugin_process::init())
         .setup(|app| {
             let toggle = MenuItem::with_id(app, "toggle", "Show / hide", true, None::<&str>)?;
             let games = MenuItem::with_id(app, "games", "Games…", true, None::<&str>)?;

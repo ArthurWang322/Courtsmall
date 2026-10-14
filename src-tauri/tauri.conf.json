@@ -31,12 +31,41 @@
   },
   "bundle": {
     "active": true,
-    "targets": ["dmg", "nsis", "appimage", "deb"],
+    "targets": [
+      "dmg",
+      "nsis",
+      "appimage",
+      "deb"
+    ],
     "category": "Sports",
     "shortDescription": "Basketball, but small.",
     "longDescription": "An unofficial desktop companion that follows live NBA games in a quiet corner of your screen.",
-    "resources": { "../LICENSE": "LICENSE.txt", "../NOTICE": "NOTICE.txt", "../LICENSES/OFL-1.1.txt": "OFL-1.1.txt" },
-    "macOS": { "signingIdentity": "-" },
-    "icon": ["icons/32x32.png", "icons/128x128.png", "icons/128x128@2x.png", "icons/icon.icns", "icons/icon.ico"]
+    "resources": {
+      "../LICENSE": "LICENSE.txt",
+      "../NOTICE": "NOTICE.txt",
+      "../LICENSES/OFL-1.1.txt": "OFL-1.1.txt"
+    },
+    "macOS": {
+      "signingIdentity": "-"
+    },
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "createUpdaterArtifacts": true
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEZCRTJFMUVEQkY3NjdBODIKUldTQ2VuYS83ZUhpK3dNWi9sK2pyajVrWmtqWGthdmZpeUt5bHNNK3dXWnUzRFJEMG8xNnZ0NUIK",
+      "endpoints": [
+        "https://github.com/ArthurWang322/Courtsmall/releases/latest/download/latest.json"
+      ],
+      "windows": {
+        "installMode": "passive"
+      }
+    }
   }
 }

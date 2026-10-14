@@ -241,6 +241,22 @@ describe('settings page', () => {
     expect(settingsView(teams, settings, zh)).toContain('data-done>儲存</button>');
   });
 
+  // One button walks through updating: check, then install only what was found; while it works
+  // there is nothing to press twice. No version (a browser under npm run dev): no row at all.
+  it('shows the version and one button that checks for an update, then installs it', () => {
+    const at = (u: Parameters<typeof settingsView>[7]) => settingsView(teams, settings, zh, false, true, false, '0.2.0', u);
+    expect(at({ kind: 'idle' })).toContain('版本 0.2.0');
+    expect(at({ kind: 'idle' })).toContain('data-update="check">檢查更新');
+    expect(at({ kind: 'checking' })).not.toContain('data-update');
+    expect(at({ kind: 'latest' })).toContain('已是最新版');
+    expect(at({ kind: 'available', version: '0.3.0' })).toContain('有新版本 0.3.0');
+    expect(at({ kind: 'available', version: '0.3.0' })).toContain('data-update="install">立即更新');
+    expect(at({ kind: 'installing', percent: 42 })).toContain('更新中… 42%');
+    expect(at({ kind: 'installing', percent: 42 })).not.toContain('data-update');
+    expect(at({ kind: 'failed' })).toContain('data-update="check"');
+    expect(settingsView(teams, settings, zh)).not.toContain('class="update"');
+  });
+
   // The keys are only useful if people can find them: each one, in the system's own notation.
   it('lists each shortcut in the system\'s notation, and says when another app has the keys', () => {
     expect(settingsView(teams, settings, zh, false, true)).toContain('<kbd>⌃⌥M</kbd> 切換模式');

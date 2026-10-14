@@ -51,6 +51,8 @@ export interface Strings {
   shortcut: { mode: string; stats: string; hide: string };
   /** Shown when another app already has the keys. */
   shortcutsTaken: string;
+  /** The version and updating, at the foot of the settings (src/ui/update.ts). */
+  update: { version: (v: string) => string; check: string; checking: string; latest: string; available: (v: string) => string; install: string; installing: (pct: number | undefined) => string; failed: string };
   save: string;
   close: string;
   /** The line score's total column. */
@@ -107,6 +109,11 @@ export const STRINGS: Record<Lang, Strings> = {
     shortcuts: 'Keyboard shortcuts, from any app',
     shortcut: { mode: 'simple / court', stats: 'stats', hide: 'hide / show' },
     shortcutsTaken: 'Some keys are taken by another app.',
+    update: {
+      version: (v) => `Version ${v}`, check: 'Check for updates', checking: 'Checking…', latest: 'Up to date',
+      available: (v) => `Version ${v} is out`, install: 'Update now',
+      installing: (p) => (p === undefined ? 'Updating…' : `Updating… ${p}%`), failed: 'Could not update. Try again later.',
+    },
     save: 'Save',
     close: 'Close',
     lineTotal: 'T',
@@ -155,6 +162,11 @@ export const STRINGS: Record<Lang, Strings> = {
     shortcuts: '快捷鍵（在任何程式裡都能用）',
     shortcut: { mode: '切換模式', stats: '數據', hide: '隱藏／顯示' },
     shortcutsTaken: '有些按鍵已被其他程式佔用。',
+    update: {
+      version: (v) => `版本 ${v}`, check: '檢查更新', checking: '檢查中…', latest: '已是最新版',
+      available: (v) => `有新版本 ${v}`, install: '立即更新',
+      installing: (p) => (p === undefined ? '更新中…' : `更新中… ${p}%`), failed: '更新失敗，請稍後再試。',
+    },
     save: '儲存',
     close: '關閉',
     lineTotal: '總分',
