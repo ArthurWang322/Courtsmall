@@ -3,8 +3,8 @@
 
 import type { GameCard, Side, TeamRef } from '../../model/types.ts';
 import type { CorePlay, CorePlayPage, GameFeed, GroupNode, Groups, Scoreboard, Summary, TeamSchedule } from './feed-types.ts';
-import { boxScore } from './box.ts';
-import type { BoxLine } from '../../model/types.ts';
+import { boxScore, teamStats } from './box.ts';
+import type { BoxLine, TeamStats } from '../../model/types.ts';
 import { gameStatus, teamRef } from './timeline.ts';
 
 export type FetchJson = (url: string) => Promise<unknown>;
@@ -77,8 +77,9 @@ export async function teamGames(get: FetchJson, teamId: string, seasonType?: 2 |
   });
 }
 
-/** A game's box score now: the summary again (about 40 KB gzipped), fetched only while it is on screen. */
-export async function loadBox(get: FetchJson, id: string): Promise<Record<Side, BoxLine[]>> {
-  return boxScore((await get(`${SITE}/summary?event=${id}`)) as Summary);
+/** A game's box score now, players and teams: the summary again (about 40 KB gzipped), only while it is on screen. */
+export async function loadBox(get: FetchJson, id: string): Promise<{ players: Record<Side, BoxLine[]>; teams: Partial<Record<Side, TeamStats>> }> {
+  const summary = (await get(`${SITE}/summary?event=${id}`)) as Summary;
+  return { players: boxScore(summary), teams: teamStats(summary) };
 }
 

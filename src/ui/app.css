@@ -223,3 +223,21 @@ button { font: inherit; color: inherit; border: 0; background: transparent; padd
 /* The players' window slides in from the main window's side. */
 .players-page #app { animation: slide-in .22s ease-out both; }
 @keyframes slide-in { from { transform: translateX(-24px); opacity: 0; } }
+
+/* The teams' stats (src/ui/views.ts teamView): a butterfly chart, the away bar left of the middle,
+   the home bar right, team colours; numbers in text colours, the better side's brighter. */
+.teamstats { display: flex; flex-direction: column; gap: 4px; overflow-y: auto; overflow-x: hidden; min-height: 0; padding-right: 2px; }
+.trow { display: flex; flex-direction: column; gap: 2px; }
+.tvals { display: grid; grid-template-columns: 1fr auto 1fr; align-items: baseline; gap: 8px; font: 600 12px var(--label); color: var(--muted); font-variant-numeric: tabular-nums; }
+.tvals > span:last-child { text-align: right; }
+.tvals .tlabel { font: 500 11px var(--font); color: var(--faint); letter-spacing: .04em; }
+.tvals .better { color: var(--text); }
+.tbars { display: grid; grid-template-columns: 1fr 1fr; gap: 2px; height: 5px; }
+.tbars .half { display: flex; background: color-mix(in srgb, var(--border) 45%, transparent); border-radius: 0; }
+.tbars .half.away { justify-content: flex-end; border-radius: 3px 0 0 3px; }
+.tbars .half.home { border-radius: 0 3px 3px 0; }
+.tbars .bar { display: block; height: 100%; }
+.tbars .bar.away { border-radius: 3px 0 0 3px; }
+.tbars .bar.home { border-radius: 0 3px 3px 0; }
+.panel.box .side[data-box-side='team'] { color: var(--muted); }
+.panel.box .side[data-box-side='team'].on { color: var(--text); }

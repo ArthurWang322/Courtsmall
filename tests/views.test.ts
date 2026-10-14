@@ -2,8 +2,8 @@
 
 import { describe, expect, it } from 'vitest';
 import { STRINGS } from '../src/i18n/index.ts';
-import { barView, boxView, clockText, controlsView, countdownParts, gamesView, JUMP_MS, leadersTable, playLines, pregameView, RUN_MIN, settingsView, whenText } from '../src/ui/views.ts';
-import type { BoxLine, GameCard, GameState, PlayLine } from '../src/model/types.ts';
+import { barView, boxView, clockText, teamView, controlsView, countdownParts, gamesView, JUMP_MS, leadersTable, playLines, pregameView, RUN_MIN, settingsView, whenText } from '../src/ui/views.ts';
+import type { BoxLine, GameCard, GameState, PlayLine, TeamStats } from '../src/model/types.ts';
 
 const en = STRINGS.en, zh = STRINGS['zh-TW'];
 /** The newest play line alone, as a one-line bar shows it. */
@@ -273,3 +273,30 @@ describe("players' window", () => {
     expect(boxView(base.teams, undefined, 'away', zh)).toContain('載入中');
   });
 });
+
+describe("teams' stats", () => {
+  const t = (o: Partial<TeamStats> = {}): TeamStats => ({
+    fg: { made: 40, att: 80 }, two: { made: 30, att: 50 }, three: { made: 10, att: 30 }, ft: { made: 15, att: 20 },
+    reb: 45, oreb: 10, dreb: 35, ast: 25, stl: 7, blk: 5, to: 12, fouls: 20, fastBreak: 14, paint: 50, largestLead: 9, ...o,
+  });
+  const html = teamView(base.teams, { away: t({ three: { made: 15, att: 30 }, to: 8 }), home: t() }, zh);
+  /** The markup of one stat's row. */
+  const row = (label: string) => html.split('<div class="trow"').find((r) => r.includes(`<span class="tlabel">${label}</span>`))!;
+
+  // Shooting is compared by percentage, and says made-attempted too.
+  it('compares shooting by percentage, the longer bar as long as the half, made-attempted beside it', () => {
+    const r = row('三分');
+    expect(r).toContain('15-30 · 50%');
+    expect(r).toContain('33% · 10-30');
+    expect(r).toMatch(/class="bar away" style="width:100\.0%/);
+    expect(r).toMatch(/class="bar home" style="width:66\.0%/);
+  });
+
+  // The fewer turnovers is the better side; everywhere else the more.
+  it("brightens the better side's number, the fewer for turnovers", () => {
+    expect(row('三分')).toMatch(/<span class="better">15-30/);
+    expect(row('失誤')).toMatch(/<span class="better">8<\/span>/);
+    expect(row('助攻')).not.toContain('better');
+  });
+});
+

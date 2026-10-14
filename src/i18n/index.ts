@@ -53,7 +53,9 @@ export interface Strings {
   /** The toolbar's tips, one per button. */
   tip: { bar: string; court: string; games: string; box: string; settings: string };
   /** The players' panel. */
-  box: { player: string; min: string; dnp: string; noGame: string };
+  box: { player: string; min: string; dnp: string; noGame: string; team: string };
+  /** Team stats' labels. */
+  teamStat: { fg: string; two: string; three: string; ft: string; reb: string; ast: string; stl: string; blk: string; to: string; fouls: string; fastBreak: string; paint: string; largestLead: string };
   noGames: string;
   prevDay: string;
   nextDay: string;
@@ -102,7 +104,8 @@ export const STRINGS: Record<Lang, Strings> = {
     done: 'Done',
     close: 'Close',
     tip: { bar: 'Simple', court: 'Court', games: 'Games', box: 'Players', settings: 'Settings' },
-    box: { player: 'PLAYER', min: 'MIN', dnp: 'DNP', noGame: 'No game on screen' },
+    box: { player: 'PLAYER', min: 'MIN', dnp: 'DNP', noGame: 'No game on screen', team: 'Teams' },
+    teamStat: { fg: 'Field goals', two: '2-pointers', three: '3-pointers', ft: 'Free throws', reb: 'Rebounds', ast: 'Assists', stl: 'Steals', blk: 'Blocks', to: 'Turnovers', fouls: 'Fouls', fastBreak: 'Fast break pts', paint: 'Points in paint', largestLead: 'Largest lead' },
     noGames: 'No games this day',
     prevDay: 'Previous day',
     nextDay: 'Next day',
@@ -147,7 +150,8 @@ export const STRINGS: Record<Lang, Strings> = {
     done: '完成',
     close: '關閉',
     tip: { bar: '簡易模式', court: '球場模式', games: '比賽列表', box: '球員數據', settings: '設定' },
-    box: { player: '球員', min: '時間', dnp: '未上場', noGame: '目前沒有正在看的比賽' },
+    box: { player: '球員', min: '時間', dnp: '未上場', noGame: '目前沒有正在看的比賽', team: '團隊' },
+    teamStat: { fg: '投籃', two: '兩分', three: '三分', ft: '罰球', reb: '籃板', ast: '助攻', stl: '抄截', blk: '火鍋', to: '失誤', fouls: '犯規', fastBreak: '快攻得分', paint: '禁區得分', largestLead: '最大領先' },
     noGames: '這天沒有比賽',
     prevDay: '前一天',
     nextDay: '後一天',

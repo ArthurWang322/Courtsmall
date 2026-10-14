@@ -60,6 +60,8 @@ export interface Summary {
     }[];
   };
   boxscore: {
+    /** Each side's team stats: `name` is ESPN's key, `displayValue` the value ("49-111", "44"). */
+    teams?: { team: { id: string }; statistics: { name: string; displayValue: string }[] }[];
     players?: {
       team: { id: string };
       statistics: {

@@ -97,6 +97,30 @@ export interface BoxLine {
   to: number;
 }
 
+/** Made and attempted. */
+export interface MadeOf { made: number; att: number }
+
+/** One side's team stats in a game's box score (the official count). */
+export interface TeamStats {
+  fg: MadeOf;
+  /** Two-pointers: field goals less threes (ESPN does not give them). */
+  two: MadeOf;
+  three: MadeOf;
+  ft: MadeOf;
+  reb: number;
+  oreb: number;
+  dreb: number;
+  ast: number;
+  stl: number;
+  blk: number;
+  /** Turnovers, team turnovers included. */
+  to: number;
+  fouls: number;
+  fastBreak: number;
+  paint: number;
+  largestLead: number;
+}
+
 /** Points one side has scored since the other side last scored. */
 export interface Run {
   side: Side;

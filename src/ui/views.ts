@@ -2,7 +2,7 @@
 // What a glance needs (docs/PLAN.md Q3): score, period and clock, possession, the last basket,
 // and a run once it is worth noticing.
 
-import { STAT_KEYS, type BoxLine, type GameCard, type GameState, type PlayLine, type Side, type TeamRef } from '../model/types.ts';
+import { STAT_KEYS, type BoxLine, type MadeOf, type TeamStats, type GameCard, type GameState, type PlayLine, type Side, type TeamRef } from '../model/types.ts';
 import type { Settings } from '../settings/store.ts';
 import type { Tier } from '../render/tiers.ts';
 import { gameColours, visibleColour } from '../render/colour.ts';
@@ -262,16 +262,56 @@ export function gamesView(day: string, games: readonly GameCard[], T: Strings, t
     </div>`;
 }
 
+/** The players' window's tabs: a side's players, or the two teams' stats side by side. */
+export type BoxTab = Side | 'team';
+
+const pct = (m: MadeOf) => (m.att ? Math.round((m.made / m.att) * 100) : 0);
+
+/**
+ * The two teams' stats as a butterfly chart: each row a stat, the away bar growing left from the
+ * middle and the home bar right, in the team colours, the longer one as long as the half. Shooting
+ * rows compare the percentage and say made-attempted too. The better side's number is brighter
+ * (for turnovers and fouls, the fewer).
+ */
+export function teamView(teams: Record<Side, TeamRef>, stats: Partial<Record<Side, TeamStats>>, T: Strings, favs: readonly string[] = []): string {
+  const a = stats.away, h = stats.home;
+  if (!a || !h) return `<span class="muted">${esc(T.loading)}</span>`;
+  const c = gameColours(teams, favIn(teams, favs));
+  type Row = { label: string; av: number; hv: number; at: string; ht: string; fewer?: boolean };
+  const shot = (label: string, x: MadeOf, y: MadeOf): Row => ({ label, av: pct(x), hv: pct(y), at: `${x.made}-${x.att} · ${pct(x)}%`, ht: `${pct(y)}% · ${y.made}-${y.att}` });
+  const count = (label: string, x: number, y: number, fewer = false): Row => ({ label, av: x, hv: y, at: String(x), ht: String(y), fewer });
+  const S = T.teamStat;
+  const rows: Row[] = [
+    shot(S.fg, a.fg, h.fg), shot(S.two, a.two, h.two), shot(S.three, a.three, h.three), shot(S.ft, a.ft, h.ft),
+    { ...count(S.reb, a.reb, h.reb), at: `${a.reb} (${a.oreb}/${a.dreb})`, ht: `(${h.oreb}/${h.dreb}) ${h.reb}` },
+    count(S.ast, a.ast, h.ast), count(S.stl, a.stl, h.stl), count(S.blk, a.blk, h.blk),
+    count(S.to, a.to, h.to, true), count(S.fouls, a.fouls, h.fouls, true),
+    count(S.fastBreak, a.fastBreak, h.fastBreak), count(S.paint, a.paint, h.paint), count(S.largestLead, a.largestLead, h.largestLead),
+  ];
+  const row = (r: Row) => {
+    const max = Math.max(r.av, r.hv) || 1;
+    const better = r.av === r.hv ? '' : (r.av > r.hv) !== !!r.fewer ? 'away' : 'home';
+    const bar = (side: Side, v: number) => `<i class="bar ${side}" style="width:${((v / max) * 100).toFixed(1)}%;background:#${esc(c[side])}"></i>`;
+    return `<div class="trow" title="${esc(`${teams.away.abbr} ${r.at}  ·  ${r.label}  ·  ${r.ht} ${teams.home.abbr}`)}">`
+      + `<div class="tvals"><span class="${better === 'away' ? 'better' : ''}">${esc(r.at)}</span><span class="tlabel">${esc(r.label)}</span><span class="${better === 'home' ? 'better' : ''}">${esc(r.ht)}</span></div>`
+      + `<div class="tbars"><div class="half away">${bar('away', r.av)}</div><div class="half home">${bar('home', r.hv)}</div></div></div>`;
+  };
+  return `<div class="teamstats">${rows.map(row).join('')}</div>`;
+}
+
 /**
  * The players' window: one side's box score, starters first, a line, then the bench, those who did
- * not play last and quieter. A "*" marks who is on the court now (`onCourt`, from the plays). Two
- * buttons switch the side, "✕" closes it; `box` is undefined while it loads.
+ * not play last and quieter. A "*" marks who is on the court now (`onCourt`, from the plays). The
+ * buttons switch between the sides and the teams' stats (`stats`); "✕" closes it; `box` is
+ * undefined while it loads.
  */
-export function boxView(teams: Record<Side, TeamRef> | undefined, box: Record<Side, BoxLine[]> | undefined, side: Side, T: Strings, favs: readonly string[] = [], onCourt: ReadonlySet<string> = new Set()): string {
+export function boxView(teams: Record<Side, TeamRef> | undefined, box: Record<Side, BoxLine[]> | undefined, side: BoxTab, T: Strings, favs: readonly string[] = [], onCourt: ReadonlySet<string> = new Set(), stats?: Partial<Record<Side, TeamStats>>): string {
   const close = `<button class="icon close" data-close aria-label="${esc(T.close)}">✕</button>`;
   if (!teams) return `<div class="panel box"><div class="head"><span class="grow"></span>${close}</div><span class="muted">${esc(T.box.noGame)}</span></div>`;
   const c = gameColours(teams, favIn(teams, favs));
   const tab = (sd: Side) => `<button class="side${sd === side ? ' on' : ''}" data-box-side="${sd}">${colourDot(c[sd])}${star(teams[sd], favs)}${esc(teams[sd].abbr)}</button>`;
+  const tabs = `${tab('away')}${tab('home')}<button class="side${side === 'team' ? ' on' : ''}" data-box-side="team">${esc(T.box.team)}</button>`;
+  if (side === 'team') return `<div class="panel box"><div class="head">${tabs}<span class="grow"></span>${close}</div>${stats ? teamView(teams, stats, T, favs) : `<span class="muted">${esc(T.loading)}</span>`}</div>`;
   const cols = ['min', ...STAT_KEYS] as const;
   const head = `<div class="row head-row"><span class="name">${esc(T.box.player)}</span>${cols.map((k) => `<span>${esc(k === 'min' ? T.box.min : T.stat(k))}</span>`).join('')}</div>`;
   const name = (l: BoxLine) => `<span class="name">${onCourt.has(l.player.id) ? '<b class="on-court">*</b>' : ''}${esc(l.player.short)}</span>`;
@@ -283,5 +323,5 @@ export function boxView(teams: Record<Side, TeamRef> | undefined, box: Record<Si
   const body = lines
     ? lines.map((l, i) => (i > 0 && lines[i - 1]!.starter && !l.starter ? '<hr class="bench">' : '') + row(l)).join('')
     : `<span class="muted">${esc(T.loading)}</span>`;
-  return `<div class="panel box"><div class="head">${tab('away')}${tab('home')}<span class="grow"></span>${close}</div><div class="table">${head}<div class="list">${body}</div></div></div>`;
+  return `<div class="panel box"><div class="head">${tabs}<span class="grow"></span>${close}</div><div class="table">${head}<div class="list">${body}</div></div></div>`;
 }

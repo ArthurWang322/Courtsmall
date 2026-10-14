@@ -9,12 +9,12 @@
 import '@fontsource/big-shoulders-display/latin-800';
 import '@fontsource/barlow-condensed/latin-500';
 import '@fontsource/barlow-condensed/latin-600';
-import type { BoxLine, Side, TeamRef } from '../model/types.ts';
+import type { BoxLine, Side, TeamRef, TeamStats } from '../model/types.ts';
 import type { GameFeed } from '../data/espn/feed-types.ts';
-import { boxScore } from '../data/espn/box.ts';
+import { boxScore, teamStats } from '../data/espn/box.ts';
 import { loadBox } from '../data/espn/fetch.ts';
 import { langOf, STRINGS } from '../i18n/index.ts';
-import { boxView, favIn } from './views.ts';
+import { boxView, favIn, type BoxTab } from './views.ts';
 
 /** What the main window sends (src/ui/main.ts). */
 export interface PlayersState {
@@ -35,11 +35,12 @@ let T = STRINGS[langOf(params.get('lang') ?? navigator.language)];
 
 let game: PlayersState | undefined;
 let box: Record<Side, BoxLine[]> | undefined;
-let side: Side = 'away';
+let stats: Partial<Record<Side, TeamStats>> | undefined;
+let side: BoxTab = 'away';
 
 function render(): void {
   const onCourt = new Set(game?.onCourt ? [...game.onCourt.away, ...game.onCourt.home] : []);
-  app.innerHTML = boxView(game?.teams, box, side, T, game?.favourites ?? [], onCourt);
+  app.innerHTML = boxView(game?.teams, box, side, T, game?.favourites ?? [], onCourt, stats);
 }
 
 const get = async (url: string) => { const r = await fetch(url); if (!r.ok) throw new Error(`${r.status} ${url}`); return r.json() as Promise<unknown>; };
@@ -48,10 +49,12 @@ async function load(): Promise<void> {
   const id = game?.gameId;
   if (!id) return;
   try {
-    const data = import.meta.env.DEV && params.has('fixture')
-      ? boxScore((await get(`/fixtures/nba/game-${id}.json`) as GameFeed).summary)
-      : await loadBox(get, id);
-    if (game?.gameId === id) { box = data; render(); }
+    let data: Awaited<ReturnType<typeof loadBox>>;
+    if (import.meta.env.DEV && params.has('fixture')) {
+      const { summary } = await get(`/fixtures/nba/game-${id}.json`) as GameFeed;
+      data = { players: boxScore(summary), teams: teamStats(summary) };
+    } else data = await loadBox(get, id);
+    if (game?.gameId === id) { box = data.players; stats = data.teams; render(); }
   } catch (e) { console.warn(e); }
 }
 
@@ -64,6 +67,7 @@ function receive(next: PlayersState): void {
     const fav = favIn(next.teams, next.favourites);
     side = fav && next.teams.home.id === fav ? 'home' : 'away';
     box = undefined;
+    stats = undefined;
     void load();
   }
   render();
@@ -74,7 +78,7 @@ setInterval(() => { if (game?.live) void load(); }, BOX_EVERY_MS);
 app.addEventListener('click', async (e) => {
   const el = (e.target as HTMLElement).closest<HTMLElement>('[data-box-side], [data-close]');
   if (!el) return;
-  if (el.dataset.boxSide) { side = el.dataset.boxSide as Side; render(); return; }
+  if (el.dataset.boxSide) { side = el.dataset.boxSide as BoxTab; render(); return; }
   if (!shell) { window.close(); return; }
   const { emitTo } = await import('@tauri-apps/api/event');
   await emitTo('main', 'players-closed');
