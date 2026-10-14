@@ -43,10 +43,13 @@ let side: BoxTab = 'away';
 function render(): void {
   const onCourt = new Set(game?.onCourt ? [...game.onCourt.away, ...game.onCourt.home] : []);
   app.innerHTML = boxView(game?.teams, box, side, T, game?.favourites ?? [], onCourt, stats);
-  // A side's box score: the window shaded in that side's colour (app.css `.tinted`); the teams' stats stay plain.
-  const tint = game?.teams.away.id && side !== 'team' ? gameColours(game.teams, favIn(game.teams, game.favourites))[side] : undefined;
-  app.classList.toggle('tinted', !!tint);
-  if (tint) app.style.setProperty('--side', `#${tint}`);
+  // The window shaded in the colour of the side shown (app.css `.tinted`), or for the teams' stats
+  // in both, the away side's on the left and the home side's on the right, as their bars grow.
+  const c = game?.teams.away.id ? gameColours(game.teams, favIn(game.teams, game.favourites)) : undefined;
+  app.classList.toggle('tinted', !!c && side !== 'team');
+  app.classList.toggle('tinted-both', !!c && side === 'team');
+  if (c && side !== 'team') app.style.setProperty('--side', `#${c[side]}`);
+  if (c) { app.style.setProperty('--away', `#${c.away}`); app.style.setProperty('--home', `#${c.home}`); }
 }
 
 const get = async (url: string) => { const r = await fetch(url); if (!r.ok) throw new Error(`${r.status} ${url}`); return r.json() as Promise<unknown>; };
