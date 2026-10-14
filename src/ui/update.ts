@@ -8,7 +8,8 @@ export type UpdateState =
   | { kind: 'latest' }
   | { kind: 'available'; version: string }
   | { kind: 'installing'; percent: number | undefined }
-  | { kind: 'failed' };
+  /** The check could not reach the release (offline, or GitHub down), or the install failed. */
+  | { kind: 'failed'; during: 'check' | 'install' };
 
 type Found = Awaited<ReturnType<typeof import('@tauri-apps/plugin-updater').check>>;
 let found: Found = null;
@@ -21,7 +22,7 @@ export async function checkForUpdate(set: (s: UpdateState) => void): Promise<voi
     set(found ? { kind: 'available', version: found.version } : { kind: 'latest' });
   } catch (e) {
     console.warn('update check:', e);
-    set({ kind: 'failed' });
+    set({ kind: 'failed', during: 'check' });
   }
 }
 
@@ -38,6 +39,6 @@ export async function installUpdate(set: (s: UpdateState) => void): Promise<void
     await relaunch();
   } catch (e) {
     console.warn('update install:', e);
-    set({ kind: 'failed' });
+    set({ kind: 'failed', during: 'install' });
   }
 }

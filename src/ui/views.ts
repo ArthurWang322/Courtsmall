@@ -212,7 +212,7 @@ function updateRow(version: string, u: UpdateState, T: Strings): string {
     u.kind === 'latest' ? [U.latest, `<button data-update="check">${esc(U.check)}</button>`] :
     u.kind === 'available' ? [U.available(u.version), `<button class="on" data-update="install">${esc(U.install)}</button>`] :
     u.kind === 'installing' ? [U.installing(u.percent), ''] :
-    u.kind === 'failed' ? [U.failed, `<button data-update="check">${esc(U.check)}</button>`] :
+    u.kind === 'failed' ? [u.during === 'check' ? U.checkFailed : U.installFailed, `<button data-update="check">${esc(U.check)}</button>`] :
     ['', `<button data-update="check">${esc(U.check)}</button>`];
   return `<div class="update"><span class="version">${esc(U.version(version))}</span><span class="note${u.kind === 'available' ? ' new' : ''}">${esc(note)}</span>${button}</div>`;
 }

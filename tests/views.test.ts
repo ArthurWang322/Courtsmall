@@ -262,12 +262,15 @@ describe('settings page', () => {
     expect(at({ kind: 'idle' })).toContain('版本 0.2.0');
     expect(at({ kind: 'idle' })).toContain('data-update="check">檢查更新');
     expect(at({ kind: 'checking' })).not.toContain('data-update');
-    expect(at({ kind: 'latest' })).toContain('已是最新版');
+    // No newer release is not a failure: it says so plainly.
+    expect(at({ kind: 'latest' })).toContain('此版本為最新版');
     expect(at({ kind: 'available', version: '0.3.0' })).toContain('有新版本 0.3.0');
     expect(at({ kind: 'available', version: '0.3.0' })).toContain('data-update="install">立即更新');
     expect(at({ kind: 'installing', percent: 42 })).toContain('更新中… 42%');
     expect(at({ kind: 'installing', percent: 42 })).not.toContain('data-update');
-    expect(at({ kind: 'failed' })).toContain('data-update="check"');
+    expect(at({ kind: 'failed', during: 'check' })).toContain('無法檢查更新，請確認網路連線');
+    expect(at({ kind: 'failed', during: 'install' })).toContain('更新失敗，請稍後再試');
+    expect(at({ kind: 'failed', during: 'install' })).toContain('data-update="check"');
     expect(settingsView(teams, settings, zh)).not.toContain('class="update"');
   });
 

@@ -52,7 +52,7 @@ export interface Strings {
   /** Shown when another app already has the keys. */
   shortcutsTaken: string;
   /** The version and updating, at the foot of the settings (src/ui/update.ts). */
-  update: { version: (v: string) => string; check: string; checking: string; latest: string; available: (v: string) => string; install: string; installing: (pct: number | undefined) => string; failed: string };
+  update: { version: (v: string) => string; check: string; checking: string; latest: string; available: (v: string) => string; install: string; installing: (pct: number | undefined) => string; checkFailed: string; installFailed: string };
   save: string;
   close: string;
   /** The line score's total column. */
@@ -110,9 +110,10 @@ export const STRINGS: Record<Lang, Strings> = {
     shortcut: { mode: 'simple / court', stats: 'stats', hide: 'hide / show' },
     shortcutsTaken: 'Some keys are taken by another app.',
     update: {
-      version: (v) => `Version ${v}`, check: 'Check for updates', checking: 'Checking…', latest: 'Up to date',
+      version: (v) => `Version ${v}`, check: 'Check for updates', checking: 'Checking…', latest: 'This is the latest version',
       available: (v) => `Version ${v} is out`, install: 'Update now',
-      installing: (p) => (p === undefined ? 'Updating…' : `Updating… ${p}%`), failed: 'Could not update. Try again later.',
+      installing: (p) => (p === undefined ? 'Updating…' : `Updating… ${p}%`),
+      checkFailed: 'Could not check. Are you online?', installFailed: 'Could not update. Try again later.',
     },
     save: 'Save',
     close: 'Close',
@@ -163,9 +164,10 @@ export const STRINGS: Record<Lang, Strings> = {
     shortcut: { mode: '切換模式', stats: '數據', hide: '隱藏／顯示' },
     shortcutsTaken: '有些按鍵已被其他程式佔用。',
     update: {
-      version: (v) => `版本 ${v}`, check: '檢查更新', checking: '檢查中…', latest: '已是最新版',
+      version: (v) => `版本 ${v}`, check: '檢查更新', checking: '檢查中…', latest: '此版本為最新版',
       available: (v) => `有新版本 ${v}`, install: '立即更新',
-      installing: (p) => (p === undefined ? '更新中…' : `更新中… ${p}%`), failed: '更新失敗，請稍後再試。',
+      installing: (p) => (p === undefined ? '更新中…' : `更新中… ${p}%`),
+      checkFailed: '無法檢查更新，請確認網路連線', installFailed: '更新失敗，請稍後再試',
     },
     save: '儲存',
     close: '關閉',
