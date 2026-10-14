@@ -192,7 +192,8 @@ async function toggleStats(): Promise<void> {
   if (playersOpen) { await closeStats(); return; }
   const { WebviewWindow } = await import('@tauri-apps/api/webviewWindow');
   const at = await sideLayout();
-  const common = { decorations: false, transparent: true, shadow: false, alwaysOnTop: true, resizable: false, skipTaskbar: true, focus: false } as const;
+  // Children of the main window: on macOS the system then moves them with it, with no lag.
+  const common = { decorations: false, transparent: true, shadow: false, alwaysOnTop: true, resizable: false, skipTaskbar: true, focus: false, parent: 'main' } as const;
   new WebviewWindow(PLAYERS, { url: 'players.html', x: at.players.x, y: at.players.y, width: at.players.w, height: at.players.h, ...common });
   new WebviewWindow(LINESCORE, { url: 'linescore.html', x: at.linescore.x, y: at.linescore.y, width: at.linescore.w, height: at.linescore.h, ...common });
   playersOpen = true;
@@ -235,21 +236,29 @@ if (shell) void (async () => {
   await listen('players-ready', () => { playersSent = ''; void sendStats(); });
   await listen('linescore-ready', () => { lineSent = ''; void sendStats(); });
   await listen('players-closed', () => void closeStats());
-  // They stay in place, and in shape, as the main window moves or changes size.
+  // They stay in place, and in shape, as the main window moves or changes size. On macOS a child
+  // window already moves with its parent; elsewhere each move places them again, both at once, and
+  // a move that comes while the last is still being placed waits, only the latest kept.
   const w = await mainWindow();
-  const follow = async () => {
+  const { WebviewWindow } = await import('@tauri-apps/api/webviewWindow');
+  const { LogicalPosition, LogicalSize } = await import('@tauri-apps/api/window');
+  const childrenMove = navigator.userAgent.includes('Mac');
+  let busy = false, again = false, againResize = false;
+  const follow = async (resize: boolean) => {
     if (!playersOpen) return;
-    const { WebviewWindow } = await import('@tauri-apps/api/webviewWindow');
-    const { LogicalPosition, LogicalSize } = await import('@tauri-apps/api/window');
+    if (busy) { again = true; againResize ||= resize; return; }
+    busy = true;
     const at = await sideLayout();
-    for (const label of [PLAYERS, LINESCORE] as const) {
+    await Promise.all(([PLAYERS, LINESCORE] as const).map(async (label) => {
       const win = await WebviewWindow.getByLabel(label);
       await win?.setPosition(new LogicalPosition(at[label].x, at[label].y));
-      await win?.setSize(new LogicalSize(at[label].w, at[label].h));
-    }
+      if (resize) await win?.setSize(new LogicalSize(at[label].w, at[label].h));
+    }));
+    busy = false;
+    if (again) { const r = againResize; again = againResize = false; void follow(r); }
   };
-  await w.onMoved(() => void follow());
-  await w.onResized(() => void follow());
+  if (!childrenMove) await w.onMoved(() => void follow(false));
+  await w.onResized(() => void follow(true));
 })();
 
 function render(): void {
