@@ -3,7 +3,7 @@
 // bounces out onto the court, and the floor keeps the latest shots, newest strongest.
 
 import { describe, expect, it } from 'vitest';
-import { AFTER_SECONDS, ballAt, BOUNCE_FEET, flightSeconds, flightSvg, project, RIM_Z, SCORE_SECONDS, shotMarks, WINDUP_SECONDS } from '../src/render/court.ts';
+import { AFTER_SECONDS, ballAt, BOUNCE_FEET, flightSeconds, flightSvg, LANDED, MAX_FLIGHT_WAIT_MS, project, queueFlights, RIM_Z, SCORE_SECONDS, shotMarks, shotSeconds, WINDUP_SECONDS } from '../src/render/court.ts';
 import { BASKET, type Shot } from '../src/model/types.ts';
 
 const colours = { away: 'c8102e', home: '008348' };
@@ -111,3 +111,22 @@ describe('shotMarks', () => {
     expect(shotMarks([shot({ id: '1' })], colours, (id) => id !== '1')).toBe('');
   });
 });
+
+// A poll brings several plays at once; their balls flew together. Now they take turns.
+describe('queueFlights', () => {
+  const ft = (id: string) => shot({ id, points: 1, x: 25, y: 14.75 });
+  it('starts the shots of one poll one after another, in the order they happened', () => {
+    const a = shot({ id: '4018103627' }), b = ft('4018103629'), c = ft('40181036210');
+    const { starts, queueEnd } = queueFlights([c, a, b], 1000, 0);
+    expect(starts.get('4018103627')).toBe(1000);
+    expect(starts.get('4018103629')).toBeCloseTo(1000 + shotSeconds(a) * 1000);
+    expect(starts.get('40181036210')).toBeCloseTo(1000 + (shotSeconds(a) + shotSeconds(b)) * 1000);
+    expect(queueEnd).toBeCloseTo(1000 + (shotSeconds(a) + shotSeconds(b) + shotSeconds(c)) * 1000);
+  });
+
+  it('waits for a flight still in the air, and lands at once a shot that would wait too long', () => {
+    expect(queueFlights([shot({ id: '1' })], 1000, 3000).starts.get('1')).toBe(3000);
+    expect(queueFlights([shot({ id: '1' })], 1000, 1000 + MAX_FLIGHT_WAIT_MS + 1).starts.get('1')).toBe(LANDED);
+  });
+});
+

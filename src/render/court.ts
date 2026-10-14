@@ -143,6 +143,31 @@ export function ballAt(s: Shot, t: number): { phase: Phase; ball?: P3; v?: numbe
   return { phase: 'bounce', ball: { x: BASKET.x + Math.cos(a) * BOUNCE_FEET * v, y: BASKET.y + Math.sin(a) * BOUNCE_FEET * v, z: Math.max(0, z) }, v };
 }
 
+/** A shot that would have to wait longer than this to fly lands at once instead, ms. */
+export const MAX_FLIGHT_WAIT_MS = 6000;
+/** A start time far enough back that the flight is over: the shot lands at once. */
+export const LANDED = -Infinity;
+
+/**
+ * When each new shot's flight starts. A poll brings several plays at once (a miss, the rebound,
+ * the putback; two free throws), and started together their balls flew at once; so they queue, in
+ * the order they happened, each after the one before has finished. One that would wait more than
+ * MAX_FLIGHT_WAIT_MS (a backlog after the window was hidden) lands at once, so the court never
+ * falls behind the game. Pure: `queueEnd` is when the last queued flight ends; returns the start
+ * of each shot (LANDED for one that does not fly) and the new queue end.
+ */
+export function queueFlights(shots: readonly Shot[], now: number, queueEnd: number): { starts: Map<string, number>; queueEnd: number } {
+  const order = (id: string) => BigInt(id.replace(/\D/g, '') || '0');
+  const starts = new Map<string, number>();
+  let end = Math.max(now, queueEnd);
+  for (const s of [...shots].sort((a, b) => (order(a.id) < order(b.id) ? -1 : order(a.id) > order(b.id) ? 1 : 0))) {
+    if (end - now > MAX_FLIGHT_WAIT_MS) { starts.set(s.id, LANDED); continue; }
+    starts.set(s.id, end);
+    end += shotSeconds(s) * 1000;
+  }
+  return { starts, queueEnd: end };
+}
+
 /** An ellipse lying flat at height `p.z`, radius in feet. */
 function disc(p: P3, r: number, attrs: string): string {
   const c = project(p);
@@ -242,7 +267,8 @@ export function drawFlights(root: ParentNode, shots: readonly Shot[], colours: R
     const t = ageSeconds(s.id);
     if (t === undefined || t >= shotSeconds(s)) return '';
     flying = true;
-    return flightSvg(s, t, colours[s.side]);
+    // Queued behind another shot (queueFlights): not in the air yet, but keep the frames coming.
+    return t < 0 ? '' : flightSvg(s, t, colours[s.side]);
   }).join('');
   return flying;
 }

@@ -24,7 +24,7 @@ import { langOf, STRINGS } from '../i18n/index.ts';
 import { Notifier } from '../notify/notifier.ts';
 import { assumedBefore, notices } from '../notify/rules.ts';
 import { playLinesAt, TIER_PRESET, tierOf, TOOLBAR_H, type Tier } from '../render/tiers.ts';
-import { drawFlights, shotSeconds } from '../render/court.ts';
+import { drawFlights, LANDED, queueFlights, shotSeconds } from '../render/court.ts';
 import { gameColours } from '../render/colour.ts';
 import { loadSettings, saveSettings, type Settings } from '../settings/store.ts';
 import { barView, controlsView, courtView, favIn, gamesView, JUMP_MS, messageView, pregameView, settingsView, type ScoreAges } from './views.ts';
@@ -86,6 +86,8 @@ let dayList: GameCard[] = [];
 let pinned: string | undefined;
 /** When each shot on the court first appeared, epoch ms, for its animation (src/render/court.ts). */
 const shotSeen = new Map<string, number>();
+/** When the last queued shot's flight ends, epoch ms (src/render/court.ts queueFlights). */
+let flightQueueEnd = 0;
 /** When each side's score last went up, epoch ms, for the score's jump (src/ui/views.ts). */
 const scoreChangedAt: Partial<Record<Side, number>> = {};
 let sizeBeforePanel: { w: number; h: number } | undefined;
@@ -272,6 +274,7 @@ function leave(): void {
   unsubscribe = undefined;
   state = undefined;
   shotSeen.clear();
+  flightQueueEnd = 0;
   delete scoreChangedAt.away;
   delete scoreChangedAt.home;
   currentId = undefined;
@@ -292,10 +295,15 @@ function follow(id: string, how: 'live' | 'replay' | 'result'): void {
       if (!replaying) notifier.send(notices(state ?? assumedBefore(s, knownScheduled.has(id)), s, settings.notify));
       if (s.status === 'final' && finalAt === undefined) finalAt = Date.now();
       // Shots already on the court when the game is first shown do not fly in.
-      const seenAt = state ? Date.now() : Date.now() - 60_000;
-      const onCourt = new Set([...(s.recentShots ?? []), ...(s.recentFreeThrows ?? [])].map((shot) => shot.id));
+      // New shots queue up and fly one after another (src/render/court.ts queueFlights); those already
+      // on the court when the game is first shown do not fly.
+      const all = [...(s.recentShots ?? []), ...(s.recentFreeThrows ?? [])];
+      const fresh = all.filter((shot) => !shotSeen.has(shot.id));
+      const queued = state ? queueFlights(fresh, Date.now(), flightQueueEnd) : { starts: new Map(fresh.map((shot) => [shot.id, LANDED])), queueEnd: flightQueueEnd };
+      flightQueueEnd = queued.queueEnd;
+      const onCourt = new Set(all.map((shot) => shot.id));
       for (const id of shotSeen.keys()) if (!onCourt.has(id)) shotSeen.delete(id);
-      for (const id of onCourt) if (!shotSeen.has(id)) shotSeen.set(id, seenAt);
+      for (const [id, at] of queued.starts) shotSeen.set(id, at);
       // A score that went up jumps; the first state of a game does not.
       if (state) for (const side of ['away', 'home'] as const) if (s.score[side] > state.score[side]) scoreChangedAt[side] = Date.now();
       state = s;
@@ -317,7 +325,7 @@ function follow(id: string, how: 'live' | 'replay' | 'result'): void {
       const last = buildTimeline(feed).at(-1)?.state ?? initialState(feed);
       if (cancelled || !last) return;
       if (last.status === 'final') finalAt = Date.now();
-      for (const shot of [...(last.recentShots ?? []), ...(last.recentFreeThrows ?? [])]) shotSeen.set(shot.id, Date.now() - 60_000);
+      for (const shot of [...(last.recentShots ?? []), ...(last.recentFreeThrows ?? [])]) shotSeen.set(shot.id, LANDED);
       state = last;
       render();
     }).catch(handlers.onError);
