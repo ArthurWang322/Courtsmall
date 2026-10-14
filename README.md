@@ -1,97 +1,77 @@
 # Courtsmall
 
-**Basketball, but small.** An unofficial desktop companion that keeps live NBA games in a quiet corner of your screen, so you know your team is playing without watching the game.
-
-把 NBA 收進桌面一角的非官方小工具，不打擾工作也能知道比賽正在打。
+**把 NBA 收進桌面一角。** 一個非官方的桌面小工具，浮在螢幕角落顯示 NBA 即時比賽。上班不能看直播，也能一眼知道比分、誰在持球、剛剛誰投進。
 
 <p>
-  <img src="docs/media/court.gif" width="360" alt="The court view: a shot arcs to the rim and the points rise from the spot">
-  <img src="docs/media/bar.png" width="360" alt="The simple view: the score, the clock and the two latest plays">
+  <img src="docs/media/court.gif" width="360" alt="球場模式：球照實際位置飛向籃框，得分從出手點升起">
+  <img src="docs/media/bar.png" width="360" alt="簡易模式：比分、時間與最近兩筆事件">
 </p>
 
-## What it does
+## 功能
 
-- **A score you can read at a glance.** Each team's cell in its colour, the period and the clock, and the team with the ball framed.
-- **The two latest plays**, newest on top: baskets, misses, fouls, turnovers, rebounds and substitutions, with timeouts and reviews by the clock, and a run in brackets at the end of the line.
-- **A 3D court**, seen from behind the arc: each shot flies to the rim on its real spot, makes drop through the net, misses bounce off, free throws come from the line. The play's line and the score change as the ball reaches the rim, so the words and the court always tell the same play.
-- **Stats beside the window**: the box score of each side (who is on the court starred, the bench below a line), the teams side by side in bars, and the points per period underneath. They unfold from the main window and move with it.
-- **Your favourite team**, followed automatically and starred in the games list. Without one, Courtsmall follows the closest game on.
-- **Before tip-off**, a countdown; **after the final**, the points per period and each side's leaders.
-- **Notices** at tip-off, at the final and in a close finish, each a switch.
-- **Shortcuts from any app**: Ctrl+Alt+M (⌃⌥M) switches simple / court, Ctrl+Alt+S shows the stats, Ctrl+Alt+H hides and shows. One switch turns them off.
-- Traditional Chinese and English.
-
-<p>
-  <img src="docs/media/games.png" width="300" alt="The games list: a day's games and their scores">
-  <img src="docs/media/result.png" width="300" alt="A finished game: points per period and each side's leaders">
-</p>
-
-<p>
-  <img src="docs/media/stats.png" width="300" alt="The stats window: a side's box score, starters above the bench">
-  <img src="docs/media/team.png" width="300" alt="Team stats: the two sides' numbers as bars from the middle">
-</p>
-
-## Install
-
-Download the installer for your system from [Releases](https://github.com/ArthurWang322/Courtsmall/releases): nothing else to install.
-
-- **Windows**: the `-setup.exe`. It installs for your user, no admin needed. It is not code-signed, so the first time Windows SmartScreen may warn: choose *More info*, then *Run anyway*.
-- **macOS**: the `.dmg` (Apple silicon and Intel); drag Courtsmall into Applications. It is not notarized, so the first time macOS says it cannot verify it: press *Done*, then open *System Settings → Privacy & Security*, scroll to *Security* and press *Open Anyway* beside Courtsmall. (Or in Terminal: `xattr -dr com.apple.quarantine /Applications/Courtsmall.app`.) After that it opens normally, and updates install from its settings.
-
-It is developed on macOS; the Windows build is new and less tried. New versions come out as it grows: get the latest from [Releases](https://github.com/ArthurWang322/Courtsmall/releases/latest).
-
-## Build from source
-
-For development. You need Node.js (24 recommended) and Rust ([rustup](https://rustup.rs)).
-
-```bash
-npm install            # with npm 10 (Node 23), use: npm install --legacy-peer-deps
-npm test
-npx tauri dev          # run the app
-npx tauri build        # build the app bundle and installer
-```
-
-A version tag (`git tag v0.1.0 && git push --tags`) builds the Windows and macOS installers on GitHub Actions into a draft release, to check and publish.
-
-Tests that check the adapter against ESPN's box scores need recorded games, which are not committed:
-
-```bash
-node scripts/probe/06-fixtures.mjs   # saves them to fixtures/nba/
-```
-
-`npm run dev` serves the page alone in a browser; add `?game=<ESPN event id>&replay&fixture` to replay a recorded game. `docs/PLAN.md` and `docs/PROBE_REPORT.md` (in Traditional Chinese) cover the design and everything measured about the data.
-
-## Data
-
-Game data comes from ESPN's public site and core APIs, fetched directly by your computer every 10 seconds while a game is on screen. There is no server. Courtsmall is not affiliated with or endorsed by the NBA, its teams or ESPN, and uses no league or team logos.
-
-## Known issues
-
-- System notices do not show yet; the cause is still being looked into.
-- ESPN sometimes publishes a play late or corrects it; the score is always right, but an occasional basket may update the score without its animation.
-
-## Credits
-
-Based on [Basesmall](https://github.com/Zaious/basesmall) by Zaious, ChronicleCore Studio. Fonts: [Big Shoulders Display](https://fonts.google.com/specimen/Big+Shoulders+Display) and [Barlow Condensed](https://github.com/jpt/barlow), both under the SIL Open Font License 1.1.
-
-## License
-
-[Apache License 2.0](LICENSE). See [NOTICE](NOTICE) for attributions.
-
----
-
-## 繁體中文
-
-Courtsmall 是一個浮在桌面角落的小視窗，用 ESPN 公開的資料顯示 NBA 比賽。上班不能看直播，也能一眼知道比分、誰在持球、剛剛誰投進。
-
-- **簡易模式**：比分、節次與時間，加上最近兩筆事件（得分、沒進、犯規、失誤、籃板、換人），連續得分以括號標在行尾。
-- **球場模式**：45 度俯瞰的 3D 半場，每次出手照實際位置飛向籃框；球到籃框時文字直播和比分才更新，文字和動畫永遠對得上。
-- **數據視窗**：從主視窗旁展開，雙方球員本場數據（場上球員標 *、先發與替補以分隔線區隔）、團隊數據長條圖比較，下方是每節得分。
-- **最愛球隊**：自動跟它的比賽，在比賽列表裡標星號；沒設定時跟最緊張的比賽。
+- **一眼看懂的比分**：兩隊各用自己的代表色，顯示節次與時間，持球的一方會加框。
+- **最近兩筆事件**，最新的在上面：得分、沒進、犯規、失誤、籃板、換人，暫停與重播檢視會標上時間，連續得分以括號標在行尾。
+- **3D 球場**：從三分線後方俯瞰半場，每次出手照實際位置飛向籃框，進球穿過籃網、沒進彈框而出，罰球從罰球線出手。球到籃框時文字和比分才更新，文字和畫面永遠對得上。
+- **數據視窗**：從主視窗旁展開並跟著移動。雙方球員本場數據（場上球員標 *，先發與替補以分隔線區隔）、團隊數據長條圖比較，下方是每節得分。
+- **最愛球隊**：自動跟它的比賽，並在比賽列表裡標星號；沒設定時跟最接近的比賽。
 - **開賽前**倒數，**終場後**顯示各節比分與雙方各項領先者。
-- **快捷鍵**（在任何程式裡都能用）：Ctrl+Alt+M（⌃⌥M）切換模式、Ctrl+Alt+S 數據、Ctrl+Alt+H 隱藏／顯示，可在設定關閉。
-- 開賽、終場、關鍵時刻的通知，各自可以開關（目前系統通知還無法顯示，正在查原因）。
+- **通知**：開賽、終場、關鍵時刻，各自可以開關。
+- **全域快捷鍵**（在任何程式裡都能用）：Ctrl+Alt+M（⌃⌥M）切換簡易／球場模式、Ctrl+Alt+S 顯示數據、Ctrl+Alt+H 隱藏／顯示，可在設定裡一鍵關閉。
+- 支援繁體中文與英文介面。
 
-**安裝**：到 [Releases](https://github.com/ArthurWang322/Courtsmall/releases) 下載安裝檔，不需要裝其他東西。Windows 下載 `-setup.exe`（第一次若出現 SmartScreen 警告，按「其他資訊 → 仍要執行」）；macOS 下載 `.dmg`，把 Courtsmall 拖進「應用程式」。第一次開啟時 macOS 會說無法驗證：按「完成」，再到「系統設定 → 隱私權與安全性」，往下捲到「安全性」，按 Courtsmall 旁的「強制打開」（或在終端機執行 `xattr -dr com.apple.quarantine /Applications/Courtsmall.app`）。之後就能正常開啟，新版本也能在設定裡直接更新。版本會持續更新，最新版都在 [Releases](https://github.com/ArthurWang322/Courtsmall/releases/latest)。
+<p>
+  <img src="docs/media/games.png" width="300" alt="比賽列表：當天所有比賽與比分">
+  <img src="docs/media/result.png" width="300" alt="終場畫面：各節比分與雙方領先者">
+</p>
 
-全部在你的電腦上執行，沒有伺服器。非 NBA、球隊或 ESPN 官方產品。
+<p>
+  <img src="docs/media/stats.png" width="300" alt="數據視窗：一方的球員數據，先發在替補上方">
+  <img src="docs/media/team.png" width="300" alt="團隊數據：雙方數字以中線為基準的長條圖">
+</p>
+
+## 安裝
+
+到 [Releases](https://github.com/ArthurWang322/Courtsmall/releases) 下載對應系統的安裝檔，不需要裝其他東西。
+
+- **Windows**：下載 `-setup.exe`，安裝在目前使用者底下，不需要系統管理員權限。安裝檔沒有程式碼簽章，第一次執行若出現 SmartScreen 警告，按「其他資訊 → 仍要執行」。
+- **macOS**：下載 `.dmg`（支援 Apple 晶片與 Intel），把 Courtsmall 拖進「應用程式」。App 沒有經過公證，第一次開啟時 macOS 會說無法驗證：按「完成」，再到「系統設定 → 隱私權與安全性」，往下捲到「安全性」，按 Courtsmall 旁的「強制打開」（或在終端機執行 `xattr -dr com.apple.quarantine /Applications/Courtsmall.app`）。之後就能正常開啟，新版本也能在設定裡直接更新。
+
+主要在 macOS 上開發，Windows 版較新、測試較少。版本會持續更新，最新版都在 [Releases](https://github.com/ArthurWang322/Courtsmall/releases/latest)。
+
+## 從原始碼建置
+
+開發用。需要 Node.js（建議 24）與 Rust（[rustup](https://rustup.rs)）。
+
+```bash
+npm install            # 若使用 npm 10（Node 23）：npm install --legacy-peer-deps
+npm test
+npx tauri dev          # 執行 App
+npx tauri build        # 建置 App 與安裝檔
+```
+
+推送版本標籤（`git tag v0.1.0 && git push --tags`）會在 GitHub Actions 建置 Windows 與 macOS 安裝檔，放進草稿 Release，檢查後再發布。
+
+部分測試會拿 ESPN 的 box score 驗證資料轉換，需要先錄好的比賽資料（沒有放進版本控制）：
+
+```bash
+node scripts/probe/06-fixtures.mjs   # 存到 fixtures/nba/
+```
+
+`npm run dev` 可以只在瀏覽器裡開頁面；加上 `?game=<ESPN 比賽 id>&replay&fixture` 可重播錄好的比賽。設計與資料實測的細節請見 `docs/PLAN.md` 與 `docs/PROBE_REPORT.md`。
+
+## 資料來源
+
+比賽資料來自 ESPN 公開的 site 與 core API，畫面上有比賽時由你的電腦每 10 秒直接抓取，沒有任何伺服器。Courtsmall 與 NBA、各球隊及 ESPN 均無關聯，也未獲其背書。球隊標誌在執行時從 ESPN 載入，不隨 App 散布，商標權屬各球隊所有。
+
+## 已知問題
+
+- 系統通知目前還無法顯示，正在查原因。
+- ESPN 有時會延遲發布或事後修正事件；比分一定正確，但偶爾某次得分可能只更新比分、沒有動畫。
+
+## 致謝
+
+改編自 Zaious（ChronicleCore Studio）的 [Basesmall](https://github.com/Zaious/basesmall)。字型：[Big Shoulders Display](https://fonts.google.com/specimen/Big+Shoulders+Display) 與 [Barlow Condensed](https://github.com/jpt/barlow)，皆採 SIL Open Font License 1.1 授權。
+
+## 授權
+
+[Apache License 2.0](LICENSE)。相關聲明請見 [NOTICE](NOTICE)。
