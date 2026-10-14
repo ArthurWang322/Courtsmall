@@ -20,6 +20,7 @@ import { buildTimeline, initialState } from '../data/espn/timeline.ts';
 import { EspnReplaySource } from '../data/replay/espn-replay-source.ts';
 import type { PaceMode } from '../data/replay/pacing.ts';
 import { decide, STAY_AFTER_FINAL_MS, type Decision } from '../follow/decide.ts';
+import { CHANGELOG } from '../changelog.ts';
 import { langOf, STRINGS } from '../i18n/index.ts';
 import { Notifier } from '../notify/notifier.ts';
 import { assumedBefore, notices } from '../notify/rules.ts';
@@ -32,7 +33,7 @@ import { playLinesAt, TIER_PRESET, tierOf, TOOLBAR_H, type Tier } from '../rende
 import { drawFlights, flightSeconds, LANDED, shotSeconds, WINDUP_SECONDS } from '../render/court.ts';
 import { gameColours } from '../render/colour.ts';
 import { loadSettings, saveSettings, type Settings } from '../settings/store.ts';
-import { barView, controlsView, courtView, favIn, gamesView, JUMP_MS, messageView, noLogo, pregameView, settingsView, type ScoreAges } from './views.ts';
+import { barView, changelogView, controlsView, courtView, favIn, gamesView, JUMP_MS, messageView, noLogo, pregameView, settingsView, type ScoreAges } from './views.ts';
 
 // In `npm run dev`, VITE_PARAMS fills in for the URL, which the desktop window does not have:
 // VITE_PARAMS='game=401898721&replay' npx tauri dev
@@ -47,7 +48,9 @@ const DECIDE_EVERY_MS = 60_000;
 /** How long a team's schedule is reused, ms. */
 const TEAM_SCHEDULE_TTL_MS = 5 * 60_000;
 /** The window's size while a panel is open: the games list is long, the settings are short. */
-const PANEL_SIZE = { games: { w: 360, h: 330 }, settings: { w: 360, h: 300 } } as const;
+const PANEL_SIZE = { games: { w: 360, h: 330 }, settings: { w: 360, h: 300 }, changelog: { w: 360, h: 330 } } as const;
+/** Where feedback and bug reports go, by mail from the settings. */
+const FEEDBACK_MAIL = 'arthur800322@hotmail.com';
 
 // One request in flight at a time across the whole app.
 let chain: Promise<unknown> = Promise.resolve();
@@ -80,7 +83,8 @@ const knownScheduled = new Set<string>();
 let message = T.loading;
 let messageSub: string | undefined;
 /** A panel over the game: the games list or the settings. */
-let panel: 'games' | 'settings' | undefined;
+type Panel = 'games' | 'settings' | 'changelog';
+let panel: Panel | undefined;
 /** The games list: which day (0 = ESPN's today), and its games. */
 let gamesDay = 0;
 let dayList: GameCard[] = [];
@@ -390,6 +394,7 @@ function render(): void {
     if (list && on) list.scrollTop = on.offsetTop - (list.clientHeight - on.offsetHeight) / 2;
     return;
   }
+  if (panel === 'changelog') { show(changelogView(CHANGELOG, T, langTag()), undefined); return; }
   if (panel === 'games') { show(gamesView(dayLabel(gamesDay), dayList, T, tipOff, currentId, settings.favourites), undefined); return; }
   const tag = replaying ? T.replay : undefined;
   // The toolbar has a row of its own along the bottom.
@@ -574,7 +579,7 @@ async function loadDay(): Promise<void> {
   if (panel === 'games') render();
 }
 
-async function openPanel(kind: 'games' | 'settings'): Promise<void> {
+async function openPanel(kind: Panel): Promise<void> {
   const was = panel;
   panel = kind;
   if (shell) {
@@ -583,12 +588,18 @@ async function openPanel(kind: 'games' | 'settings'): Promise<void> {
   }
   render();
   if (kind === 'games') { gamesDay = 0; await loadDay(); }
-  if (kind === 'settings' && !teams.length) {
+  if (kind === 'settings') { await loadTeams(); void colourFavourite(); }
+}
+
+/** The league's teams, for the favourite's name in the settings: fetched once (again only after a
+ *  failure), at start when there is a favourite, so the settings open on its name, not on none. */
+let teamsLoading: Promise<void> | undefined;
+function loadTeams(): Promise<void> {
+  return teamsLoading ??= (async () => {
     const fromFixture = import.meta.env.DEV && params.has('fixture');
-    try { teams = await allTeams(fromFixture ? () => fetch('/fixtures/nba/teams.json').then((r) => r.json()) : fetchJson); } catch (e) { console.warn(e); }
-    render();
-  }
-  if (kind === 'settings') void colourFavourite();
+    try { teams = await allTeams(fromFixture ? () => fetch('/fixtures/nba/teams.json').then((r) => r.json()) : fetchJson); } catch (e) { console.warn(e); teamsLoading = undefined; }
+    if (panel === 'settings') render();
+  })();
 }
 
 /** The team list has no colours; the favourite's comes with its schedule, for the dot beside the drop-down. */
@@ -602,10 +613,21 @@ async function colourFavourite(): Promise<void> {
 }
 
 async function closePanel(): Promise<void> {
+  // The changelog was opened from the settings: its ✕ goes back there.
+  if (panel === 'changelog') { await openPanel('settings'); return; }
   panel = undefined;
   pickerOpen = false;
   if (shell && sizeBeforePanel) await sizeMain(sizeBeforePanel.w, sizeBeforePanel.h);
   render();
+}
+
+/** A new mail to the developer in the user's mail app, the version and system in the subject. */
+async function sendFeedback(): Promise<void> {
+  const system = isMac ? 'macOS' : navigator.userAgent.includes('Windows') ? 'Windows' : 'Linux';
+  const subject = `Courtsmall${appVersion ? ` ${appVersion}` : ''} (${system})`;
+  const url = `mailto:${FEEDBACK_MAIL}?subject=${encodeURIComponent(subject)}`;
+  if (!shell) { window.location.href = url; return; }
+  await (await import('@tauri-apps/plugin-opener')).openUrl(url);
 }
 
 async function setTier(t: Tier): Promise<void> {
@@ -616,7 +638,7 @@ async function setTier(t: Tier): Promise<void> {
 app.addEventListener('click', (e) => {
   // The size buttons only: #app carries data-tier too (the size it shows), so a click anywhere else
   // would ask for the size it already has, and snap the window back to that size's preset.
-  const el = (e.target as HTMLElement).closest<HTMLElement>('button[data-tier], [data-corner], [data-open], [data-day], [data-players], [data-game], [data-done], [data-notify], [data-shortcuts], [data-update], [data-fav-open], [data-fav-pick]');
+  const el = (e.target as HTMLElement).closest<HTMLElement>('button[data-tier], [data-corner], [data-open], [data-day], [data-players], [data-game], [data-done], [data-notify], [data-shortcuts], [data-update], [data-fav-open], [data-fav-pick], [data-feedback]');
   // The favourite's list: its button opens and closes it, a team in it is picked, a click
   // anywhere else closes it.
   if (pickerOpen && !el?.closest('.favourite')) { pickerOpen = false; render(); }
@@ -634,7 +656,8 @@ app.addEventListener('click', (e) => {
   }
   if (el.dataset.tier) { void setTier(el.dataset.tier as Tier); return; }
   if (el.dataset.corner !== undefined) { void backToCorner(); return; }
-  if (el.dataset.open) { void openPanel(el.dataset.open as 'games' | 'settings'); return; }
+  if (el.dataset.open) { void openPanel(el.dataset.open as Panel); return; }
+  if (el.dataset.feedback !== undefined) { void sendFeedback(); return; }
   if (el.dataset.players !== undefined) { void toggleStats(); return; }
   if (el.dataset.done !== undefined) { void closePanel(); return; }
   if (el.dataset.day) { gamesDay += Number(el.dataset.day); dayList = []; render(); void loadDay(); return; }
@@ -672,7 +695,7 @@ app.addEventListener('click', (e) => {
 // there is no window to move or resize.
 app.addEventListener('mousedown', async (e) => {
   // Anything to click or scroll keeps the press; everywhere else moves the window, panels included.
-  if ((e.target as HTMLElement).closest('button, input, label, .fav-list, .list')) return;
+  if ((e.target as HTMLElement).closest('button, a, input, label, .fav-list, .list')) return;
   if (shell && e.button === 0 && e.detail === 1) await (await win()).startDragging();
 });
 // ---- Global shortcuts (src/ui/shortcuts.ts) ---------------------------------------------------------
@@ -743,5 +766,6 @@ else {
   void decideNow();
   setInterval(() => void decideNow(), DECIDE_EVERY_MS);
 }
+if (settings.favourites.length) void loadTeams();
 if (params.has('settings')) void openPanel('settings');
 if (params.has('games')) void openPanel('games');

@@ -14,10 +14,11 @@ const all = DEFAULTS.notify;
 const kinds = (b: GameState | undefined, a: GameState, n = all) => notices(b, a, n).map((x) => x.key);
 
 describe('notices', () => {
-  it('announces the tip-off and the final once, on the change', () => {
+  // The final is not announced: the notices are the tip-off and a close finish only.
+  it('announces the tip-off once, on the change, and not the final', () => {
     expect(kinds(s({ status: 'scheduled' }), s({ status: 'live' }))).toEqual(['start']);
     expect(kinds(s({ status: 'live' }), s({ status: 'live' }))).toEqual([]);
-    expect(kinds(s({ status: 'live', period: 4 }), s({ status: 'final', period: 4, score: { away: 100, home: 90 } }))).toEqual(['final']);
+    expect(kinds(s({ status: 'live', period: 4 }), s({ status: 'final', period: 4, score: { away: 100, home: 90 } }))).toEqual([]);
   });
 
   // Opening the app in the third quarter must not claim the game just started.
@@ -63,7 +64,7 @@ describe('settings', () => {
 
   it('falls back to the defaults for anything missing or malformed', () => {
     expect(normalize(null)).toEqual(DEFAULTS);
-    expect(normalize({ team: 7, notify: { start: 'yes', final: false } })).toEqual({ favourites: [], notify: { start: true, final: false, clutch: true }, shortcuts: true });
+    expect(normalize({ team: 7, notify: { start: 'yes', final: false } })).toEqual({ favourites: [], notify: { start: true, clutch: true }, shortcuts: true });
     // One favourite: the first valid one is kept.
     expect(normalize({ favourites: [7, '', '7', '9'] }).favourites).toEqual(['7']);
   });

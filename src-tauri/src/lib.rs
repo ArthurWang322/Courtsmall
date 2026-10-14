@@ -36,6 +36,8 @@ pub fn run() {
         // Update from the settings (src/ui/update.ts): signed releases on GitHub, then a restart.
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_process::init())
+        // Feedback from the settings: a mailto: link opens the mail app (src/ui/main.ts).
+        .plugin(tauri_plugin_opener::init())
         .setup(|app| {
             let toggle = MenuItem::with_id(app, "toggle", "Show / hide", true, None::<&str>)?;
             let games = MenuItem::with_id(app, "games", "Games…", true, None::<&str>)?;

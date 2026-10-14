@@ -7,7 +7,8 @@ import type { Settings } from '../settings/store.ts';
 import type { Tier } from '../render/tiers.ts';
 import { gameColours, visibleColour } from '../render/colour.ts';
 import { courtSvg } from '../render/court.ts';
-import type { Strings } from '../i18n/index.ts';
+import type { Lang, Strings } from '../i18n/index.ts';
+import type { Release } from '../changelog.ts';
 import { keyLabel, SHORTCUTS, type ShortcutAction } from './shortcuts.ts';
 import type { UpdateState } from './update.ts';
 
@@ -195,6 +196,8 @@ export function settingsView(teams: readonly TeamRef[], s: Settings, T: Strings,
   // The favourite, from a drop-down of our own (a native one opens all 30 teams at once): a button
   // with the choice, and when `pickerOpen`, a short scrolling list under it, none first, then the
   // teams by full name.
+  // A favourite whose name has not come yet (the team list loads in the background) reads as
+  // loading, not as none.
   const fav = teams.find((t) => s.favourites.includes(t.id));
   // Each team with its logo, none with nothing. The team list has no colours (src/data/espn/fetch.ts
   // allTeams), so a logo's stand-in takes the fallback colour until the schedule brings the real one.
@@ -204,7 +207,7 @@ export function settingsView(teams: readonly TeamRef[], s: Settings, T: Strings,
   const list = pickerOpen
     ? `<div class="fav-list">${item(undefined, T.noFavourite)}${[...teams].sort((a, b) => a.name.localeCompare(b.name)).map((t) => item(t, t.name)).join('')}</div>`
     : '';
-  const picker = `<div class="favourite"><button class="fav-current" data-fav-open aria-expanded="${pickerOpen}">${mark(fav)}<span>${esc(fav?.name ?? T.noFavourite)}</span><i class="caret"></i></button>${list}</div>`;
+  const picker = `<div class="favourite"><button class="fav-current" data-fav-open aria-expanded="${pickerOpen}">${mark(fav)}<span>${esc(fav?.name ?? (s.favourites.length ? T.loading : T.noFavourite))}</span><i class="caret"></i></button>${list}</div>`;
   // The favourite's logo, large and faint behind the page, in the window's bottom right corner and cut
   // by it. Outside the scrolling page, so what is cut off never makes it scroll (Windows shows the bar).
   const watermark = fav && !noLogo.has(fav.abbr) ? `<img class="watermark" data-abbr="${esc(fav.abbr)}" src="${logoUrl(fav)}" alt="">` : '';
@@ -214,16 +217,32 @@ export function settingsView(teams: readonly TeamRef[], s: Settings, T: Strings,
   // The shortcuts, on or off: a choice of two, set apart from the notices above.
   const radio = (on: boolean, label: string) =>
     `<label class="check"><input type="radio" name="shortcuts" data-shortcuts="${on ? 'on' : 'off'}"${s.shortcuts === on ? ' checked' : ''}> ${esc(label)}</label>`;
-  const check = (key: keyof Settings['notify'], label: string) =>
-    `<label class="check${hasFav ? '' : ' off'}"><input type="checkbox" data-notify="${key}"${hasFav && s.notify[key] ? ' checked' : ''}${hasFav ? '' : ' disabled'}> ${esc(label)}</label>`;
+  const check = (key: keyof Settings['notify'], label: string, hint?: string) =>
+    `<label class="check${hasFav ? '' : ' off'}"><input type="checkbox" data-notify="${key}"${hasFav && s.notify[key] ? ' checked' : ''}${hasFav ? '' : ' disabled'}><span>${esc(label)}${hint ? `<small class="sub">${esc(hint)}</small>` : ''}</span></label>`;
   return `${watermark}<div class="settings">
-      <div class="head"><b>${esc(T.tip.settings)}</b><button class="done" data-done>${esc(T.save)}</button></div>
+      <div class="head"><b>${esc(T.tip.settings)}</b><span class="grow"></span><button class="icon close" data-done aria-label="${esc(T.close)}">✕</button></div>
       <div class="fav-row"><span class="label">${esc(T.chooseTeam)}</span>${picker}</div>
-      ${check('start', T.notifyStart)}${check('final', T.notifyFinal)}${check('clutch', T.notifyClutch)}${hasFav ? '' : `<span class="hint">${esc(T.notifyNeedsFavourite)}</span>`}
+      <div class="checks">${check('start', T.notifyStart)}${check('clutch', T.notifyClutch, T.notifyClutchHint)}</div>${hasFav ? '' : `<span class="hint">${esc(T.notifyNeedsFavourite)}</span>`}
       <div class="shortcuts-row"><span class="label">${esc(T.shortcuts)}</span>${radio(true, T.shortcutsOn)}${radio(false, T.shortcutsOff)}</div>
       <span class="keys">${(Object.keys(SHORTCUTS) as ShortcutAction[]).map((a) => `<kbd>${esc(keyLabel(SHORTCUTS[a], mac))}</kbd> ${esc(T.shortcut[a])}`).join('<i>·</i>')}</span>
       ${s.shortcuts && shortcutsTaken ? `<span class="hint warn">${esc(T.shortcutsTaken)}</span>` : ''}
       ${version ? updateRow(version, update, T) : ''}
+      <div class="links"><a data-open="changelog">${esc(T.changelog.title)}</a><a data-feedback>${esc(T.feedback)}</a></div>
+    </div>`;
+}
+
+/**
+ * The changelog, opened from the settings: each version newest first along a timeline, its date,
+ * number and title, then what it brought. The ✕ goes back to the settings.
+ */
+export function changelogView(releases: readonly Release[], T: Strings, lang: Lang): string {
+  const entry = (r: Release, i: number) => `<li class="release${i === 0 ? ' newest' : ''}">`
+    + `<div class="when"><span class="date mono">${esc(r.date.replaceAll('-', '/'))}</span><span class="ver">v${esc(r.version)}</span>${i === 0 ? `<span class="tag">${esc(T.changelog.latest)}</span>` : ''}</div>`
+    + `<b class="title">${esc(r.title[lang])}</b><ul>${r.items[lang].map((x) => `<li>${esc(x)}</li>`).join('')}</ul></li>`;
+  return `<div class="panel changelog">
+      <div class="head"><b>${esc(T.changelog.title)}</b><span class="grow"></span><button class="icon close" data-done aria-label="${esc(T.close)}">✕</button></div>
+      <span class="intro">${esc(T.changelog.intro)}</span>
+      <ol class="list timeline">${releases.map(entry).join('')}</ol>
     </div>`;
 }
 

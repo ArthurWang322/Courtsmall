@@ -15,7 +15,6 @@ export function noticeText(n: Notice, T: Strings): { title: string; body: string
   const title = `${n.state.teams.away.abbr} @ ${n.state.teams.home.abbr}`;
   switch (n.kind) {
     case 'start': return { title, body: T.tipOff };
-    case 'final': return { title, body: T.finalNotice(line(n.state)) };
     case 'clutch': return { title, body: T.clutchNotice(whenText(n.state, T), line(n.state)) };
   }
 }

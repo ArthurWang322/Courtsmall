@@ -3,7 +3,8 @@
 import { describe, expect, it } from 'vitest';
 import { STRINGS } from '../src/i18n/index.ts';
 import { playLinesAt, TIER_PRESET, TOOLBAR_H } from '../src/render/tiers.ts';
-import { barView, boxView, clockText, lineScoreView, teamView, controlsView, countdownParts, gamesView, JUMP_MS, leadersTable, noLogo, playLines, pregameView, RUN_MIN, settingsView, whenText } from '../src/ui/views.ts';
+import { CHANGELOG } from '../src/changelog.ts';
+import { barView, boxView, changelogView, clockText, lineScoreView, teamView, controlsView, countdownParts, gamesView, JUMP_MS, leadersTable, noLogo, playLines, pregameView, RUN_MIN, settingsView, whenText } from '../src/ui/views.ts';
 import type { BoxLine, GameCard, GameState, PlayLine, TeamStats } from '../src/model/types.ts';
 
 const en = STRINGS.en, zh = STRINGS['zh-TW'];
@@ -248,7 +249,7 @@ describe('favourite team', () => {
 
 describe('settings page', () => {
   const teams = [{ id: '7', abbr: 'DEN', name: 'Denver Nuggets', color: 'fec524' }, { id: '20', abbr: 'PHI', name: 'Philadelphia 76ers', color: 'ed174c' }];
-  const settings = { favourites: [] as string[], notify: { start: true, final: true, clutch: true }, shortcuts: true };
+  const settings = { favourites: [] as string[], notify: { start: true, clutch: true }, shortcuts: true };
 
   // One favourite, picked from a drop-down whose first choice is none; the teams by full name.
   it('shows the choice, and when open lists none and every team by full name, the choice marked', () => {
@@ -263,7 +264,15 @@ describe('settings page', () => {
     expect([...open.matchAll(/<button class="fav-item( on)?" data-fav-pick="(\d*)">(?:<img [^>]*>)?<span>([^<]*)</g)].map((m) => `${m[3]}${m[1] ? '*' : ''}`))
       .toEqual(['無', 'Denver Nuggets*', 'Philadelphia 76ers']);
     expect(settingsView(teams, settings, zh)).toContain('<span>無</span>');
-    expect(settingsView(teams, settings, zh)).toContain('data-done>儲存</button>');
+    // Changes apply as they are made, so the page closes from a ✕, not a Save it would not need.
+    expect(settingsView(teams, settings, zh)).toContain('<button class="icon close" data-done aria-label="關閉">✕</button>');
+    expect(settingsView(teams, settings, zh)).not.toContain('儲存');
+  });
+
+  // A favourite is set before the team list has come: the picker must not say there is none.
+  it('reads loading, not none, while the favourite\'s name is still coming', () => {
+    expect(settingsView([], { ...settings, favourites: ['7'] }, zh)).toContain('<span>載入中…</span>');
+    expect(settingsView([], settings, zh)).toContain('<span>無</span>');
   });
 
   // Notices are for the favourite's games: with none chosen they cannot be turned on and show
@@ -271,10 +280,10 @@ describe('settings page', () => {
   it('disables the notices without a favourite, keeping the choices for when one is picked', () => {
     const boxes = (html: string) => [...html.matchAll(/<input type="checkbox" data-notify="\w+"([^>]*)>/g)].map((m) => m[1]!.trim());
     const none = settingsView(teams, settings, zh);
-    expect(boxes(none)).toEqual(['disabled', 'disabled', 'disabled']);
+    expect(boxes(none)).toEqual(['disabled', 'disabled']);
     expect(none).toContain('選擇最愛球隊後，開啟比賽通知設定');
-    const fav = settingsView(teams, { ...settings, favourites: ['7'], notify: { start: true, final: false, clutch: true } }, zh);
-    expect(boxes(fav)).toEqual(['checked', '', 'checked']);
+    const fav = settingsView(teams, { ...settings, favourites: ['7'], notify: { start: false, clutch: true } }, zh);
+    expect(boxes(fav)).toEqual(['', 'checked']);
     expect(fav).not.toContain('選擇最愛球隊後');
   });
 
@@ -424,5 +433,32 @@ describe('a result in the main window', () => {
     const html = barView(s, en, 1, undefined, [], true);
     const head = html.match(/<div class="row period head">(.*?)<\/div>/)![1]!;
     expect([...head.matchAll(/<span class="mono">(.*?)<\/span>/g)].map((m) => m[1])).toEqual(['1', '2', '3', '4', 'OT']);
+  });
+});
+
+describe('changelog', () => {
+  // What each version brought, so people can see what changed: newest first, only the newest marked
+  // as latest, in the reader's language, with a way back to the settings.
+  it('lists the versions newest first, the newest marked latest, in the chosen language', () => {
+    const html = changelogView(CHANGELOG, zh, 'zh-TW');
+    const versions = [...html.matchAll(/<span class="ver">v([\d.]+)<\/span>/g)].map((m) => m[1]!);
+    expect(versions).toEqual(CHANGELOG.map((r) => r.version));
+    expect(versions).toEqual([...versions].sort((a, b) => b.localeCompare(a, undefined, { numeric: true })));
+    expect(html.match(/class="tag">最新</g)).toHaveLength(1);
+    expect(html).toContain(CHANGELOG[0]!.title['zh-TW']);
+    expect(changelogView(CHANGELOG, en, 'en')).toContain(CHANGELOG[0]!.title.en);
+    expect(html).toContain('data-done');
+  });
+
+  it('every version says what it brought in both languages', () => {
+    for (const r of CHANGELOG) {
+      expect(r.items['zh-TW'].length).toBeGreaterThan(0);
+      expect(r.items.en).toHaveLength(r.items['zh-TW'].length);
+    }
+  });
+
+  it('links the changelog and feedback from the foot of the settings', () => {
+    const html = settingsView([], { favourites: [], notify: { start: true, clutch: true }, shortcuts: true }, zh);
+    expect(html).toContain('<div class="links"><a data-open="changelog">更新日誌</a><a data-feedback>回饋與問題回報</a></div>');
   });
 });

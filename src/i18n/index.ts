@@ -35,7 +35,6 @@ export interface Strings {
   offline: string;
   /** Notices. `line` is "SA 100 – 97 UTAH". */
   tipOff: string;
-  finalNotice(line: string): string;
   clutchNotice(when: string, line: string): string;
   /** The team's next game: "Today 19:30", "Fri 10/23 09:30". */
   today: string;
@@ -44,8 +43,9 @@ export interface Strings {
   chooseTeam: string;
   noFavourite: string;
   notifyStart: string;
-  notifyFinal: string;
   notifyClutch: string;
+  /** What counts as a close finish, under its checkbox. */
+  notifyClutchHint: string;
   /** The shortcuts' switch, and what each does (src/ui/shortcuts.ts). */
   shortcuts: string;
   shortcut: { mode: string; stats: string; hide: string };
@@ -53,10 +53,12 @@ export interface Strings {
   shortcutsTaken: string;
   shortcutsOn: string;
   shortcutsOff: string;
+  /** The changelog (src/changelog.ts) and the feedback link, at the foot of the settings. */
+  changelog: { title: string; intro: string; latest: string };
+  feedback: string;
   notifyNeedsFavourite: string;
   /** The version and updating, at the foot of the settings (src/ui/update.ts). */
   update: { version: (v: string) => string; check: string; checking: string; latest: string; available: (v: string) => string; install: string; installing: (pct: number | undefined) => string; checkFailed: string; installFailed: string };
-  save: string;
   close: string;
   /** The line score's total column. */
   lineTotal: string;
@@ -100,20 +102,21 @@ export const STRINGS: Record<Lang, Strings> = {
     nextGame: (when) => `Next: ${when}`,
     offline: 'Reconnecting…',
     tipOff: 'Tip-off',
-    finalNotice: (l) => `Final: ${l}`,
     clutchNotice: (w, l) => `${w}, ${l}`,
     today: 'Today',
     tomorrow: 'Tomorrow',
     chooseTeam: 'Favourite team',
     noFavourite: 'None',
     notifyStart: 'Notify at tip-off',
-    notifyFinal: 'Notify at the final',
-    notifyClutch: 'Notify in a close finish (last 2 min, within 5)',
+    notifyClutch: 'Notify in a close finish',
+    notifyClutchHint: '(the last 2 minutes and within 5 points)',
     shortcuts: 'Keyboard shortcuts, from any app',
     shortcut: { mode: 'simple / court', stats: 'stats', hide: 'hide / show' },
     shortcutsTaken: 'Some keys are taken by another app.',
     shortcutsOn: 'On',
     shortcutsOff: 'Off',
+    changelog: { title: 'Changelog', intro: "What is new in Courtsmall, version by version.", latest: 'Latest' },
+    feedback: 'Feedback and bug reports',
     notifyNeedsFavourite: 'Choose a favourite team to get notices for its games.',
     update: {
       version: (v) => `Version ${v}`, check: 'Check for updates', checking: 'Checking…', latest: 'This is the latest version',
@@ -121,7 +124,6 @@ export const STRINGS: Record<Lang, Strings> = {
       installing: (p) => (p === undefined ? 'Updating…' : `Updating… ${p}%`),
       checkFailed: 'Could not check. Are you online?', installFailed: 'Could not update. Try again later.',
     },
-    save: 'Save',
     close: 'Close',
     lineTotal: 'T',
     tip: { bar: 'Simple', court: 'Court', games: 'Games', box: 'Stats', settings: 'Settings', corner: 'Back to the corner' },
@@ -157,20 +159,21 @@ export const STRINGS: Record<Lang, Strings> = {
     nextGame: (when) => `下一場：${when}`,
     offline: '重新連線中…',
     tipOff: '開賽了',
-    finalNotice: (l) => `終場 ${l}`,
     clutchNotice: (w, l) => `${w} ${l}`,
     today: '今天',
     tomorrow: '明天',
     chooseTeam: '最愛球隊',
     noFavourite: '無',
     notifyStart: '開賽時通知',
-    notifyFinal: '終場時通知',
-    notifyClutch: '關鍵時刻通知（最後 2 分鐘、差距 5 分內）',
+    notifyClutch: '關鍵時刻通知',
+    notifyClutchHint: '（最後 2 分鐘且差距 5 分內）',
     shortcuts: '快捷鍵（在任何程式裡都能用）',
     shortcut: { mode: '切換模式', stats: '數據', hide: '隱藏／顯示' },
     shortcutsTaken: '有些按鍵已被其他程式佔用。',
     shortcutsOn: '開啟',
     shortcutsOff: '關閉',
+    changelog: { title: '更新日誌', intro: '查看 Courtsmall 每個版本的新功能與改進。', latest: '最新' },
+    feedback: '回饋與問題回報',
     notifyNeedsFavourite: '選擇最愛球隊後，開啟比賽通知設定',
     update: {
       version: (v) => `版本 ${v}`, check: '檢查更新', checking: '檢查中…', latest: '此版本為最新版',
@@ -178,7 +181,6 @@ export const STRINGS: Record<Lang, Strings> = {
       installing: (p) => (p === undefined ? '更新中…' : `更新中… ${p}%`),
       checkFailed: '無法檢查更新，請確認網路連線', installFailed: '更新失敗，請稍後再試',
     },
-    save: '儲存',
     close: '關閉',
     lineTotal: '總分',
     tip: { bar: '簡易模式', court: '球場模式', games: '比賽列表', box: '數據', settings: '設定', corner: '回到右下角' },

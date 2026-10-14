@@ -4,11 +4,11 @@
 import type { GameState, Side } from '../model/types.ts';
 import type { Settings } from '../settings/store.ts';
 
-export type NoticeKind = 'start' | 'final' | 'clutch';
+export type NoticeKind = 'start' | 'clutch';
 
 export interface Notice {
   kind: NoticeKind;
-  /** Unique per game and moment: "start", "final", "clutch:5" (the period). */
+  /** Unique per game and moment: "start", "clutch:5" (the period). */
   key: string;
   state: GameState;
 }
@@ -27,8 +27,6 @@ export function notices(before: GameState | undefined, after: GameState, setting
   const out: Notice[] = [];
   if (settings.start && before?.status === 'scheduled' && (after.status === 'live' || after.status === 'break'))
     out.push({ kind: 'start', key: 'start', state: after });
-  if (settings.final && before && before.status !== 'final' && after.status === 'final')
-    out.push({ kind: 'final', key: 'final', state: after });
   if (settings.clutch && isClutch(after) && !(before && isClutch(before) && before.period === after.period))
     out.push({ kind: 'clutch', key: `clutch:${after.period}`, state: after });
   return out;

@@ -3,7 +3,7 @@
    --background must match BACKGROUND in src/render/colour.ts: team colours are checked against it. */
 :root {
   --background: #141317; --surface: #1c1b20; --panel: #222127; --border: #2e2d34; --edge: rgba(255, 255, 255, .07);
-  --text: #f3efe7; --muted: #9b98a2; --faint: #6c6973; --accent: #f2b544; --glow: rgba(242, 181, 68, .07);
+  --text: #f3efe7; --muted: #9b98a2; --faint: #6c6973; --accent: #f2b544; --info: #5aa9ff; --glow: rgba(242, 181, 68, .07);
   --wood: #5a3f27; --wood-hi: #7a5735; --plank: rgba(0, 0, 0, .16); --court-line: rgba(243, 239, 231, .55); --court-edge: rgba(243, 239, 231, .22);
   --board-fill: rgba(243, 239, 231, .08); --board-line: rgba(243, 239, 231, .55); --points-stroke: rgba(0, 0, 0, .6);
   --display: 'Big Shoulders Display', 'Barlow Condensed', 'PingFang TC', system-ui, sans-serif;
@@ -121,9 +121,9 @@ button { font: inherit; color: inherit; border: 0; background: transparent; padd
    Its own row along the bottom of the window (src/render/tiers.ts TOOLBAR_H). */
 .controls { display: flex; align-items: center; justify-content: flex-end; gap: 2px; height: 22px; margin-top: 4px;
   border-top: 1px solid color-mix(in srgb, var(--border) 70%, transparent); padding-top: 2px; }
-.controls .icon, .panel .icon { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 20px;
+.controls .icon, .panel .icon, .settings .icon { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 20px;
   border-radius: 6px; color: var(--muted); cursor: pointer; transition: color .12s, background .12s; }
-.controls .icon:hover, .panel .icon:hover { color: var(--text); background: var(--panel); }
+.controls .icon:hover, .panel .icon:hover, .settings .icon:hover { color: var(--text); background: var(--panel); }
 .controls .icon.on { color: var(--accent); }
 .controls svg { fill: none; stroke: currentColor; stroke-width: 1.4; stroke-linecap: round; stroke-linejoin: round; }
 .controls .sep { width: 1px; height: 14px; background: var(--border); margin: 0 2px; }
@@ -152,8 +152,8 @@ button { font: inherit; color: inherit; border: 0; background: transparent; padd
 .settings .head { justify-content: space-between; }
 .panel .head b, .settings .head b { font: 600 16px var(--label); letter-spacing: .08em; text-transform: uppercase; }
 .panel .head .icon { font-size: 16px; }
-.panel .done, .settings button.done { padding: 4px 10px; border-radius: 8px; border: 1px solid var(--accent); color: var(--accent);
-  background: color-mix(in srgb, var(--accent) 8%, var(--panel)); font: 600 12px var(--label); letter-spacing: .08em; text-transform: uppercase; }
+/* The settings' ✕, like the games list's: the settings' own button frame dropped. */
+.settings .head .icon { font-size: 16px; padding: 0; border: 0; }
 .panel .list { display: flex; flex-direction: column; gap: 4px; overflow-x: hidden; overflow-y: auto; min-height: 0; }
 .panel .game { display: flex; align-items: center; gap: 8px; padding: 7px 10px; border-radius: 8px; border: 1px solid var(--border);
   background: linear-gradient(180deg, var(--panel), var(--surface)); color: var(--text); text-align: left; transition: border-color .12s; }
@@ -223,6 +223,39 @@ button { font: inherit; color: inherit; border: 0; background: transparent; padd
 .settings .update .note { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--faint); }
 .settings .update .note.new { color: var(--accent); }
 .settings .update button { padding: 3px 9px; font-size: 12px; }
+/* Check for updates in blue; installing a found one also glows (button.on). */
+.settings .update button[data-update] { border-color: color-mix(in srgb, var(--info) 70%, var(--border)); color: var(--info);
+  background: color-mix(in srgb, var(--info) 10%, transparent); }
+.settings .update button[data-update]:hover { border-color: var(--info); background: color-mix(in srgb, var(--info) 18%, transparent); }
+.settings .update button[data-update].on { box-shadow: 0 0 10px -3px var(--info); }
+/* At the foot: the changelog on the left, feedback by mail on the right, as plain links. */
+.settings .links { display: flex; justify-content: space-between; margin-top: auto; padding: 2px 2px 0; }
+.settings .update + .links { margin-top: -2px; }
+.settings .links a { font-size: 11px; color: var(--faint); cursor: pointer; }
+.settings .links a:hover { color: var(--muted); text-decoration: underline; text-underline-offset: 3px; }
+/* The notices side by side on one row. */
+.settings .checks { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 4px 18px; }
+.settings .checks .check { align-items: flex-start; }
+.settings .checks input { margin-top: 2px; }
+/* What a checkbox means, small under its label. */
+.settings .check .sub { display: block; font-size: 11px; color: var(--faint); margin-top: 1px; }
+
+/* The changelog: versions down a timeline, a dot on the line for each, the newest lit. */
+.changelog .intro { font-size: 12px; color: var(--faint); margin-top: -4px; }
+.changelog .timeline { margin: 0; padding: 4px 4px 4px 20px; list-style: none; gap: 14px; position: relative; }
+.changelog .timeline::before { content: ''; position: absolute; left: 7px; top: 10px; bottom: 0; width: 2px; border-radius: 1px; background: var(--border); }
+.changelog .release { position: relative; display: flex; flex-direction: column; gap: 4px; }
+.changelog .release::before { content: ''; position: absolute; left: -18px; top: 4px; width: 8px; height: 8px; border-radius: 50%;
+  background: var(--surface); box-shadow: 0 0 0 2px var(--muted); }
+.changelog .release.newest::before { background: var(--accent); box-shadow: 0 0 0 2px var(--accent), 0 0 0 5px color-mix(in srgb, var(--accent) 25%, transparent); }
+.changelog .when { display: flex; align-items: center; gap: 6px; }
+.changelog .date { font: 600 13px var(--label); letter-spacing: .04em; color: var(--muted); }
+.changelog .newest .date { color: var(--accent); }
+.changelog .ver { font: 600 11px var(--label); letter-spacing: .04em; padding: 1px 6px; border-radius: 6px; background: var(--panel); color: var(--text); }
+.changelog .tag { font: 600 11px var(--label); padding: 1px 6px; border-radius: 6px; background: var(--accent); color: var(--background); }
+.changelog .title { font: 600 14px var(--font); color: var(--text); }
+.changelog ul { margin: 0; padding-left: 14px; display: flex; flex-direction: column; gap: 3px; font-size: 12px; line-height: 1.45; color: var(--muted); }
+.changelog ul li::marker { color: var(--faint); }
 .settings .fav-current { width: 100%; display: flex; align-items: center; gap: 8px; padding: 7px 10px; border-radius: 8px; border: 1px solid var(--border);
   background: linear-gradient(180deg, var(--panel), var(--surface)); color: var(--text); font: 600 14px var(--label); letter-spacing: .04em; text-align: left; }
 .settings .fav-current[aria-expanded='true'] { border-color: var(--accent); }
