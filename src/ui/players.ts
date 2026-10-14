@@ -14,6 +14,7 @@ import type { GameFeed } from '../data/espn/feed-types.ts';
 import { boxScore, teamStats } from '../data/espn/box.ts';
 import { loadBox } from '../data/espn/fetch.ts';
 import { langOf, STRINGS } from '../i18n/index.ts';
+import { gameColours } from '../render/colour.ts';
 import { boxView, favIn, type BoxTab } from './views.ts';
 import { closeOnRequest } from './side-window.ts';
 
@@ -42,6 +43,10 @@ let side: BoxTab = 'away';
 function render(): void {
   const onCourt = new Set(game?.onCourt ? [...game.onCourt.away, ...game.onCourt.home] : []);
   app.innerHTML = boxView(game?.teams, box, side, T, game?.favourites ?? [], onCourt, stats);
+  // A side's box score: the window shaded in that side's colour (app.css `.tinted`); the teams' stats stay plain.
+  const tint = game?.teams.away.id && side !== 'team' ? gameColours(game.teams, favIn(game.teams, game.favourites))[side] : undefined;
+  app.classList.toggle('tinted', !!tint);
+  if (tint) app.style.setProperty('--side', `#${tint}`);
 }
 
 const get = async (url: string) => { const r = await fetch(url); if (!r.ok) throw new Error(`${r.status} ${url}`); return r.json() as Promise<unknown>; };
