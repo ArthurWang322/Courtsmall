@@ -101,17 +101,19 @@ export function playLines(s: GameState, T: Strings, count: number): string[] {
 
 
 /**
- * Bar tier: the score bug on top; below, the newest play, and under a divider the one before it,
- * quieter. `result`: a finished game picked from the list, shown as its points per period instead,
+ * Bar tier: the score bug on top; below, the newest play, and under a divider the ones before it
+ * (`lines` in all), quieter the older they are. `result`: a finished game picked from the list, shown as its points per period instead,
  * and with `withLeaders` (a window tall enough) each side's leaders under them.
  */
 export function barView(s: GameState, T: Strings, lines: number, tag?: string, favs: readonly string[] = [], result = false, ages: ScoreAges = {}, withLeaders = false): string {
   if (result) return `<div class="bar">${scoreBug(s, T, tag, favs)}${periodTable(s)}${withLeaders ? leadersTable(s, T) : ''}</div>`;
-  const [newest = '', older = ''] = playLines(s, T, lines);
+  const [newest = '', ...older] = playLines(s, T, lines);
+  // Every older line has its place even before there are plays for it, so nothing moves later.
+  const rows = Array.from({ length: lines - 1 }, (_, i) => `<div class="row play old old-${i + 1}">${older[i] ?? ''}</div>`);
   return `<div class="bar">
       ${scoreBug(s, T, tag, favs, ages)}
       <div class="row play new">${newest}</div>${lines > 1 ? `
-      <hr class="divider"><div class="row play old">${older}</div>` : ''}
+      <hr class="divider">${rows.join('')}` : ''}
     </div>`;
 }
 

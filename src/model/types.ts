@@ -153,7 +153,7 @@ export type GameEvent =
 export type PlayLine = Extract<GameEvent, { type: 'basket' | 'miss' | 'foul' | 'turnover' | 'rebound' | 'substitution' }>;
 
 /** How many recent plays the state keeps for the bar. */
-export const RECENT_PLAYS = 2;
+export const RECENT_PLAYS = 4;
 
 export interface GameState {
   gameId: string;

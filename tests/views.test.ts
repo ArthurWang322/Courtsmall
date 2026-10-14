@@ -2,6 +2,7 @@
 
 import { describe, expect, it } from 'vitest';
 import { STRINGS } from '../src/i18n/index.ts';
+import { playLinesAt, TIER_PRESET, TOOLBAR_H } from '../src/render/tiers.ts';
 import { barView, boxView, clockText, lineScoreView, teamView, controlsView, countdownParts, gamesView, JUMP_MS, leadersTable, playLines, pregameView, RUN_MIN, settingsView, whenText } from '../src/ui/views.ts';
 import type { BoxLine, GameCard, GameState, PlayLine, TeamStats } from '../src/model/types.ts';
 
@@ -94,6 +95,19 @@ describe('last line', () => {
     // A window too short for two lines keeps the newest and drops the divider.
     expect(playLines(s, zh, 1)).toEqual(['[UTAH] I. Collier 防守籃板<span class="run">（[UTAH] 連得 8 分）</span>']);
     expect(barView(s, zh, 1)).not.toContain('divider');
+  });
+
+  // The simple view at its preset size (the maintainer's call, 2026-10-14): the newest, then three
+  // before it, newest first; lines not filled yet keep their place so the layout does not jump.
+  it('shows the newest play and three before it, newest first, in a window tall enough', () => {
+    const p = (n: number) => ({ type: 'rebound' as const, offensive: false, side: 'home' as const, player: { ...collier, short: `P${n}` } });
+    const s = { ...base, recentPlays: [p(1), p(2), p(3), p(4)] };
+    const html = barView(s, zh, 4);
+    expect([...html.matchAll(/class="row play (?:new|old old-\d)">\[UTAH\] (P\d)/g)].map((m) => m[1])).toEqual(['P4', 'P3', 'P2', 'P1']);
+    expect(barView({ ...base, recentPlays: [p(1)] }, zh, 4).match(/play old/g)).toHaveLength(3);
+    expect(playLinesAt(150)).toBe(4);
+    expect(playLinesAt(TIER_PRESET.bar.h - TOOLBAR_H)).toBe(4);
+    expect(playLinesAt(100)).toBe(2);
   });
 
   // A 2-0 "run" is every basket; the line only calls out a run once it means momentum.

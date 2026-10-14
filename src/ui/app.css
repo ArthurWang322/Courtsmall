@@ -74,12 +74,15 @@ button { font: inherit; color: inherit; border: 0; background: transparent; padd
 .bug .clock { padding: 0 9px; font: 600 14px var(--label); letter-spacing: .04em; color: var(--muted); white-space: nowrap; background: var(--surface); }
 .bug .tag { align-self: center; margin: 0 6px 0 auto; white-space: nowrap; flex-shrink: 0; }
 
-/* The two latest plays: the newest reads first; the one before it, under the divider, stays back. */
+/* The latest plays: the newest reads first; the ones before it, under the divider, stay back, the
+   oldest faintest. */
 .bar .play { font-size: 12.5px; min-height: 16px; text-overflow: ellipsis; padding-left: 2px; }
 .bar .play.new { color: var(--text); font-weight: 500; }
 /* A run ends the newest line, at its right end, in the accent colour. */
 .bar .play .run { margin-left: auto; padding-left: 8px; color: var(--accent); font-weight: 600; flex: none; }
 .bar .play.old { color: var(--faint); }
+.bar .play.old-2 { opacity: .75; }
+.bar .play.old-3 { opacity: .5; }
 .bar .divider { border: 0; height: 1px; margin: 1px 0; background: linear-gradient(90deg, var(--border), transparent 85%); }
 .msg { display: flex; flex-direction: column; gap: 2px; white-space: nowrap; }
 .msg span:first-child { font: 600 15px var(--label); letter-spacing: .04em; }
