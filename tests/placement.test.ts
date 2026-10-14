@@ -25,6 +25,16 @@ describe('cornerRect', () => {
     expect(bottom(players)).toBe(bottom(linescore));
   });
 
+  // A finished game shows its points per period in the main window, so its stats open without the
+  // line score: the group is no taller than the main window, and still ends in the corner.
+  it('without the line score, keeps the stats as tall as the main window, in the corner', () => {
+    const r = cornerRect(area, { w: 360, h: 300 }, true, false);
+    const { players } = sideRects(r, false);
+    expect(players.h).toBe(r.h);
+    expect(right(players)).toBe(area.w - CORNER_MARGIN);
+    expect(bottom(players)).toBe(area.h - CORNER_MARGIN);
+  });
+
   it('works on a second screen, wherever it is', () => {
     const second = { x: -1920, y: 200, w: 1920, h: 1040 };
     const r = cornerRect(second, { w: 360, h: 176 }, false);

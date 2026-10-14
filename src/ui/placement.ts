@@ -14,18 +14,19 @@ export const CORNER_MARGIN = 16;
 /** How long a glide to the corner takes, ms. */
 export const GLIDE_MS = 280;
 
-/** The stats beside the main window and the line score under it, one rectangle together. */
-export function sideRects(main: Rect): { players: Rect; linescore: Rect } {
+/** The stats beside the main window and the line score under it, one rectangle together; without
+ *  the line score (`line` false: a result shows its points per period itself), the stats only as tall as the main window. */
+export function sideRects(main: Rect, line = true): { players: Rect; linescore: Rect } {
   return {
-    players: { x: main.x + main.w + SIDE_GAP, y: main.y, w: PLAYERS_W, h: main.h + SIDE_GAP + LINE_H },
+    players: { x: main.x + main.w + SIDE_GAP, y: main.y, w: PLAYERS_W, h: main.h + (line ? SIDE_GAP + LINE_H : 0) },
     linescore: { x: main.x, y: main.y + main.h + SIDE_GAP, w: main.w, h: LINE_H },
   };
 }
 
 /** The main window of this size, placed so it, and the stats when open, end at the area's bottom-right corner. */
-export function cornerRect(area: Rect, size: { w: number; h: number }, withStats: boolean): Rect {
+export function cornerRect(area: Rect, size: { w: number; h: number }, withStats: boolean, line = withStats): Rect {
   const w = size.w + (withStats ? SIDE_GAP + PLAYERS_W : 0);
-  const h = size.h + (withStats ? SIDE_GAP + LINE_H : 0);
+  const h = size.h + (withStats && line ? SIDE_GAP + LINE_H : 0);
   return { x: area.x + area.w - CORNER_MARGIN - w, y: area.y + area.h - CORNER_MARGIN - h, w: size.w, h: size.h };
 }
 

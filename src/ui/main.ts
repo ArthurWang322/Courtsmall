@@ -172,8 +172,12 @@ const PLAYERS = 'players', LINESCORE = 'linescore';
 const mainWindow = async () => (await import('@tauri-apps/api/window')).getCurrentWindow();
 const langTag = () => (T === STRINGS.en ? 'en' : 'zh-TW');
 
+/** A result shows its points per period itself (src/ui/views.ts barView), so with one the line score stays closed. */
+const withLine = () => !resultOnly;
 /** Where the stats and the line score go, and how big, from the main window's place and size. */
-const sideLayout = async () => sideRects(await mainRect());
+const sideLayout = async () => sideRects(await mainRect(), withLine());
+/** The stats windows: children of the main window, so on macOS the system moves them with it, with no lag. */
+const SIDE_WINDOW = { decorations: false, transparent: true, shadow: false, alwaysOnTop: true, resizable: false, skipTaskbar: true, focus: false, parent: 'main' } as const;
 
 // ---- The corner (src/ui/placement.ts) ----------------------------------------------------------
 
@@ -207,7 +211,7 @@ async function glide(from: Rect, to: Rect, withStats: boolean, ms = GLIDE_MS): P
   const placeAt = (r: Rect) => {
     placingUntil = Date.now() + 400;
     const rects = [{ label: 'main', ...r }];
-    if (withStats) { const s = sideRects(r); rects.push({ label: PLAYERS, ...s.players }, { label: LINESCORE, ...s.linescore }); }
+    if (withStats) { const s = sideRects(r, withLine()); rects.push({ label: PLAYERS, ...s.players }, ...(withLine() ? [{ label: LINESCORE, ...s.linescore }] : [])); }
     return invoke('place', { rects });
   };
   if (ms <= 0) { await placeAt(to); return; }
@@ -240,7 +244,7 @@ async function sizeMain(w: number, h: number, withStats = playersOpen): Promise<
     await (await win()).setSize(new LogicalSize(w, h));
     return;
   }
-  await glide(await mainRect(), cornerRect(area, { w, h }, withStats), withStats);
+  await glide(await mainRect(), cornerRect(area, { w, h }, withStats, withStats && withLine()), withStats);
 }
 
 // The window starts hidden (tauri.conf.json): placed in the corner first, then shown.
@@ -266,10 +270,46 @@ async function toggleStats(): Promise<void> {
   if (anchored) { const r = await mainRect(); await sizeMain(r.w, r.h, true); }
   const { WebviewWindow } = await import('@tauri-apps/api/webviewWindow');
   const at = await sideLayout();
-  // Children of the main window: on macOS the system then moves them with it, with no lag.
-  const common = { decorations: false, transparent: true, shadow: false, alwaysOnTop: true, resizable: false, skipTaskbar: true, focus: false, parent: 'main' } as const;
-  new WebviewWindow(PLAYERS, { url: 'players.html', x: at.players.x, y: at.players.y, width: at.players.w, height: at.players.h, ...common });
-  new WebviewWindow(LINESCORE, { url: 'linescore.html', x: at.linescore.x, y: at.linescore.y, width: at.linescore.w, height: at.linescore.h, ...common });
+  new WebviewWindow(PLAYERS, { url: 'players.html', x: at.players.x, y: at.players.y, width: at.players.w, height: at.players.h, ...SIDE_WINDOW });
+  // The line score, when this game needs one, the same way as when another game is picked.
+  await syncLine();
+}
+
+/** Another game picked with the stats open: open or close the line score as it now needs, and give
+ *  the stats their new height (in the corner, the group glides to fit). One run at a time, checking
+ *  again after each step, so games picked in quick succession end with the windows the last one needs:
+ *  a line score still animating out is waited for, then opened anew. */
+let syncingLine = false;
+async function syncLine(): Promise<void> {
+  if (!shell || syncingLine) return;
+  syncingLine = true;
+  try {
+    const { WebviewWindow } = await import('@tauri-apps/api/webviewWindow');
+    for (;;) {
+      if (!playersOpen) return;
+      const open = await WebviewWindow.getByLabel(LINESCORE);
+      if (!!open === withLine()) return;
+      const r = await mainRect(), at = sideRects(r, withLine());
+      if (open) {
+        await (await import('@tauri-apps/api/event')).emitTo(LINESCORE, 'side-close');
+        // It closes itself after its animation (src/ui/side-window.ts); if it has not by a while
+        // after, it goes anyway, so the next step never waits on it.
+        const until = Date.now() + LEAVE_MS + 400;
+        while (await WebviewWindow.getByLabel(LINESCORE)) {
+          if (Date.now() > until) { await open.destroy(); break; }
+          await new Promise((done) => setTimeout(done, 50));
+        }
+      } else {
+        lineSent = '';
+        new WebviewWindow(LINESCORE, { url: 'linescore.html', x: at.linescore.x, y: at.linescore.y, width: at.linescore.w, height: at.linescore.h, ...SIDE_WINDOW });
+      }
+      if (anchored) await sizeMain(r.w, r.h);
+      else {
+        const { LogicalSize } = await import('@tauri-apps/api/window');
+        await (await WebviewWindow.getByLabel(PLAYERS))?.setSize(new LogicalSize(at.players.w, at.players.h));
+      }
+    }
+  } finally { syncingLine = false; }
 }
 
 /** Ask both to animate out and close; close whatever is still there once their animation is over,
@@ -416,7 +456,9 @@ function follow(id: string, how: 'live' | 'replay' | 'result'): void {
   leave();
   currentId = id;
   replaying = how === 'replay';
+  const wasLine = withLine();
   resultOnly = how === 'result';
+  if (withLine() !== wasLine) void syncLine();
   upcoming = undefined;
   message = T.loading;
   // A poll brings several plays at once. Notices go out as they arrive; the screen shows the plays

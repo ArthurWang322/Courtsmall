@@ -6,8 +6,10 @@ export const LEAVE_MS = 380;
 
 export async function closeOnRequest(app: HTMLElement): Promise<void> {
   if (!('__TAURI_INTERNALS__' in window)) return;
-  const { listen } = await import('@tauri-apps/api/event');
-  await listen('side-close', async () => {
+  // Only a 'side-close' sent to this window: a plain listen() hears one sent to either, and closing
+  // the line score alone (src/ui/main.ts syncLine) would close the stats too.
+  const { getCurrentWebviewWindow } = await import('@tauri-apps/api/webviewWindow');
+  await getCurrentWebviewWindow().listen('side-close', async () => {
     app.classList.add('leaving');
     await new Promise((r) => setTimeout(r, LEAVE_MS));
     await (await import('@tauri-apps/api/window')).getCurrentWindow().close();
