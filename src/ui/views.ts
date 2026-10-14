@@ -60,7 +60,8 @@ export const noLogo = new Set<string>();
  *  without one, its initial on a disc in its colour (`hex`). */
 export const logo = (t: TeamRef, hex: string) => noLogo.has(t.abbr)
   ? `<i class="logo badge" style="background:#${esc(hex)}">${esc(t.abbr.charAt(0))}</i>`
-  : `<img class="logo" data-abbr="${esc(t.abbr)}" src="https://a.espncdn.com/i/teamlogos/nba/500/${esc(t.abbr.toLowerCase())}.png" alt="">`;
+  : `<img class="logo" data-abbr="${esc(t.abbr)}" src="${logoUrl(t)}" alt="">`;
+const logoUrl = (t: TeamRef) => `https://a.espncdn.com/i/teamlogos/nba/500/${esc(t.abbr.toLowerCase())}.png`;
 
 
 /**
@@ -164,7 +165,6 @@ export const messageView = (text: string, sub?: string) =>
   `<div class="msg"><span>${esc(text)}</span>${sub ? `<span class="muted">${esc(sub)}</span>` : ''}</div>`;
 
 const colourDot = (hex: string) => `<i class="dot" style="background:#${esc(hex)}"></i>`;
-const cardDot = (t: TeamRef) => colourDot(visibleColour(t));
 
 /** Whole days, hours, minutes and seconds left in `ms`; zero once it has passed. */
 export function countdownParts(ms: number): { d: number; h: number; m: number; s: number } {
@@ -196,22 +196,31 @@ export function settingsView(teams: readonly TeamRef[], s: Settings, T: Strings,
   // with the choice, and when `pickerOpen`, a short scrolling list under it, none first, then the
   // teams by full name.
   const fav = teams.find((t) => s.favourites.includes(t.id));
-  // The list is names only: the team list has no colours (src/data/espn/fetch.ts allTeams). The
-  // choice shows its colour once its schedule has brought it.
-  const item = (id: string, label: string) =>
-    `<button class="fav-item${(fav?.id ?? '') === id ? ' on' : ''}" data-fav-pick="${esc(id)}">${esc(label)}</button>`;
+  // Each team with its logo, none with nothing. The team list has no colours (src/data/espn/fetch.ts
+  // allTeams), so a logo's stand-in takes the fallback colour until the schedule brings the real one.
+  const mark = (t?: TeamRef) => (t ? logo(t, visibleColour(t)) : '');
+  const item = (t: TeamRef | undefined, label: string) =>
+    `<button class="fav-item${(fav?.id ?? '') === (t?.id ?? '') ? ' on' : ''}" data-fav-pick="${esc(t?.id ?? '')}">${mark(t)}<span>${esc(label)}</span></button>`;
   const list = pickerOpen
-    ? `<div class="fav-list">${item('', T.noFavourite)}${[...teams].sort((a, b) => a.name.localeCompare(b.name)).map((t) => item(t.id, t.name)).join('')}</div>`
+    ? `<div class="fav-list">${item(undefined, T.noFavourite)}${[...teams].sort((a, b) => a.name.localeCompare(b.name)).map((t) => item(t, t.name)).join('')}</div>`
     : '';
-  const mark = fav?.color ? cardDot(fav) : '<i class="dot none"></i>';
-  const picker = `<div class="favourite"><button class="fav-current" data-fav-open aria-expanded="${pickerOpen}">${mark}<span>${esc(fav?.name ?? T.noFavourite)}</span><i class="caret"></i></button>${list}</div>`;
+  const picker = `<div class="favourite"><button class="fav-current" data-fav-open aria-expanded="${pickerOpen}">${mark(fav)}<span>${esc(fav?.name ?? T.noFavourite)}</span><i class="caret"></i></button>${list}</div>`;
+  // The favourite's logo, large and faint behind the page, in the window's bottom right corner and cut
+  // by it. Outside the scrolling page, so what is cut off never makes it scroll (Windows shows the bar).
+  const watermark = fav && !noLogo.has(fav.abbr) ? `<img class="watermark" data-abbr="${esc(fav.abbr)}" src="${logoUrl(fav)}" alt="">` : '';
+  // The notices are for the favourite's games: without one they cannot be turned on, and show off;
+  // the choices are kept for when a favourite is picked.
+  const hasFav = s.favourites.length > 0;
+  // The shortcuts, on or off: a choice of two, set apart from the notices above.
+  const radio = (on: boolean, label: string) =>
+    `<label class="check"><input type="radio" name="shortcuts" data-shortcuts="${on ? 'on' : 'off'}"${s.shortcuts === on ? ' checked' : ''}> ${esc(label)}</label>`;
   const check = (key: keyof Settings['notify'], label: string) =>
-    `<label class="check"><input type="checkbox" data-notify="${key}"${s.notify[key] ? ' checked' : ''}> ${esc(label)}</label>`;
-  return `<div class="settings">
+    `<label class="check${hasFav ? '' : ' off'}"><input type="checkbox" data-notify="${key}"${hasFav && s.notify[key] ? ' checked' : ''}${hasFav ? '' : ' disabled'}> ${esc(label)}</label>`;
+  return `${watermark}<div class="settings">
       <div class="head"><b>${esc(T.tip.settings)}</b><button class="done" data-done>${esc(T.save)}</button></div>
       <div class="fav-row"><span class="label">${esc(T.chooseTeam)}</span>${picker}</div>
-      ${check('start', T.notifyStart)}${check('final', T.notifyFinal)}${check('clutch', T.notifyClutch)}
-      <label class="check"><input type="checkbox" data-shortcuts${s.shortcuts ? ' checked' : ''}> ${esc(T.shortcuts)}</label>
+      ${check('start', T.notifyStart)}${check('final', T.notifyFinal)}${check('clutch', T.notifyClutch)}${hasFav ? '' : `<span class="hint">${esc(T.notifyNeedsFavourite)}</span>`}
+      <div class="shortcuts-row"><span class="label">${esc(T.shortcuts)}</span>${radio(true, T.shortcutsOn)}${radio(false, T.shortcutsOff)}</div>
       <span class="keys">${(Object.keys(SHORTCUTS) as ShortcutAction[]).map((a) => `<kbd>${esc(keyLabel(SHORTCUTS[a], mac))}</kbd> ${esc(T.shortcut[a])}`).join('<i>·</i>')}</span>
       ${s.shortcuts && shortcutsTaken ? `<span class="hint warn">${esc(T.shortcutsTaken)}</span>` : ''}
       ${version ? updateRow(version, update, T) : ''}

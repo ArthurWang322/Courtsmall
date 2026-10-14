@@ -51,6 +51,9 @@ export interface Strings {
   shortcut: { mode: string; stats: string; hide: string };
   /** Shown when another app already has the keys. */
   shortcutsTaken: string;
+  shortcutsOn: string;
+  shortcutsOff: string;
+  notifyNeedsFavourite: string;
   /** The version and updating, at the foot of the settings (src/ui/update.ts). */
   update: { version: (v: string) => string; check: string; checking: string; latest: string; available: (v: string) => string; install: string; installing: (pct: number | undefined) => string; checkFailed: string; installFailed: string };
   save: string;
@@ -102,13 +105,16 @@ export const STRINGS: Record<Lang, Strings> = {
     today: 'Today',
     tomorrow: 'Tomorrow',
     chooseTeam: 'Favourite team',
-    noFavourite: 'None (follow the closest game)',
+    noFavourite: 'None',
     notifyStart: 'Notify at tip-off',
     notifyFinal: 'Notify at the final',
     notifyClutch: 'Notify in a close finish (last 2 min, within 5)',
     shortcuts: 'Keyboard shortcuts, from any app',
     shortcut: { mode: 'simple / court', stats: 'stats', hide: 'hide / show' },
     shortcutsTaken: 'Some keys are taken by another app.',
+    shortcutsOn: 'On',
+    shortcutsOff: 'Off',
+    notifyNeedsFavourite: 'Choose a favourite team to get notices for its games.',
     update: {
       version: (v) => `Version ${v}`, check: 'Check for updates', checking: 'Checking…', latest: 'This is the latest version',
       available: (v) => `Version ${v} is out`, install: 'Update now',
@@ -156,13 +162,16 @@ export const STRINGS: Record<Lang, Strings> = {
     today: '今天',
     tomorrow: '明天',
     chooseTeam: '最愛球隊',
-    noFavourite: '無（自動跟最緊張的比賽）',
+    noFavourite: '無',
     notifyStart: '開賽時通知',
     notifyFinal: '終場時通知',
     notifyClutch: '關鍵時刻通知（最後 2 分鐘、差距 5 分內）',
     shortcuts: '快捷鍵（在任何程式裡都能用）',
     shortcut: { mode: '切換模式', stats: '數據', hide: '隱藏／顯示' },
     shortcutsTaken: '有些按鍵已被其他程式佔用。',
+    shortcutsOn: '開啟',
+    shortcutsOff: '關閉',
+    notifyNeedsFavourite: '選擇最愛球隊後，開啟比賽通知設定',
     update: {
       version: (v) => `版本 ${v}`, check: '檢查更新', checking: '檢查中…', latest: '此版本為最新版',
       available: (v) => `有新版本 ${v}`, install: '立即更新',

@@ -492,8 +492,9 @@ function follow(id: string, how: 'live' | 'replay' | 'result'): void {
   const handlers = {
     onEvent: () => {},
     onState: (s: GameState) => {
-      // Notices for live games only: a replay already happened.
-      if (!replaying) notifier.send(notices(arrived ?? assumedBefore(s, knownScheduled.has(id)), s, settings.notify));
+      // Notices for the favourite's live games only: a replay already happened, and another game is
+      // followed only because there is nothing better on (src/ui/views.ts settingsView).
+      if (!replaying && favIn(s.teams, settings.favourites)) notifier.send(notices(arrived ?? assumedBefore(s, knownScheduled.has(id)), s, settings.notify));
       arrived = s;
       pacer?.push(s);
     },
@@ -649,7 +650,7 @@ app.addEventListener('click', (e) => {
     return;
   }
   if (el.dataset.shortcuts !== undefined) {
-    settings = { ...settings, shortcuts: (el as HTMLInputElement).checked };
+    settings = { ...settings, shortcuts: el.dataset.shortcuts === 'on' };
     saveSettings(settings);
     void applyShortcuts();
     return;

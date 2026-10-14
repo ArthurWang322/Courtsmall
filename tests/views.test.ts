@@ -254,13 +254,28 @@ describe('settings page', () => {
   it('shows the choice, and when open lists none and every team by full name, the choice marked', () => {
     const closed = settingsView(teams, { ...settings, favourites: ['7'] }, zh);
     expect(closed).toContain('<span>Denver Nuggets</span>');
-    expect(closed).toContain('background:#fec524');
+    expect(closed).toContain('src="https://a.espncdn.com/i/teamlogos/nba/500/den.png"');
+    // The favourite's logo also stands faint behind the page; without a favourite there is none.
+    expect(closed).toContain('<img class="watermark" data-abbr="DEN"');
+    expect(settingsView(teams, settings, zh)).not.toContain('watermark');
     expect(closed).not.toContain('fav-list');
     const open = settingsView(teams, { ...settings, favourites: ['7'] }, zh, true);
-    expect([...open.matchAll(/<button class="fav-item( on)?" data-fav-pick="(\d*)">([^<]*)</g)].map((m) => `${m[3]}${m[1] ? '*' : ''}`))
-      .toEqual(['無（自動跟最緊張的比賽）', 'Denver Nuggets*', 'Philadelphia 76ers']);
-    expect(settingsView(teams, settings, zh)).toContain('<span>無（自動跟最緊張的比賽）</span>');
+    expect([...open.matchAll(/<button class="fav-item( on)?" data-fav-pick="(\d*)">(?:<img [^>]*>)?<span>([^<]*)</g)].map((m) => `${m[3]}${m[1] ? '*' : ''}`))
+      .toEqual(['無', 'Denver Nuggets*', 'Philadelphia 76ers']);
+    expect(settingsView(teams, settings, zh)).toContain('<span>無</span>');
     expect(settingsView(teams, settings, zh)).toContain('data-done>儲存</button>');
+  });
+
+  // Notices are for the favourite's games: with none chosen they cannot be turned on and show
+  // unchecked, saying why; once one is chosen, the choices kept from before come back.
+  it('disables the notices without a favourite, keeping the choices for when one is picked', () => {
+    const boxes = (html: string) => [...html.matchAll(/<input type="checkbox" data-notify="\w+"([^>]*)>/g)].map((m) => m[1]!.trim());
+    const none = settingsView(teams, settings, zh);
+    expect(boxes(none)).toEqual(['disabled', 'disabled', 'disabled']);
+    expect(none).toContain('選擇最愛球隊後，開啟比賽通知設定');
+    const fav = settingsView(teams, { ...settings, favourites: ['7'], notify: { start: true, final: false, clutch: true } }, zh);
+    expect(boxes(fav)).toEqual(['checked', '', 'checked']);
+    expect(fav).not.toContain('選擇最愛球隊後');
   });
 
   // One button walks through updating: check, then install only what was found; while it works
@@ -289,6 +304,13 @@ describe('settings page', () => {
     expect(settingsView(teams, settings, zh, false, true, true)).toContain('有些按鍵已被其他程式佔用。');
     // Switched off, the keys are given back, so nothing is taken.
     expect(settingsView(teams, { ...settings, shortcuts: false }, zh, false, true, true)).not.toContain('佔用');
+  });
+
+  // On or off is one choice of two, so exactly one is ever marked, and it is the one in effect.
+  it('offers the shortcuts as on or off, the one in effect marked', () => {
+    const marked = (html: string) => [...html.matchAll(/data-shortcuts="(on|off)"( checked)?/g)].map((m) => `${m[1]}${m[2] ? '*' : ''}`);
+    expect(marked(settingsView(teams, settings, zh))).toEqual(['on*', 'off']);
+    expect(marked(settingsView(teams, { ...settings, shortcuts: false }, zh))).toEqual(['on', 'off*']);
   });
 });
 
