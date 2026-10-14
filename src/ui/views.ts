@@ -84,14 +84,15 @@ export function playText(s: GameState, ev: PlayLine, T: Strings): string {
 
 /**
  * The play lines under the score, newest first: the latest `count` plays, the run (when it is long
- * enough) after the newest. The newest stays in one place and the one before it moves below, so
+ * enough) at the end of the newest. The newest stays in one place and the one before it moves below, so
  * a miss and its rebound can be read together.
  */
 export function playLines(s: GameState, T: Strings, count: number): string[] {
   const lines = (s.recentPlays ?? []).slice(-count).reverse().map((p) => esc(playText(s, p, T)));
   if (s.run && s.run.points >= RUN_MIN && s.status !== 'final') {
-    const run = esc(T.run(s.teams[s.run.side].abbr, s.run.points));
-    if (lines.length) lines[0] += ` · ${run}`; else lines.push(run);
+    // The run ends the newest line, at its right end, in the accent colour (app.css .run).
+    const run = `<span class="run">${esc(T.run(s.teams[s.run.side].abbr, s.run.points))}</span>`;
+    if (lines.length) lines[0] += run; else lines.push(run);
   }
   return lines;
 }

@@ -7,7 +7,7 @@ import type { BoxLine, GameCard, GameState, PlayLine, TeamStats } from '../src/m
 
 const en = STRINGS.en, zh = STRINGS['zh-TW'];
 /** The newest play line alone, as a one-line bar shows it. */
-const lastLine = (s: GameState, T: typeof en) => playLines(s, T, 1)[0] ?? '';
+const lastLine = (s: GameState, T: typeof en) => (playLines(s, T, 1)[0] ?? '').replace(/<span class="run">(.*?)<\/span>/, ' $1');
 const base: GameState = {
   gameId: '1', status: 'live', period: 4, clock: 422,
   teams: { away: { id: 'a', abbr: 'SA', name: 'Spurs', color: 'c4ced4' }, home: { id: 'h', abbr: 'UTAH', name: 'Jazz', color: '4e008e' } },
@@ -85,22 +85,22 @@ describe('last line', () => {
     const miss = { type: 'miss' as const, points: 3 as const, side: 'away' as const, player: embiid };
     const reb = { type: 'rebound' as const, offensive: false, side: 'home' as const, player: collier };
     const s = { ...base, recentPlays: [miss, reb], run: { side: 'home' as const, points: 8 } };
-    expect(playLines(s, zh, 2)).toEqual(['[UTAH] I. Collier 防守籃板 · UTAH 連得 8 分', '[SA] J. Embiid 三分不進']);
+    expect(playLines(s, zh, 2)).toEqual(['[UTAH] I. Collier 防守籃板<span class="run">（[UTAH] 連得 8 分）</span>', '[SA] J. Embiid 三分不進']);
     const html = barView(s, zh, 2);
     expect(html.indexOf('play new')).toBeLessThan(html.indexOf('divider'));
     expect(html.indexOf('divider')).toBeLessThan(html.indexOf('play old'));
     expect(html.slice(html.indexOf('play new'), html.indexOf('divider'))).toContain('防守籃板');
     expect(html.slice(html.indexOf('play old'))).toContain('三分不進');
     // A window too short for two lines keeps the newest and drops the divider.
-    expect(playLines(s, zh, 1)).toEqual(['[UTAH] I. Collier 防守籃板 · UTAH 連得 8 分']);
+    expect(playLines(s, zh, 1)).toEqual(['[UTAH] I. Collier 防守籃板<span class="run">（[UTAH] 連得 8 分）</span>']);
     expect(barView(s, zh, 1)).not.toContain('divider');
   });
 
   // A 2-0 "run" is every basket; the line only calls out a run once it means momentum.
   it(`mentions a run from ${RUN_MIN} unanswered points, not before`, () => {
     expect(lastLine({ ...base, recentPlays: [basket], run: { side: 'home', points: RUN_MIN - 1 } }, en)).toBe('[UTAH] I. Collier +2');
-    expect(lastLine({ ...base, recentPlays: [basket], run: { side: 'home', points: 8 } }, en)).toBe('[UTAH] I. Collier +2 · UTAH 8-0 run');
-    expect(lastLine({ ...base, recentPlays: [basket], run: { side: 'home', points: 8 } }, zh)).toBe('[UTAH] I. Collier +2 · UTAH 連得 8 分');
+    expect(lastLine({ ...base, recentPlays: [basket], run: { side: 'home', points: 8 } }, en)).toBe('[UTAH] I. Collier +2 ([UTAH] 8-0 run)');
+    expect(lastLine({ ...base, recentPlays: [basket], run: { side: 'home', points: 8 } }, zh)).toBe('[UTAH] I. Collier +2 （[UTAH] 連得 8 分）');
   });
 
   it('drops the run once the game is over', () => {

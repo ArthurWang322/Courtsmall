@@ -26,7 +26,7 @@ export interface Strings {
   /** "[UTAH] A in for B". */
   substitution(inName: string, outName: string): string;
   stoppage(kind: StoppageKind): string;
-  /** "BOS 10-0 run". */
+  /** "([BOS] 10-0 run)", in brackets: it ends the newest play's line. */
   run(abbr: string, points: number): string;
   replay: string;
   loading: string;
@@ -83,7 +83,7 @@ export const STRINGS: Record<Lang, Strings> = {
     rebound: (o) => (o ? 'offensive rebound' : 'defensive rebound'),
     substitution: (i, o) => `${i} in for ${o}`,
     stoppage: (k) => (k === 'timeout' ? 'Timeout' : 'Review'),
-    run: (abbr, points) => `${abbr} ${points}-0 run`,
+    run: (abbr, points) => `([${abbr}] ${points}-0 run)`,
     replay: 'Replay',
     loading: 'Loading…',
     noGame: 'No game right now',
@@ -129,7 +129,7 @@ export const STRINGS: Record<Lang, Strings> = {
     rebound: (o) => (o ? '進攻籃板' : '防守籃板'),
     substitution: (i, o) => `${i} 換下 ${o}`,
     stoppage: (k) => (k === 'timeout' ? '暫停' : '重播審查'),
-    run: (abbr, points) => `${abbr} 連得 ${points} 分`,
+    run: (abbr, points) => `（[${abbr}] 連得 ${points} 分）`,
     replay: '重播',
     loading: '載入中…',
     noGame: '現在沒有比賽',
