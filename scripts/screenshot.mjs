@@ -6,8 +6,9 @@
 //   node scripts/screenshot.mjs "<path and query>" <width> <height> <waitMs> <name> [hover|click:<selector>]
 // `hover`: move the pointer over the window first; `hover:<selector>`: over that element.
 // `click:<selector>[ >> <selector>...]`: click those elements in turn, a second and a half apart.
-// `flight[:skip]`: wait for a shot in the air on the court (after skipping `skip` of them), then
-// take 18 frames 120 ms apart as <name>-00.png ... <name>-17.png.
+// `flight[:skip[:frames[:everyMs]]]`: wait for a shot in the air on the court (after skipping `skip`
+// of them), then take `frames` (18) frames `everyMs` (120) apart as <name>-00.png, <name>-01.png ...
+// and print the frames per second actually taken, for a GIF's frame rate.
 //   node scripts/screenshot.mjs "/?game=401810362&replay&fixture&lang=zh-TW" 360 96 5000 bar
 
 import { spawn } from 'node:child_process';
@@ -58,7 +59,8 @@ try {
     writeFileSync(`fixtures/shots/${file}.png`, Buffer.from(data, 'base64'));
   };
   if (hover?.startsWith('flight')) {
-    const skip = Number(hover.split(':')[1] ?? 0);
+    const [, skipArg, framesArg, everyArg] = hover.split(':');
+    const skip = Number(skipArg ?? 0), frames = Number(framesArg ?? 18), every = Number(everyArg ?? 120);
     let seen = 0, prev = false;
     const until = Date.now() + 120_000;
     while (Date.now() < until) {
@@ -67,8 +69,14 @@ try {
       prev = r.result.value;
       await new Promise((res) => setTimeout(res, 30));
     }
-    for (let i = 0; i < 18; i++) { await shoot(`${name}-${String(i).padStart(2, '0')}`); await new Promise((res) => setTimeout(res, 120)); }
-    console.log(`fixtures/shots/${name}-00..17.png`);
+    const start = Date.now();
+    for (let i = 0; i < frames; i++) {
+      const due = start + i * every;
+      if (due > Date.now()) await new Promise((res) => setTimeout(res, due - Date.now()));
+      await shoot(`${name}-${String(i).padStart(2, '0')}`);
+    }
+    const fps = (frames - 1) / ((Date.now() - start) / 1000);
+    console.log(`fixtures/shots/${name}-00..${String(frames - 1).padStart(2, '0')}.png, ${fps.toFixed(1)} frames a second`);
   } else {
     await shoot(name);
     console.log(`fixtures/shots/${name}.png`);
