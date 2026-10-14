@@ -1,0 +1,10 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "stats",
+  "description": "The stats and line score windows: they draw what the main window sends and close themselves.",
+  "windows": ["players", "linescore"],
+  "permissions": [
+    "core:default",
+    "core:window:allow-close"
+  ]
+}

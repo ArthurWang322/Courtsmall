@@ -1,5 +1,5 @@
-// The players' window: the game's box score, beside the main window. The main window opens it,
-// keeps it at its right edge and sends what it needs on every state (src/ui/main.ts sendPlayers):
+// The stats window: the game's box score, beside the main window. The main window opens it,
+// keeps it at its right edge and sends what it needs on every state (src/ui/main.ts sendStats):
 // which game, the teams, who is on the court, the favourite. This window reads the box score itself,
 // when the game changes and every 30 seconds while it is on, and closes from its own button.
 //
@@ -15,6 +15,7 @@ import { boxScore, teamStats } from '../data/espn/box.ts';
 import { loadBox } from '../data/espn/fetch.ts';
 import { langOf, STRINGS } from '../i18n/index.ts';
 import { boxView, favIn, type BoxTab } from './views.ts';
+import { closeOnRequest } from './side-window.ts';
 
 /** What the main window sends (src/ui/main.ts). */
 export interface PlayersState {
@@ -80,12 +81,13 @@ app.addEventListener('click', async (e) => {
   if (!el) return;
   if (el.dataset.boxSide) { side = el.dataset.boxSide as BoxTab; render(); return; }
   if (!shell) { window.close(); return; }
+  // The main window closes the pair: both animate out (src/ui/side-window.ts).
   const { emitTo } = await import('@tauri-apps/api/event');
   await emitTo('main', 'players-closed');
-  await (await import('@tauri-apps/api/window')).getCurrentWindow().close();
 });
 
 render();
+void closeOnRequest(app);
 if (shell) {
   const { listen, emitTo } = await import('@tauri-apps/api/event');
   await listen<PlayersState>('players-state', (e) => receive(e.payload));

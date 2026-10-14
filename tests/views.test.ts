@@ -2,7 +2,7 @@
 
 import { describe, expect, it } from 'vitest';
 import { STRINGS } from '../src/i18n/index.ts';
-import { barView, boxView, clockText, teamView, controlsView, countdownParts, gamesView, JUMP_MS, leadersTable, playLines, pregameView, RUN_MIN, settingsView, whenText } from '../src/ui/views.ts';
+import { barView, boxView, clockText, lineScoreView, teamView, controlsView, countdownParts, gamesView, JUMP_MS, leadersTable, playLines, pregameView, RUN_MIN, settingsView, whenText } from '../src/ui/views.ts';
 import type { BoxLine, GameCard, GameState, PlayLine, TeamStats } from '../src/model/types.ts';
 
 const en = STRINGS.en, zh = STRINGS['zh-TW'];
@@ -138,7 +138,7 @@ describe('toolbar and games list', () => {
     expect(html.match(/class="icon on" data-tier="(\w+)"/)![1]).toBe('bar');
     expect([...html.matchAll(/data-tier="(\w+)"/g)].map((m) => m[1])).toEqual(['bar', 'court']);
     // Every button says what it does on hover, in the maintainer's words.
-    expect([...html.matchAll(/data-tip="([^"]+)"/g)].map((m) => m[1])).toEqual(['簡易模式', '球場模式', '比賽列表', '球員數據', '設定']);
+    expect([...html.matchAll(/data-tip="([^"]+)"/g)].map((m) => m[1])).toEqual(['簡易模式', '球場模式', '比賽列表', '數據', '設定']);
     expect(html).toContain('data-open="games"');
     expect(html).toContain('data-open="settings"');
   });
@@ -304,6 +304,17 @@ describe("teams' stats", () => {
     expect(row('三分')).toMatch(/<span class="better">15-30/);
     expect(row('失誤')).toMatch(/<span class="better">8<\/span>/);
     expect(row('助攻')).not.toContain('better');
+  });
+});
+
+describe('line score', () => {
+  it('lists each period, overtimes too, the totals, the period being played lit, the rest "–"', () => {
+    const html = lineScoreView({ ...base, period: 5, periodScores: { away: [20, 22, 25, 18, 4], home: [21, 20, 24, 20, 6] }, score: { away: 89, home: 91 } }, zh);
+    const rows = [...html.matchAll(/<div class="lrow[^"]*">(.*?)<\/div>/g)].map((m) => m[1]!.replace(/<[^>]+>/g, ' ').trim().split(/\s+/));
+    expect(rows).toEqual([['1', '2', '3', '4', 'OT', '總分'], ['SA', '20', '22', '25', '18', '4', '89'], ['UTAH', '21', '20', '24', '20', '6', '91']]);
+    expect(html.match(/class="now"/g)).toHaveLength(3);
+    const early = lineScoreView({ ...base, period: 2, periodScores: { away: [20, 5], home: [21, 3] }, score: { away: 25, home: 24 } }, zh);
+    expect(early.match(/>–</g)).toHaveLength(4);
   });
 });
 

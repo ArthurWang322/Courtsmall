@@ -222,9 +222,23 @@ button { font: inherit; color: inherit; border: 0; background: transparent; padd
 .panel.box hr.bench { border: 0; border-top: 1px solid var(--border); margin: 3px 4px; }
 .panel.box .on-court { color: var(--accent); margin-right: 3px; }
 .panel.box .close { font-size: 13px; }
-/* The players' window slides in from the main window's side. */
-.players-page #app { animation: slide-in .22s ease-out both; }
-@keyframes slide-in { from { transform: translateX(-24px); opacity: 0; } }
+/* The stats windows unfold out of the main window: the stats from its left edge, the line score
+   from its top edge a beat later, sharpening as they open; leaving, they fold back the same way. */
+.players-page #app { animation: unfold-right .38s cubic-bezier(.16, 1, .3, 1) both; }
+.linescore-page #app { animation: unfold-down .38s .08s cubic-bezier(.16, 1, .3, 1) both; }
+.players-page #app.leaving { animation: fold-left .26s cubic-bezier(.7, 0, .84, 0) both; }
+.linescore-page #app.leaving { animation: fold-up .26s cubic-bezier(.7, 0, .84, 0) both; }
+@keyframes unfold-right {
+  from { clip-path: inset(0 100% 0 0 round 14px); transform: translateX(-18px); filter: blur(6px); opacity: .3; }
+  to { clip-path: inset(0 0 0 0 round 14px); transform: none; filter: none; opacity: 1; }
+}
+@keyframes unfold-down {
+  from { clip-path: inset(0 0 100% 0 round 14px); transform: translateY(-14px); filter: blur(6px); opacity: .3; }
+  to { clip-path: inset(0 0 0 0 round 14px); transform: none; filter: none; opacity: 1; }
+}
+@keyframes fold-left { to { clip-path: inset(0 100% 0 0 round 14px); transform: translateX(-18px); filter: blur(6px); opacity: 0; } }
+@keyframes fold-up { to { clip-path: inset(0 0 100% 0 round 14px); transform: translateY(-14px); filter: blur(6px); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .players-page #app, .linescore-page #app { animation-duration: .01s; } }
 
 /* The teams' stats (src/ui/views.ts teamView): a butterfly chart, the away bar left of the middle,
    the home bar right, team colours; numbers in text colours, the better side's brighter. */
@@ -243,3 +257,15 @@ button { font: inherit; color: inherit; border: 0; background: transparent; padd
 .tbars .bar.home { border-radius: 0 3px 3px 0; }
 .panel.box .side[data-box-side='team'] { color: var(--muted); }
 .panel.box .side[data-box-side='team'].on { color: var(--text); }
+
+/* The line score (src/ui/views.ts lineScoreView): periods across, the period being played lit. */
+.linescore-page #app { padding: 10px 14px; }
+.linescore { width: 100%; display: flex; flex-direction: column; gap: 4px; }
+.lrow { display: grid; grid-template-columns: 64px repeat(auto-fit, minmax(0, 1fr)); grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr);
+  align-items: center; font: 600 15px var(--label); color: var(--muted); font-variant-numeric: tabular-nums; text-align: center; }
+.lrow .lteam { display: flex; align-items: center; gap: 6px; text-align: left; color: var(--text); letter-spacing: .06em; }
+.lrow .lteam .stripe { width: 3px; height: 15px; border-radius: 2px; box-shadow: 0 0 6px 0 currentColor; }
+.lrow .ltotal { font: 800 20px/1 var(--display); color: var(--text); }
+.lrow .now { color: var(--accent); }
+.lhead { font-size: 11px; letter-spacing: .1em; color: var(--faint); }
+.lhead .ltotal { font: 600 11px var(--label); color: var(--faint); }

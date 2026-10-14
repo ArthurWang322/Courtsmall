@@ -327,3 +327,20 @@ export function boxView(teams: Record<Side, TeamRef> | undefined, box: Record<Si
     : `<span class="muted">${esc(T.loading)}</span>`;
   return `<div class="panel box"><div class="head">${tabs}<span class="grow"></span>${close}</div><div class="table">${head}<div class="list">${body}</div></div></div>`;
 }
+
+/**
+ * The line score, under the main window when the stats are open: each side's points per period
+ * (overtimes included) and in total, the period being played lit. Periods not started yet show "–".
+ */
+export function lineScoreView(s: Pick<GameState, 'teams' | 'periodScores' | 'score' | 'period' | 'status'>, T: Strings, favs: readonly string[] = []): string {
+  const c = gameColours(s.teams, favIn(s.teams, favs));
+  const n = Math.max(4, s.period, s.periodScores.away.length, s.periodScores.home.length);
+  const label = (p: number) => (p <= 4 ? `${p}` : p === 5 ? 'OT' : `${p - 4}OT`);
+  const on = (p: number) => (s.status === 'live' || s.status === 'break') && p === s.period;
+  const head = `<div class="lrow lhead"><span class="lteam"></span>${Array.from({ length: n }, (_, i) => `<span class="${on(i + 1) ? 'now' : ''}">${label(i + 1)}</span>`).join('')}<span class="ltotal">${esc(T.lineTotal)}</span></div>`;
+  const row = (side: Side) => `<div class="lrow"><span class="lteam"><i class="stripe" style="background:#${esc(c[side])}"></i>${star(s.teams[side], favs)}${esc(s.teams[side].abbr)}</span>`
+    + Array.from({ length: n }, (_, i) => { const v = s.periodScores[side][i]; return `<span class="${on(i + 1) ? 'now' : ''}">${v === undefined ? '–' : v}</span>`; }).join('')
+    + `<b class="ltotal">${s.score[side]}</b></div>`;
+  return `<div class="linescore">${head}${row('away')}${row('home')}</div>`;
+}
+

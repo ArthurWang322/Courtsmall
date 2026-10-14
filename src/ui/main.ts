@@ -43,9 +43,10 @@ const DECIDE_EVERY_MS = 60_000;
 const TEAM_SCHEDULE_TTL_MS = 5 * 60_000;
 /** The window's size while a panel is open: the games list is long, the settings are short. */
 const PANEL_SIZE = { games: { w: 360, h: 420 }, settings: { w: 360, h: 250 } } as const;
-/** The players' window, at the main window's right edge. */
-const PLAYERS_SIZE = { w: 360, h: 420 };
-const PLAYERS_GAP = 6;
+/** The stats window's width (at the main window's right edge), the line score's height (under it), the gap. */
+const PLAYERS_W = 360;
+const LINE_H = 96;
+const SIDE_GAP = 6;
 
 // One request in flight at a time across the whole app.
 let chain: Promise<unknown> = Promise.resolve();
@@ -93,7 +94,7 @@ const scoreChangedAt: Partial<Record<Side, number>> = {};
 let sizeBeforePanel: { w: number; h: number } | undefined;
 /** The favourite team's list is open on the settings page. */
 let pickerOpen = false;
-/** The players' window is open (src/ui/players.ts). */
+/** The stats windows are open (src/ui/players.ts, src/ui/linescore.ts). */
 let playersOpen = false;
 
 /** ESPN's day `offset` days from today, "YYYYMMDD": ESPN counts days in US Eastern time. */
@@ -159,67 +160,92 @@ function show(html: string, tier: Tier | undefined): void {
   if (key !== controlsFor) { controlsFor = key; controlsEl.innerHTML = tier ? controlsView(tier, T, playersOpen) : ''; }
 }
 
-// ---- The players' window ----------------------------------------------------------------------------
-// A window of its own at the main window's right edge, so the game stays in view. The main window
-// opens and closes it, keeps it beside itself, and sends it the game on every render.
+// ---- The stats windows ------------------------------------------------------------------------------
+// Two windows of their own, so the game stays in view: the stats at the main window's right edge and
+// the line score under it, the three making one rectangle (the stats as tall as the main window, the
+// gap and the line score together). The main window opens and closes them as a pair, keeps them in
+// place as it moves or changes size, and sends them the game on every render. Each animates itself
+// in, and out on 'side-close' before it closes (src/ui/side-window.ts).
 
-const PLAYERS = 'players';
+const PLAYERS = 'players', LINESCORE = 'linescore';
 const mainWindow = async () => (await import('@tauri-apps/api/window')).getCurrentWindow();
+const langTag = () => (T === STRINGS.en ? 'en' : 'zh-TW');
 
-/** Where the players' window goes: the main window's top right corner, a small gap beside it. */
-async function playersPosition(): Promise<{ x: number; y: number }> {
+/** Where the stats and the line score go, and how big, from the main window's place and size. */
+async function sideLayout(): Promise<Record<typeof PLAYERS | typeof LINESCORE, { x: number; y: number; w: number; h: number }>> {
   const w = await mainWindow();
   const scale = await w.scaleFactor();
   const pos = (await w.outerPosition()).toLogical(scale), size = (await w.outerSize()).toLogical(scale);
-  return { x: pos.x + size.width + PLAYERS_GAP, y: pos.y };
+  return {
+    players: { x: pos.x + size.width + SIDE_GAP, y: pos.y, w: PLAYERS_W, h: size.height + SIDE_GAP + LINE_H },
+    linescore: { x: pos.x, y: pos.y + size.height + SIDE_GAP, w: size.width, h: LINE_H },
+  };
 }
 
-async function togglePlayers(): Promise<void> {
+async function toggleStats(): Promise<void> {
   if (!shell) {
-    // In a browser under `npm run dev`: a tab with the same page.
-    if (currentId) window.open(`/players.html?game=${currentId}${params.has('fixture') ? '&fixture' : ''}&lang=${T === STRINGS.en ? 'en' : 'zh-TW'}`, PLAYERS);
+    // In a browser under `npm run dev`: the stats in a tab.
+    if (currentId) window.open(`/players.html?game=${currentId}${params.has('fixture') ? '&fixture' : ''}&lang=${langTag()}`, PLAYERS);
     return;
   }
+  if (playersOpen) { await closeStats(); return; }
   const { WebviewWindow } = await import('@tauri-apps/api/webviewWindow');
-  const open = await WebviewWindow.getByLabel(PLAYERS);
-  if (open) { await open.close(); playersOpen = false; render(); return; }
-  const { x, y } = await playersPosition();
-  new WebviewWindow(PLAYERS, {
-    url: 'players.html', x, y, width: PLAYERS_SIZE.w, height: PLAYERS_SIZE.h,
-    decorations: false, transparent: true, shadow: false, alwaysOnTop: true, resizable: false, skipTaskbar: true, focus: false,
-  });
+  const at = await sideLayout();
+  const common = { decorations: false, transparent: true, shadow: false, alwaysOnTop: true, resizable: false, skipTaskbar: true, focus: false } as const;
+  new WebviewWindow(PLAYERS, { url: 'players.html', x: at.players.x, y: at.players.y, width: at.players.w, height: at.players.h, ...common });
+  new WebviewWindow(LINESCORE, { url: 'linescore.html', x: at.linescore.x, y: at.linescore.y, width: at.linescore.w, height: at.linescore.h, ...common });
   playersOpen = true;
   render();
 }
 
-let playersSent = '';
-/** Tell the players' window what it shows: the game, who is on the court, the favourite. */
-async function sendPlayers(force = false): Promise<void> {
-  if (!shell || !playersOpen || !currentId || !state) return;
-  const payload = {
-    gameId: currentId, teams: state.teams, onCourt: state.onCourt, favourites: settings.favourites,
-    live: state.status === 'live' || state.status === 'break', lang: T === STRINGS.en ? 'en' : 'zh-TW',
-  };
-  const json = JSON.stringify(payload);
-  if (!force && json === playersSent) return;
-  playersSent = json;
+/** Ask both to animate out and close; close whatever is still there once their animation is over. */
+async function closeStats(): Promise<void> {
+  playersOpen = false;
+  playersSent = lineSent = '';
+  render();
   const { emitTo } = await import('@tauri-apps/api/event');
-  await emitTo(PLAYERS, 'players-state', payload);
+  await Promise.all([emitTo(PLAYERS, 'side-close'), emitTo(LINESCORE, 'side-close')]);
+  setTimeout(async () => {
+    const { WebviewWindow } = await import('@tauri-apps/api/webviewWindow');
+    for (const label of [PLAYERS, LINESCORE]) if (!playersOpen) await (await WebviewWindow.getByLabel(label))?.close();
+  }, 700);
+}
+
+let playersSent = '', lineSent = '';
+/** Tell the stats windows what they show: the game, who is on the court, the line score, the favourite. */
+async function sendStats(force = false): Promise<void> {
+  if (!shell || !playersOpen || !currentId || !state) return;
+  const { emitTo } = await import('@tauri-apps/api/event');
+  const players = JSON.stringify({
+    gameId: currentId, teams: state.teams, onCourt: state.onCourt, favourites: settings.favourites,
+    live: state.status === 'live' || state.status === 'break', lang: langTag(),
+  });
+  if (force || players !== playersSent) { playersSent = players; await emitTo(PLAYERS, 'players-state', JSON.parse(players)); }
+  const line = JSON.stringify({
+    teams: state.teams, periodScores: state.periodScores, score: state.score, period: state.period, status: state.status,
+    favourites: settings.favourites, lang: langTag(),
+  });
+  if (force || line !== lineSent) { lineSent = line; await emitTo(LINESCORE, 'linescore-state', JSON.parse(line)); }
 }
 
 if (shell) void (async () => {
   const { listen } = await import('@tauri-apps/api/event');
-  // The players' window asks for the game when it starts, and says when its own button closed it.
-  await listen('players-ready', () => void sendPlayers(true));
-  await listen('players-closed', () => { playersOpen = false; render(); });
-  // It stays at the main window's right edge as the main window moves or changes size.
+  // Each asks for the game when it starts; the stats' own button closes the pair.
+  await listen('players-ready', () => { playersSent = ''; void sendStats(); });
+  await listen('linescore-ready', () => { lineSent = ''; void sendStats(); });
+  await listen('players-closed', () => void closeStats());
+  // They stay in place, and in shape, as the main window moves or changes size.
   const w = await mainWindow();
   const follow = async () => {
     if (!playersOpen) return;
     const { WebviewWindow } = await import('@tauri-apps/api/webviewWindow');
-    const { LogicalPosition } = await import('@tauri-apps/api/window');
-    const p = await playersPosition();
-    await (await WebviewWindow.getByLabel(PLAYERS))?.setPosition(new LogicalPosition(p.x, p.y));
+    const { LogicalPosition, LogicalSize } = await import('@tauri-apps/api/window');
+    const at = await sideLayout();
+    for (const label of [PLAYERS, LINESCORE] as const) {
+      const win = await WebviewWindow.getByLabel(label);
+      await win?.setPosition(new LogicalPosition(at[label].x, at[label].y));
+      await win?.setSize(new LogicalSize(at[label].w, at[label].h));
+    }
   };
   await w.onMoved(() => void follow());
   await w.onResized(() => void follow());
@@ -256,7 +282,7 @@ function render(): void {
   }
   else body = messageView(message, tier === 'bar' ? messageSub : undefined);
   show(body, tier);
-  void sendPlayers();
+  void sendStats();
   if (state && tier === 'court' && !resultOnly && !frame) frame = requestAnimationFrame(animate);
 }
 
@@ -448,7 +474,7 @@ app.addEventListener('click', (e) => {
   }
   if (el.dataset.tier) { void setTier(el.dataset.tier as Tier); return; }
   if (el.dataset.open) { void openPanel(el.dataset.open as 'games' | 'settings'); return; }
-  if (el.dataset.players !== undefined) { void togglePlayers(); return; }
+  if (el.dataset.players !== undefined) { void toggleStats(); return; }
   if (el.dataset.done !== undefined) { void closePanel(); return; }
   if (el.dataset.day) { gamesDay += Number(el.dataset.day); dayList = []; render(); void loadDay(); return; }
   if (el.dataset.game) {
