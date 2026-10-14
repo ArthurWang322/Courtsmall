@@ -226,7 +226,7 @@ describe('favourite team', () => {
 
 describe('settings page', () => {
   const teams = [{ id: '7', abbr: 'DEN', name: 'Denver Nuggets', color: 'fec524' }, { id: '20', abbr: 'PHI', name: 'Philadelphia 76ers', color: 'ed174c' }];
-  const settings = { favourites: [] as string[], notify: { start: true, final: true, clutch: true } };
+  const settings = { favourites: [] as string[], notify: { start: true, final: true, clutch: true }, shortcuts: true };
 
   // One favourite, picked from a drop-down whose first choice is none; the teams by full name.
   it('shows the choice, and when open lists none and every team by full name, the choice marked', () => {
@@ -238,6 +238,15 @@ describe('settings page', () => {
     expect([...open.matchAll(/<button class="fav-item( on)?" data-fav-pick="(\d*)">([^<]*)</g)].map((m) => `${m[3]}${m[1] ? '*' : ''}`))
       .toEqual(['無（自動跟最緊張的比賽）', 'Denver Nuggets*', 'Philadelphia 76ers']);
     expect(settingsView(teams, settings, zh)).toContain('<span>無（自動跟最緊張的比賽）</span>');
+  });
+
+  // The keys are only useful if people can find them: each one, in the system's own notation.
+  it('lists each shortcut in the system\'s notation, and says when another app has the keys', () => {
+    expect(settingsView(teams, settings, zh, false, true)).toContain('<kbd>⌃⌥M</kbd> 切換模式');
+    expect(settingsView(teams, settings, zh, false, false)).toContain('<kbd>Ctrl+Alt+H</kbd> 隱藏／顯示');
+    expect(settingsView(teams, settings, zh, false, true, true)).toContain('有些按鍵已被其他程式佔用。');
+    // Switched off, the keys are given back, so nothing is taken.
+    expect(settingsView(teams, { ...settings, shortcuts: false }, zh, false, true, true)).not.toContain('佔用');
   });
 });
 

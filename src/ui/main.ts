@@ -23,6 +23,7 @@ import { decide, STAY_AFTER_FINAL_MS, type Decision } from '../follow/decide.ts'
 import { langOf, STRINGS } from '../i18n/index.ts';
 import { Notifier } from '../notify/notifier.ts';
 import { assumedBefore, notices } from '../notify/rules.ts';
+import { SHORTCUTS, type ShortcutAction } from './shortcuts.ts';
 import { Pacer } from './pacer.ts';
 import { playLinesAt, TIER_PRESET, tierOf, TOOLBAR_H, type Tier } from '../render/tiers.ts';
 import { drawFlights, flightSeconds, LANDED, shotSeconds, WINDUP_SECONDS } from '../render/court.ts';
@@ -43,7 +44,7 @@ const DECIDE_EVERY_MS = 60_000;
 /** How long a team's schedule is reused, ms. */
 const TEAM_SCHEDULE_TTL_MS = 5 * 60_000;
 /** The window's size while a panel is open: the games list is long, the settings are short. */
-const PANEL_SIZE = { games: { w: 360, h: 330 }, settings: { w: 360, h: 250 } } as const;
+const PANEL_SIZE = { games: { w: 360, h: 330 }, settings: { w: 360, h: 300 } } as const;
 /** The stats window's width (at the main window's right edge), the line score's height (under it), the gap. */
 const PLAYERS_W = 360;
 const LINE_H = 96;
@@ -267,7 +268,7 @@ function render(): void {
   // points per period and the leaders where the court would be.
   app.dataset.tier = panel ? 'panel' : tier;
   if (panel === 'settings') {
-    show(settingsView(teams, settings, T, pickerOpen), undefined);
+    show(settingsView(teams, settings, T, pickerOpen, isMac, shortcutsTaken), undefined);
     // The list opens on the current choice: scroll the list only (scrollIntoView would move the page too).
     const list = app.querySelector<HTMLElement>('.fav-list'), on = app.querySelector<HTMLElement>('.fav-item.on');
     if (list && on) list.scrollTop = on.offsetTop - (list.clientHeight - on.offsetHeight) / 2;
@@ -493,7 +494,7 @@ async function setTier(t: Tier): Promise<void> {
 }
 
 app.addEventListener('click', (e) => {
-  const el = (e.target as HTMLElement).closest<HTMLElement>('[data-tier], [data-open], [data-day], [data-players], [data-game], [data-done], [data-notify], [data-fav-open], [data-fav-pick]');
+  const el = (e.target as HTMLElement).closest<HTMLElement>('[data-tier], [data-open], [data-day], [data-players], [data-game], [data-done], [data-notify], [data-shortcuts], [data-fav-open], [data-fav-pick]');
   // The favourite's list: its button opens and closes it, a team in it is picked, a click
   // anywhere else closes it.
   if (pickerOpen && !el?.closest('.favourite')) { pickerOpen = false; render(); }
@@ -522,6 +523,12 @@ app.addEventListener('click', (e) => {
     return;
   }
   if (panel !== 'settings') return;
+  if (el.dataset.shortcuts !== undefined) {
+    settings = { ...settings, shortcuts: (el as HTMLInputElement).checked };
+    saveSettings(settings);
+    void applyShortcuts();
+    return;
+  }
   if (el.dataset.notify) {
     const key = el.dataset.notify as keyof Settings['notify'];
     settings = { ...settings, notify: { ...settings.notify, [key]: (el as HTMLInputElement).checked } };
@@ -540,6 +547,45 @@ app.addEventListener('mousedown', async (e) => {
   if ((e.target as HTMLElement).closest('button, input, label, .fav-list, .list')) return;
   if (shell && e.button === 0 && e.detail === 1) await (await win()).startDragging();
 });
+// ---- Global shortcuts (src/ui/shortcuts.ts) ---------------------------------------------------------
+
+const isMac = navigator.userAgent.includes('Mac');
+/** Another app holds some of the keys: the settings say so. */
+let shortcutsTaken = false;
+
+/** Hide the main window and the stats beside it, or show them again. */
+async function toggleHidden(): Promise<void> {
+  const w = await win();
+  const { WebviewWindow } = await import('@tauri-apps/api/webviewWindow');
+  const visible = await w.isVisible();
+  const sides = await Promise.all([PLAYERS, LINESCORE].map((label) => WebviewWindow.getByLabel(label)));
+  for (const side of sides) await (visible ? side?.hide() : side?.show());
+  if (visible) await w.hide(); else await w.show();
+}
+
+const ACTIONS: Record<ShortcutAction, () => void> = {
+  mode: () => { if (!panel) void setTier(tierOf(app.clientHeight) === 'court' ? 'bar' : 'court'); },
+  stats: () => void toggleStats(),
+  hide: () => void toggleHidden(),
+};
+
+/** Take the keys when the switch is on, give them back when it is off. */
+async function applyShortcuts(): Promise<void> {
+  if (!shell) return;
+  const { register, unregisterAll } = await import('@tauri-apps/plugin-global-shortcut');
+  await unregisterAll();
+  shortcutsTaken = false;
+  if (settings.shortcuts) {
+    for (const action of Object.keys(SHORTCUTS) as ShortcutAction[]) {
+      try {
+        await register(SHORTCUTS[action], (e) => { if (e.state === 'Pressed') ACTIONS[action](); });
+      } catch (e) { console.warn(`shortcut ${SHORTCUTS[action]}:`, e); shortcutsTaken = true; }
+    }
+  }
+  if (panel === 'settings') render();
+}
+void applyShortcuts();
+
 if (shell) void import('@tauri-apps/api/event').then(({ listen }) => {
   void listen('open-settings', () => void openPanel('settings'));
   void listen('open-games', () => void openPanel('games'));

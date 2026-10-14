@@ -55,9 +55,15 @@ describe('settings', () => {
     expect(normalize({ team: '7', favourites: ['9'] }).favourites).toEqual(['9']);
   });
 
+  // Settings saved before the shortcuts existed get them on, like a new install; an off stays off.
+  it('turns the shortcuts on for older settings and keeps them off once switched off', () => {
+    expect(normalize({ favourites: ['7'] }).shortcuts).toBe(true);
+    expect(normalize({ shortcuts: false }).shortcuts).toBe(false);
+  });
+
   it('falls back to the defaults for anything missing or malformed', () => {
     expect(normalize(null)).toEqual(DEFAULTS);
-    expect(normalize({ team: 7, notify: { start: 'yes', final: false } })).toEqual({ favourites: [], notify: { start: true, final: false, clutch: true } });
+    expect(normalize({ team: 7, notify: { start: 'yes', final: false } })).toEqual({ favourites: [], notify: { start: true, final: false, clutch: true }, shortcuts: true });
     // One favourite: the first valid one is kept.
     expect(normalize({ favourites: [7, '', '7', '9'] }).favourites).toEqual(['7']);
   });

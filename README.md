@@ -17,6 +17,7 @@
 - **Your favourite team**, followed automatically and starred in the games list. Without one, Courtsmall follows the closest game on.
 - **Before tip-off**, a countdown; **after the final**, the points per period and each side's leaders.
 - **Notices** at tip-off, at the final and in a close finish, each a switch.
+- **Shortcuts from any app**: Ctrl+Alt+M (⌃⌥M) switches simple / court, Ctrl+Alt+S shows the stats, Ctrl+Alt+H hides and shows. One switch turns them off.
 - Traditional Chinese and English.
 
 <p>
@@ -81,6 +82,7 @@ Courtsmall 是一個浮在桌面角落的小視窗，用 ESPN 公開的資料顯
 - **球場模式**：45 度俯瞰的 3D 半場，每次出手照實際位置飛向籃框。
 - **最愛球隊**：自動跟它的比賽，在比賽列表裡標星號；沒設定時跟最緊張的比賽。
 - **開賽前**倒數，**終場後**顯示各節比分與雙方各項領先者。
+- **快捷鍵**（在任何程式裡都能用）：Ctrl+Alt+M（⌃⌥M）切換模式、Ctrl+Alt+S 數據、Ctrl+Alt+H 隱藏／顯示，可在設定關閉。
 - 開賽、終場、關鍵時刻的通知，各自可以開關（目前系統通知還無法顯示，正在查原因）。
 
 **安裝**：到 [Releases](https://github.com/ArthurWang322/Courtsmall/releases) 下載安裝檔，不需要裝其他東西。Windows 下載 `-setup.exe`（第一次若出現 SmartScreen 警告，按「其他資訊 → 仍要執行」）；macOS 下載 `.dmg`（第一次請按右鍵 →「打開」）。

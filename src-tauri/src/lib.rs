@@ -13,6 +13,8 @@ pub fn run() {
         // stats and line score: they open beside the main window wherever it is now.
         .plugin(tauri_plugin_window_state::Builder::default().with_state_flags(StateFlags::POSITION).with_denylist(&["players", "linescore"]).build())
         .plugin(tauri_plugin_notification::init())
+        // The keys are taken and handled by the web view (src/ui/shortcuts.ts).
+        .plugin(tauri_plugin_global_shortcut::Builder::new().build())
         .setup(|app| {
             let toggle = MenuItem::with_id(app, "toggle", "Show / hide", true, None::<&str>)?;
             let games = MenuItem::with_id(app, "games", "Games…", true, None::<&str>)?;
@@ -28,11 +30,13 @@ pub fn run() {
                 .on_menu_event(|app, event| {
                     let Some(window) = app.get_webview_window("main") else { return };
                     match event.id().as_ref() {
+                        // The stats beside it hide and show with it.
                         "toggle" => {
-                            if window.is_visible().unwrap_or(true) {
-                                let _ = window.hide();
-                            } else {
-                                let _ = window.show();
+                            let visible = window.is_visible().unwrap_or(true);
+                            for label in ["players", "linescore", "main"] {
+                                if let Some(w) = app.get_webview_window(label) {
+                                    let _ = if visible { w.hide() } else { w.show() };
+                                }
                             }
                         }
                         // The web view opens its panels (src/ui/main.ts).

@@ -9,8 +9,12 @@
     "core:window:allow-set-size",
     "core:window:allow-set-position",
     "core:window:allow-close",
+    "core:window:allow-hide",
+    "core:window:allow-show",
     "core:webview:allow-create-webview-window",
     "window-state:default",
-    "notification:default"
+    "notification:default",
+    "global-shortcut:allow-register",
+    "global-shortcut:allow-unregister-all"
   ]
 }

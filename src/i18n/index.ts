@@ -48,6 +48,11 @@ export interface Strings {
   notifyStart: string;
   notifyFinal: string;
   notifyClutch: string;
+  /** The shortcuts' switch, and what each does (src/ui/shortcuts.ts). */
+  shortcuts: string;
+  shortcut: { mode: string; stats: string; hide: string };
+  /** Shown when another app already has the keys. */
+  shortcutsTaken: string;
   done: string;
   close: string;
   /** The line score's total column. */
@@ -103,6 +108,9 @@ export const STRINGS: Record<Lang, Strings> = {
     notifyStart: 'Notify at tip-off',
     notifyFinal: 'Notify at the final',
     notifyClutch: 'Notify in a close finish (last 2 min, within 5)',
+    shortcuts: 'Keyboard shortcuts, from any app',
+    shortcut: { mode: 'simple / court', stats: 'stats', hide: 'hide / show' },
+    shortcutsTaken: 'Some keys are taken by another app.',
     done: 'Done',
     close: 'Close',
     lineTotal: 'T',
@@ -150,6 +158,9 @@ export const STRINGS: Record<Lang, Strings> = {
     notifyStart: '開賽時通知',
     notifyFinal: '終場時通知',
     notifyClutch: '關鍵時刻通知（最後 2 分鐘、差距 5 分內）',
+    shortcuts: '快捷鍵（在任何程式裡都能用）',
+    shortcut: { mode: '切換模式', stats: '數據', hide: '隱藏／顯示' },
+    shortcutsTaken: '有些按鍵已被其他程式佔用。',
     done: '完成',
     close: '關閉',
     lineTotal: '總分',

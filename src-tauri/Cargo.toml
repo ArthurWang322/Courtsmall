@@ -17,6 +17,7 @@ tauri-build = { version = "2", features = [] }
 tauri = { version = "2", features = ["tray-icon"] }
 tauri-plugin-window-state = "2"
 tauri-plugin-notification = "2"
+tauri-plugin-global-shortcut = "2"
 
 [profile.release]
 opt-level = "s"
