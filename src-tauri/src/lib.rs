@@ -1,17 +1,35 @@
-// The desktop shell: one borderless, always-on-top window, its position remembered, system
+// The desktop shell: one borderless, always-on-top window that starts in the screen's corner, system
 // notifications, and a tray menu to show, hide, pick a game, choose a team and quit (the window has no title
 // bar to close it from).
 
 use tauri::menu::{Menu, MenuItem, PredefinedMenuItem};
 use tauri::tray::TrayIconBuilder;
-use tauri::{Emitter, Manager};
-use tauri_plugin_window_state::StateFlags;
+use tauri::{Emitter, LogicalPosition, LogicalSize, Manager};
+
+/// A window's place and size, in logical pixels.
+#[derive(serde::Deserialize)]
+struct Placed {
+    label: String,
+    x: f64,
+    y: f64,
+    w: f64,
+    h: f64,
+}
+
+/// Places windows together, size then position each, in one call: a glide to the screen's corner
+/// sends one a frame (src/ui/main.ts glide), and two calls from the web view would wobble.
+#[tauri::command]
+fn place(app: tauri::AppHandle, rects: Vec<Placed>) {
+    for r in rects {
+        if let Some(w) = app.get_webview_window(&r.label) {
+            let _ = w.set_size(LogicalSize::new(r.w, r.h));
+            let _ = w.set_position(LogicalPosition::new(r.x, r.y));
+        }
+    }
+}
 
 pub fn run() {
     tauri::Builder::default()
-        // Size is the tier (dot or bar) and is set by the web view; only the position is kept. Not the
-        // stats and line score: they open beside the main window wherever it is now.
-        .plugin(tauri_plugin_window_state::Builder::default().with_state_flags(StateFlags::POSITION).with_denylist(&["players", "linescore"]).build())
         .plugin(tauri_plugin_notification::init())
         // The keys are taken and handled by the web view (src/ui/shortcuts.ts).
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
@@ -58,6 +76,7 @@ pub fn run() {
                 .build(app)?;
             Ok(())
         })
+        .invoke_handler(tauri::generate_handler![place])
         .run(tauri::generate_context!())
         .expect("error while running Courtsmall");
 }

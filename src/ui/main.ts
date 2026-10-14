@@ -25,6 +25,8 @@ import { Notifier } from '../notify/notifier.ts';
 import { assumedBefore, notices } from '../notify/rules.ts';
 import { SHORTCUTS, type ShortcutAction } from './shortcuts.ts';
 import { checkForUpdate, installUpdate, type UpdateState } from './update.ts';
+import { between, cornerRect, ease, GLIDE_MS, LINE_H, PLAYERS_W, sideRects, SIDE_GAP, type Rect } from './placement.ts';
+import { LEAVE_MS } from './side-window.ts';
 import { Pacer } from './pacer.ts';
 import { playLinesAt, TIER_PRESET, tierOf, TOOLBAR_H, type Tier } from '../render/tiers.ts';
 import { drawFlights, flightSeconds, LANDED, shotSeconds, WINDUP_SECONDS } from '../render/court.ts';
@@ -46,10 +48,6 @@ const DECIDE_EVERY_MS = 60_000;
 const TEAM_SCHEDULE_TTL_MS = 5 * 60_000;
 /** The window's size while a panel is open: the games list is long, the settings are short. */
 const PANEL_SIZE = { games: { w: 360, h: 330 }, settings: { w: 360, h: 300 } } as const;
-/** The stats window's width (at the main window's right edge), the line score's height (under it), the gap. */
-const PLAYERS_W = 360;
-const LINE_H = 96;
-const SIDE_GAP = 6;
 
 // One request in flight at a time across the whole app.
 let chain: Promise<unknown> = Promise.resolve();
@@ -175,15 +173,77 @@ const mainWindow = async () => (await import('@tauri-apps/api/window')).getCurre
 const langTag = () => (T === STRINGS.en ? 'en' : 'zh-TW');
 
 /** Where the stats and the line score go, and how big, from the main window's place and size. */
-async function sideLayout(): Promise<Record<typeof PLAYERS | typeof LINESCORE, { x: number; y: number; w: number; h: number }>> {
+const sideLayout = async () => sideRects(await mainRect());
+
+// ---- The corner (src/ui/placement.ts) ----------------------------------------------------------
+
+/** The main window stays in the screen's corner until the user drags it. */
+let anchored = true;
+/** Until when moves of the main window are the glide's own, not the user's, epoch ms. */
+let placingUntil = 0;
+let glideRun = 0;
+
+async function mainRect(): Promise<Rect> {
   const w = await mainWindow();
   const scale = await w.scaleFactor();
   const pos = (await w.outerPosition()).toLogical(scale), size = (await w.outerSize()).toLogical(scale);
-  return {
-    players: { x: pos.x + size.width + SIDE_GAP, y: pos.y, w: PLAYERS_W, h: size.height + SIDE_GAP + LINE_H },
-    linescore: { x: pos.x, y: pos.y + size.height + SIDE_GAP, w: size.width, h: LINE_H },
-  };
+  return { x: pos.x, y: pos.y, w: size.width, h: size.height };
 }
+
+/** The part of the main window's screen not under the Dock or the taskbar, logical pixels. */
+async function workArea(): Promise<Rect | undefined> {
+  const { currentMonitor } = await import('@tauri-apps/api/window');
+  const m = await currentMonitor();
+  if (!m) return undefined;
+  const s = m.scaleFactor, a = m.workArea;
+  return { x: a.position.x / s, y: a.position.y / s, w: a.size.width / s, h: a.size.height / s };
+}
+
+/** Move and size the main window, and the stats with it when open, from `from` to `to` in `ms`;
+ *  one Rust call a frame places them all at once (src-tauri/src/lib.rs place). */
+async function glide(from: Rect, to: Rect, withStats: boolean, ms = GLIDE_MS): Promise<void> {
+  const { invoke } = await import('@tauri-apps/api/core');
+  const run = ++glideRun;
+  const placeAt = (r: Rect) => {
+    placingUntil = Date.now() + 400;
+    const rects = [{ label: 'main', ...r }];
+    if (withStats) { const s = sideRects(r); rects.push({ label: PLAYERS, ...s.players }, { label: LINESCORE, ...s.linescore }); }
+    return invoke('place', { rects });
+  };
+  if (ms <= 0) { await placeAt(to); return; }
+  const start = performance.now();
+  await new Promise<void>((done) => {
+    const step = async () => {
+      if (run !== glideRun) { done(); return; }
+      const t = Math.min(1, (performance.now() - start) / ms);
+      await placeAt(between(from, to, ease(t)));
+      if (t < 1) requestAnimationFrame(() => void step()); else done();
+    };
+    requestAnimationFrame(() => void step());
+  });
+}
+
+/** Give the main window a size. In the corner it glides there with the new size, room made for the
+ *  stats when open; dragged elsewhere it only changes size. */
+async function sizeMain(w: number, h: number, withStats = playersOpen): Promise<void> {
+  const area = anchored ? await workArea() : undefined;
+  if (!area) {
+    const { LogicalSize } = await import('@tauri-apps/api/window');
+    await (await win()).setSize(new LogicalSize(w, h));
+    return;
+  }
+  await glide(await mainRect(), cornerRect(area, { w, h }, withStats), withStats);
+}
+
+// The window starts hidden (tauri.conf.json): placed in the corner first, then shown.
+if (shell) void (async () => {
+  try {
+    const area = await workArea(), r = await mainRect();
+    if (area) await glide(r, cornerRect(area, r, false), false, 0);
+  } finally {
+    await (await win()).show();
+  }
+})();
 
 async function toggleStats(): Promise<void> {
   if (!shell) {
@@ -192,17 +252,20 @@ async function toggleStats(): Promise<void> {
     return;
   }
   if (playersOpen) { await closeStats(); return; }
+  playersOpen = true;
+  render();
+  // In the corner, first make room for them.
+  if (anchored) { const r = await mainRect(); await sizeMain(r.w, r.h, true); }
   const { WebviewWindow } = await import('@tauri-apps/api/webviewWindow');
   const at = await sideLayout();
   // Children of the main window: on macOS the system then moves them with it, with no lag.
   const common = { decorations: false, transparent: true, shadow: false, alwaysOnTop: true, resizable: false, skipTaskbar: true, focus: false, parent: 'main' } as const;
   new WebviewWindow(PLAYERS, { url: 'players.html', x: at.players.x, y: at.players.y, width: at.players.w, height: at.players.h, ...common });
   new WebviewWindow(LINESCORE, { url: 'linescore.html', x: at.linescore.x, y: at.linescore.y, width: at.linescore.w, height: at.linescore.h, ...common });
-  playersOpen = true;
-  render();
 }
 
-/** Ask both to animate out and close; close whatever is still there once their animation is over. */
+/** Ask both to animate out and close; close whatever is still there once their animation is over,
+ *  and in the corner, glide back into it. */
 async function closeStats(): Promise<void> {
   playersOpen = false;
   playersSent = lineSent = '';
@@ -210,9 +273,11 @@ async function closeStats(): Promise<void> {
   const { emitTo } = await import('@tauri-apps/api/event');
   await Promise.all([emitTo(PLAYERS, 'side-close'), emitTo(LINESCORE, 'side-close')]);
   setTimeout(async () => {
+    if (playersOpen) return;
     const { WebviewWindow } = await import('@tauri-apps/api/webviewWindow');
-    for (const label of [PLAYERS, LINESCORE]) if (!playersOpen) await (await WebviewWindow.getByLabel(label))?.close();
-  }, 700);
+    for (const label of [PLAYERS, LINESCORE]) await (await WebviewWindow.getByLabel(label))?.close();
+    if (anchored && !playersOpen) { const r = await mainRect(); await sizeMain(r.w, r.h, false); }
+  }, LEAVE_MS + 80);
 }
 
 let playersSent = '', lineSent = '';
@@ -246,7 +311,8 @@ if (shell) void (async () => {
   const childrenMove = navigator.userAgent.includes('Mac');
   let busy = false, again = false, againResize = false;
   const follow = async (resize: boolean) => {
-    if (!playersOpen) return;
+    // A glide places them itself.
+    if (!playersOpen || Date.now() < placingUntil) return;
     if (busy) { again = true; againResize ||= resize; return; }
     busy = true;
     const at = await sideLayout();
@@ -258,6 +324,8 @@ if (shell) void (async () => {
     busy = false;
     if (again) { const r = againResize; again = againResize = false; void follow(r); }
   };
+  // A move that is not a glide's is the user's drag: from then on the window stays where they put it.
+  await w.onMoved(() => { if (Date.now() >= placingUntil) anchored = false; });
   if (!childrenMove) await w.onMoved(() => void follow(false));
   await w.onResized(() => void follow(true));
 })();
@@ -453,9 +521,8 @@ async function openPanel(kind: 'games' | 'settings'): Promise<void> {
   const was = panel;
   panel = kind;
   if (shell) {
-    const { LogicalSize } = await import('@tauri-apps/api/window');
     if (!was) sizeBeforePanel = { w: window.innerWidth, h: window.innerHeight };
-    await (await win()).setSize(new LogicalSize(PANEL_SIZE[kind].w, PANEL_SIZE[kind].h));
+    await sizeMain(PANEL_SIZE[kind].w, PANEL_SIZE[kind].h);
   }
   render();
   if (kind === 'games') { gamesDay = 0; await loadDay(); }
@@ -480,17 +547,13 @@ async function colourFavourite(): Promise<void> {
 async function closePanel(): Promise<void> {
   panel = undefined;
   pickerOpen = false;
-  if (shell && sizeBeforePanel) {
-    const { LogicalSize } = await import('@tauri-apps/api/window');
-    await (await win()).setSize(new LogicalSize(sizeBeforePanel.w, sizeBeforePanel.h));
-  }
+  if (shell && sizeBeforePanel) await sizeMain(sizeBeforePanel.w, sizeBeforePanel.h);
   render();
 }
 
 async function setTier(t: Tier): Promise<void> {
   if (!shell) return;
-  const { LogicalSize } = await import('@tauri-apps/api/window');
-  await (await win()).setSize(new LogicalSize(TIER_PRESET[t].w, TIER_PRESET[t].h));
+  await sizeMain(TIER_PRESET[t].w, TIER_PRESET[t].h);
 }
 
 app.addEventListener('click', (e) => {

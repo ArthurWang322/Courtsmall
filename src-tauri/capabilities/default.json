@@ -12,7 +12,6 @@
     "core:window:allow-hide",
     "core:window:allow-show",
     "core:webview:allow-create-webview-window",
-    "window-state:default",
     "notification:default",
     "global-shortcut:allow-register",
     "global-shortcut:allow-unregister-all",
