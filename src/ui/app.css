@@ -90,10 +90,10 @@ button { font: inherit; color: inherit; border: 0; background: transparent; padd
 .msg span:first-child { font: 600 15px var(--label); letter-spacing: .04em; }
 
 /* A finished game's points per period (src/ui/views.ts periodTable). */
-.periods { display: flex; flex-direction: column; align-items: center; gap: 1px; margin-top: 8px; }
+.periods { display: flex; flex-direction: column; align-items: center; gap: 1px; margin-top: 4px; }
 .periods .period { gap: 0; justify-content: center; color: var(--muted); }
-.periods .abbr { width: 56px; font: 600 14px/1.1 var(--label); letter-spacing: .08em; }
-.periods .mono { width: 36px; text-align: right; font: 600 18px/1.1 var(--label); color: var(--text); }
+.periods .abbr { width: 60px; font: 600 15px/1.1 var(--label); letter-spacing: .08em; }
+.periods .mono { width: 42px; text-align: right; font: 600 21px/1.1 var(--label); color: var(--text); }
 .periods .head .mono { font-size: 11px; letter-spacing: .08em; color: var(--faint); }
 
 /* ---- Court (src/render/court.ts): a half court in 3D, the basket at the far end ------------------ */
@@ -178,7 +178,11 @@ button { font: inherit; color: inherit; border: 0; background: transparent; padd
 
 
 /* A finished game's leaders (src/ui/views.ts leadersTable): stat in the middle, each side on its side. */
-.leaders { display: flex; flex-direction: column; gap: 3px; margin-top: 14px; padding-top: 10px; border-top: 1px solid var(--border); }
+/* Tighter above the line since the periods got their labels, so the six rows still clear the toolbar. */
+.leaders { display: flex; flex-direction: column; gap: 2px; margin-top: 8px; padding-top: 6px; border-top: 1px solid var(--border); }
+/* A result in the court's size fills it, the leaders down by the toolbar and the room left above them. */
+#app[data-tier='court'] .bar.result { height: 100%; }
+#app[data-tier='court'] .bar.result .leaders { margin-top: auto; padding-bottom: 2px; }
 .leader { display: grid; grid-template-columns: 1fr 52px 1fr; align-items: center; gap: 8px; }
 .leader .stat { text-align: center; font: 600 12px var(--label); letter-spacing: .1em; color: var(--muted); }
 .leader .who { display: flex; align-items: baseline; gap: 6px; min-width: 0; white-space: nowrap; }

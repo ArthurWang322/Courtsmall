@@ -115,7 +115,7 @@ export function playLines(s: GameState, T: Strings, count: number): string[] {
  * and with `withLeaders` (a window tall enough) each side's leaders under them.
  */
 export function barView(s: GameState, T: Strings, lines: number, tag?: string, favs: readonly string[] = [], result = false, ages: ScoreAges = {}, withLeaders = false): string {
-  if (result) return `<div class="bar">${scoreBug(s, T, tag, favs)}${periodTable(s)}${withLeaders ? leadersTable(s, T) : ''}</div>`;
+  if (result) return `<div class="bar result">${scoreBug(s, T, tag, favs)}${periodTable(s)}${withLeaders ? leadersTable(s, T) : ''}</div>`;
   const [newest = '', ...older] = playLines(s, T, lines);
   // Every older line has its place even before there are plays for it, so nothing moves later.
   const rows = Array.from({ length: lines - 1 }, (_, i) => `<div class="row play old old-${i + 1}">${older[i] ?? ''}</div>`);
