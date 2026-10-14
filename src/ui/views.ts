@@ -127,9 +127,15 @@ export function barView(s: GameState, T: Strings, lines: number, tag?: string, f
 
 /** Points per period for a finished game: one row per team, overtimes included. */
 export function periodTable(s: GameState): string {
+  // Over the points, which period they are: 1 to 4, then OT, 2OT…, as the line score labels them.
+  const n = Math.max(s.periodScores.away.length, s.periodScores.home.length);
+  const head = `<div class="row period head"><span class="abbr"></span>${Array.from({ length: n }, (_, i) => `<span class="mono">${periodLabel(i + 1)}</span>`).join('')}</div>`;
   const row = (side: Side) => `<div class="row period"><span class="abbr">${esc(s.teams[side].abbr)}</span>${s.periodScores[side].map((n) => `<span class="mono">${n}</span>`).join('')}</div>`;
-  return `<div class="periods">${row('away')}${row('home')}</div>`;
+  return `<div class="periods">${head}${row('away')}${row('home')}</div>`;
 }
+
+/** A period's label over its points: 1 to 4, then OT, 2OT… */
+const periodLabel = (p: number) => (p <= 4 ? `${p}` : p === 5 ? 'OT' : `${p - 4}OT`);
 
 /**
  * Each side's leader in points, rebounds, assists, steals, blocks and turnovers: the stat in the
@@ -367,9 +373,8 @@ export function boxView(teams: Record<Side, TeamRef> | undefined, box: Record<Si
 export function lineScoreView(s: Pick<GameState, 'teams' | 'periodScores' | 'score' | 'period' | 'status'>, T: Strings, favs: readonly string[] = []): string {
   const c = gameColours(s.teams, favIn(s.teams, favs));
   const n = Math.max(4, s.period, s.periodScores.away.length, s.periodScores.home.length);
-  const label = (p: number) => (p <= 4 ? `${p}` : p === 5 ? 'OT' : `${p - 4}OT`);
   const on = (p: number) => (s.status === 'live' || s.status === 'break') && p === s.period;
-  const head = `<div class="lrow lhead"><span class="lteam"></span>${Array.from({ length: n }, (_, i) => `<span class="${on(i + 1) ? 'now' : ''}">${label(i + 1)}</span>`).join('')}<span class="ltotal">${esc(T.lineTotal)}</span></div>`;
+  const head = `<div class="lrow lhead"><span class="lteam"></span>${Array.from({ length: n }, (_, i) => `<span class="${on(i + 1) ? 'now' : ''}">${periodLabel(i + 1)}</span>`).join('')}<span class="ltotal">${esc(T.lineTotal)}</span></div>`;
   const row = (side: Side) => `<div class="lrow"><span class="lteam"><i class="stripe" style="background:#${esc(c[side])}"></i>${star(s.teams[side], favs)}${esc(s.teams[side].abbr)}</span>`
     + Array.from({ length: n }, (_, i) => { const v = s.periodScores[side][i]; return `<span class="${on(i + 1) ? 'now' : ''}">${v === undefined ? '–' : v}</span>`; }).join('')
     + `<b class="ltotal">${s.score[side]}</b></div>`;

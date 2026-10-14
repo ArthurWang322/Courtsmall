@@ -394,3 +394,13 @@ describe('team logos', () => {
   });
 });
 
+describe('a result in the main window', () => {
+  // The line score stays closed for a result, so the main window's points per period must say
+  // which period each number is, overtime included.
+  it('labels the periods over the points, overtime as OT', () => {
+    const s: GameState = { ...base, status: 'final', period: 5, periodScores: { away: [30, 25, 28, 27, 10], home: [28, 27, 25, 30, 8] } };
+    const html = barView(s, en, 1, undefined, [], true);
+    const head = html.match(/<div class="row period head">(.*?)<\/div>/)![1]!;
+    expect([...head.matchAll(/<span class="mono">(.*?)<\/span>/g)].map((m) => m[1])).toEqual(['1', '2', '3', '4', 'OT']);
+  });
+});

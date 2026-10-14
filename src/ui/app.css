@@ -94,6 +94,7 @@ button { font: inherit; color: inherit; border: 0; background: transparent; padd
 .periods .period { gap: 0; justify-content: center; color: var(--muted); }
 .periods .abbr { width: 56px; font: 600 14px/1.1 var(--label); letter-spacing: .08em; }
 .periods .mono { width: 36px; text-align: right; font: 600 18px/1.1 var(--label); color: var(--text); }
+.periods .head .mono { font-size: 11px; letter-spacing: .08em; color: var(--faint); }
 
 /* ---- Court (src/render/court.ts): a half court in 3D, the basket at the far end ------------------ */
 #app[data-tier='court'] .content { align-items: stretch; }
