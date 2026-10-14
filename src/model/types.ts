@@ -80,6 +80,23 @@ export const STAT_KEYS: readonly StatKey[] = ['pts', 'reb', 'ast', 'stl', 'blk',
 /** One side's leader in each stat: on a tie, whoever the box score lists first. */
 export type Leaders = Partial<Record<StatKey, { player: PlayerRef; value: number }>>;
 
+/** One player's line in a game's box score (the official count, from ESPN). */
+export interface BoxLine {
+  player: PlayerRef;
+  starter: boolean;
+  /** Did not play; `reason` says why when the league gives one ("COACH'S DECISION", an injury). */
+  dnp: boolean;
+  reason?: string;
+  /** Minutes played. */
+  min: number;
+  pts: number;
+  reb: number;
+  ast: number;
+  stl: number;
+  blk: number;
+  to: number;
+}
+
 /** Points one side has scored since the other side last scored. */
 export interface Run {
   side: Side;

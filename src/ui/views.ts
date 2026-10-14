@@ -2,7 +2,7 @@
 // What a glance needs (docs/PLAN.md Q3): score, period and clock, possession, the last basket,
 // and a run once it is worth noticing.
 
-import { STAT_KEYS, type GameCard, type GameState, type PlayLine, type Side, type TeamRef } from '../model/types.ts';
+import { STAT_KEYS, type BoxLine, type GameCard, type GameState, type PlayLine, type Side, type TeamRef } from '../model/types.ts';
 import type { Settings } from '../settings/store.ts';
 import type { Tier } from '../render/tiers.ts';
 import { gameColours, visibleColour } from '../render/colour.ts';
@@ -199,10 +199,12 @@ export function settingsView(teams: readonly TeamRef[], s: Settings, T: Strings,
 // ---- Hover toolbar and the games list ------------------------------------------------------------
 
 /** Icons in basic shapes, 14 px, drawn in the current text colour. */
-const ICON: Record<Tier | 'games' | 'settings', string> = {
+const ICON: Record<Tier | 'games' | 'box' | 'settings', string> = {
   bar: '<rect x="1.5" y="3" width="11" height="8" rx="1.5"/><path d="M3.5 6.5h7"/>',
   court: '<path d="M3 3.5h8l1.5 7.5h-11z"/><path d="M5.2 3.5v3h3.6v-3"/>',
   games: '<path d="M2.5 4h9M2.5 7h9M2.5 10h9"/>',
+  // A small table: the players' lines.
+  box: '<rect x="2" y="2.5" width="10" height="9" rx="1.5"/><path d="M2 5.5h10M5.5 5.5v6"/>',
   settings: '<circle cx="7" cy="7" r="2"/><path d="M7 1.5v2M7 10.5v2M1.5 7h2M10.5 7h2M3.1 3.1l1.4 1.4M9.5 9.5l1.4 1.4M3.1 10.9l1.4-1.4M9.5 4.5l1.4-1.4"/>',
 };
 const icon = (k: keyof typeof ICON) => `<svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true">${ICON[k]}</svg>`;
@@ -216,6 +218,7 @@ export function controlsView(tier: Tier, T: Strings): string {
   const size = (t: Tier) => `<button class="icon${t === tier ? ' on' : ''}" data-tier="${t}" data-tip="${esc(T.tip[t])}" aria-label="${esc(T.tip[t])}">${icon(t)}</button>`;
   return `<div class="controls">${size('bar')}${size('court')}<span class="sep"></span>`
     + `<button class="icon" data-open="games" data-tip="${esc(T.tip.games)}" aria-label="${esc(T.tip.games)}">${icon('games')}</button>`
+    + `<button class="icon" data-open="box" data-tip="${esc(T.tip.box)}" aria-label="${esc(T.tip.box)}">${icon('box')}</button>`
     + `<button class="icon" data-open="settings" data-tip="${esc(T.tip.settings)}" aria-label="${esc(T.tip.settings)}">${icon('settings')}</button></div>`;
 }
 
@@ -257,5 +260,23 @@ export function gamesView(day: string, games: readonly GameCard[], T: Strings, t
       <div class="head"><button class="icon" data-day="-1" title="${esc(T.prevDay)}">‹</button><b>${esc(day)}</b><button class="icon" data-day="1" title="${esc(T.nextDay)}">›</button><span class="grow"></span><button class="done" data-done>${esc(T.done)}</button></div>
       <div class="list">${sorted.length ? sorted.map(row).join('') : `<span class="muted">${esc(T.noGames)}</span>`}</div>
     </div>`;
+}
+
+/**
+ * The players' panel: one side's box score, starters first, those who did not play last and
+ * quieter. Two buttons switch the side; `box` is undefined while it loads.
+ */
+export function boxView(teams: Record<Side, TeamRef> | undefined, box: Record<Side, BoxLine[]> | undefined, side: Side, T: Strings, favs: readonly string[] = []): string {
+  const done = `<button class="done" data-done>${esc(T.done)}</button>`;
+  if (!teams) return `<div class="panel box"><div class="head"><span class="grow"></span>${done}</div><span class="muted">${esc(T.box.noGame)}</span></div>`;
+  const c = gameColours(teams, favIn(teams, favs));
+  const tab = (sd: Side) => `<button class="side${sd === side ? ' on' : ''}" data-box-side="${sd}">${colourDot(c[sd])}${star(teams[sd], favs)}${esc(teams[sd].abbr)}</button>`;
+  const cols = ['min', ...STAT_KEYS] as const;
+  const head = `<div class="row head-row"><span class="name">${esc(T.box.player)}</span>${cols.map((k) => `<span>${esc(k === 'min' ? T.box.min : T.stat(k))}</span>`).join('')}</div>`;
+  const row = (l: BoxLine) => l.dnp
+    ? `<div class="row dnp"><span class="name">${esc(l.player.short)}</span><span class="why">${esc(T.box.dnp)}</span></div>`
+    : `<div class="row${l.starter ? ' starter' : ''}"><span class="name">${esc(l.player.short)}</span>${cols.map((k) => `<span>${l[k]}</span>`).join('')}</div>`;
+  const body = box ? box[side].map(row).join('') : `<span class="muted">${esc(T.loading)}</span>`;
+  return `<div class="panel box"><div class="head">${tab('away')}${tab('home')}<span class="grow"></span>${done}</div><div class="table">${head}<div class="list">${body}</div></div></div>`;
 }
 

@@ -64,7 +64,7 @@ export interface Summary {
       team: { id: string };
       statistics: {
         names: string[];
-        athletes: { athlete: { id: string; displayName: string; shortName: string }; stats: string[] }[];
+        athletes: { athlete: { id: string; displayName: string; shortName: string }; stats: string[]; starter?: boolean; didNotPlay?: boolean; reason?: string }[];
       }[];
     }[];
   };

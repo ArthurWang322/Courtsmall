@@ -3,6 +3,8 @@
 
 import type { GameCard, Side, TeamRef } from '../../model/types.ts';
 import type { CorePlay, CorePlayPage, GameFeed, GroupNode, Groups, Scoreboard, Summary, TeamSchedule } from './feed-types.ts';
+import { boxScore } from './box.ts';
+import type { BoxLine } from '../../model/types.ts';
 import { gameStatus, teamRef } from './timeline.ts';
 
 export type FetchJson = (url: string) => Promise<unknown>;
@@ -73,5 +75,10 @@ export async function teamGames(get: FetchJson, teamId: string, seasonType?: 2 |
     }
     return { id: e.id, status: gameStatus(comp.status.type.name), teams, start: Date.parse(e.date), period: comp.status.period, clock: comp.status.clock, score };
   });
+}
+
+/** A game's box score now: the summary again (about 40 KB gzipped), fetched only while it is on screen. */
+export async function loadBox(get: FetchJson, id: string): Promise<Record<Side, BoxLine[]>> {
+  return boxScore((await get(`${SITE}/summary?event=${id}`)) as Summary);
 }
 

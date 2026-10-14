@@ -2,8 +2,8 @@
 
 import { describe, expect, it } from 'vitest';
 import { STRINGS } from '../src/i18n/index.ts';
-import { barView, clockText, controlsView, countdownParts, gamesView, JUMP_MS, leadersTable, playLines, pregameView, RUN_MIN, settingsView, whenText } from '../src/ui/views.ts';
-import type { GameCard, GameState, PlayLine } from '../src/model/types.ts';
+import { barView, boxView, clockText, controlsView, countdownParts, gamesView, JUMP_MS, leadersTable, playLines, pregameView, RUN_MIN, settingsView, whenText } from '../src/ui/views.ts';
+import type { BoxLine, GameCard, GameState, PlayLine } from '../src/model/types.ts';
 
 const en = STRINGS.en, zh = STRINGS['zh-TW'];
 /** The newest play line alone, as a one-line bar shows it. */
@@ -138,7 +138,7 @@ describe('toolbar and games list', () => {
     expect(html.match(/class="icon on" data-tier="(\w+)"/)![1]).toBe('bar');
     expect([...html.matchAll(/data-tier="(\w+)"/g)].map((m) => m[1])).toEqual(['bar', 'court']);
     // Every button says what it does on hover, in the maintainer's words.
-    expect([...html.matchAll(/data-tip="([^"]+)"/g)].map((m) => m[1])).toEqual(['簡易模式', '球場模式', '比賽列表', '設定']);
+    expect([...html.matchAll(/data-tip="([^"]+)"/g)].map((m) => m[1])).toEqual(['簡易模式', '球場模式', '比賽列表', '球員數據', '設定']);
     expect(html).toContain('data-open="games"');
     expect(html).toContain('data-open="settings"');
   });
@@ -238,6 +238,29 @@ describe('settings page', () => {
     expect([...open.matchAll(/<button class="fav-item( on)?" data-fav-pick="(\d*)">([^<]*)</g)].map((m) => `${m[3]}${m[1] ? '*' : ''}`))
       .toEqual(['無（自動跟最緊張的比賽）', 'Denver Nuggets*', 'Philadelphia 76ers']);
     expect(settingsView(teams, settings, zh)).toContain('<span>無（自動跟最緊張的比賽）</span>');
+  });
+});
+
+describe("players' panel", () => {
+  const line = (id: string, short: string, o: Partial<BoxLine> = {}): BoxLine => ({
+    player: { id, name: short, short }, starter: false, dnp: false, min: 20, pts: 10, reb: 5, ast: 3, stl: 1, blk: 0, to: 2, ...o,
+  });
+  const box = { away: [line('1', 'D. Fox', { starter: true, pts: 31 }), line('2', 'K. Ellis'), line('3', 'X. Tillman', { dnp: true, min: 0 })], home: [line('9', 'L. Markkanen', { starter: true })] };
+
+  // A player's line reads left to right in the order of the header: minutes, then the six stats.
+  it("shows the chosen side's players with minutes and the six stats, those who did not play marked", () => {
+    const html = boxView(base.teams, box, 'away', zh);
+    const rows = [...html.matchAll(/<div class="row( starter| head-row)?">(.*?)<\/div>/g)].map((m) => m[2]!.replace(/<[^>]+>/g, ' ').trim().split(/\s+/));
+    expect(rows[0]).toEqual(['球員', '時間', '得分', '籃板', '助攻', '抄截', '火鍋', '失誤']);
+    expect(rows[1]).toEqual(['D.', 'Fox', '20', '31', '5', '3', '1', '0', '2']);
+    expect(html).toContain('<div class="row dnp"><span class="name">X. Tillman</span><span class="why">未上場</span></div>');
+    expect(html).not.toContain('Markkanen');
+    expect(html).toContain('class="side on" data-box-side="away"');
+  });
+
+  it('says so when no game is on screen, and that it is loading before the box score comes', () => {
+    expect(boxView(undefined, undefined, 'away', zh)).toContain('目前沒有正在看的比賽');
+    expect(boxView(base.teams, undefined, 'away', zh)).toContain('載入中');
   });
 });
 
