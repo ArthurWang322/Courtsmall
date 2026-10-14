@@ -157,8 +157,8 @@ let controlsFor = '';
 function show(html: string, tier: Tier | undefined): void {
   contentEl.innerHTML = html;
   const want = tier ?? '';
-  const key = `${want}:${playersOpen}`;
-  if (key !== controlsFor) { controlsFor = key; controlsEl.innerHTML = tier ? controlsView(tier, T, playersOpen) : ''; }
+  const key = `${want}:${playersOpen}:${anchored}`;
+  if (key !== controlsFor) { controlsFor = key; controlsEl.innerHTML = tier ? controlsView(tier, T, playersOpen, !anchored) : ''; }
 }
 
 // ---- The stats windows ------------------------------------------------------------------------------
@@ -221,6 +221,14 @@ async function glide(from: Rect, to: Rect, withStats: boolean, ms = GLIDE_MS): P
     };
     requestAnimationFrame(() => void step());
   });
+}
+
+/** Back to the corner (the toolbar's button, once dragged away), the stats with it, and stay there. */
+async function backToCorner(): Promise<void> {
+  anchored = true;
+  render();
+  const r = await mainRect();
+  await sizeMain(r.w, r.h);
 }
 
 /** Give the main window a size. In the corner it glides there with the new size, room made for the
@@ -325,7 +333,7 @@ if (shell) void (async () => {
     if (again) { const r = againResize; again = againResize = false; void follow(r); }
   };
   // A move that is not a glide's is the user's drag: from then on the window stays where they put it.
-  await w.onMoved(() => { if (Date.now() >= placingUntil) anchored = false; });
+  await w.onMoved(() => { if (anchored && Date.now() >= placingUntil) { anchored = false; render(); } });
   if (!childrenMove) await w.onMoved(() => void follow(false));
   await w.onResized(() => void follow(true));
 })();
@@ -557,7 +565,7 @@ async function setTier(t: Tier): Promise<void> {
 }
 
 app.addEventListener('click', (e) => {
-  const el = (e.target as HTMLElement).closest<HTMLElement>('[data-tier], [data-open], [data-day], [data-players], [data-game], [data-done], [data-notify], [data-shortcuts], [data-update], [data-fav-open], [data-fav-pick]');
+  const el = (e.target as HTMLElement).closest<HTMLElement>('[data-tier], [data-corner], [data-open], [data-day], [data-players], [data-game], [data-done], [data-notify], [data-shortcuts], [data-update], [data-fav-open], [data-fav-pick]');
   // The favourite's list: its button opens and closes it, a team in it is picked, a click
   // anywhere else closes it.
   if (pickerOpen && !el?.closest('.favourite')) { pickerOpen = false; render(); }
@@ -574,6 +582,7 @@ app.addEventListener('click', (e) => {
     return;
   }
   if (el.dataset.tier) { void setTier(el.dataset.tier as Tier); return; }
+  if (el.dataset.corner !== undefined) { void backToCorner(); return; }
   if (el.dataset.open) { void openPanel(el.dataset.open as 'games' | 'settings'); return; }
   if (el.dataset.players !== undefined) { void toggleStats(); return; }
   if (el.dataset.done !== undefined) { void closePanel(); return; }

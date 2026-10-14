@@ -58,7 +58,7 @@ export interface Strings {
   /** The line score's total column. */
   lineTotal: string;
   /** The toolbar's tips, one per button. */
-  tip: { bar: string; court: string; games: string; box: string; settings: string };
+  tip: { bar: string; court: string; games: string; box: string; settings: string; corner: string };
   /** The players' panel. */
   box: { player: string; min: string; dnp: string; noGame: string; team: string };
   /** Team stats' labels. */
@@ -118,7 +118,7 @@ export const STRINGS: Record<Lang, Strings> = {
     save: 'Save',
     close: 'Close',
     lineTotal: 'T',
-    tip: { bar: 'Simple', court: 'Court', games: 'Games', box: 'Stats', settings: 'Settings' },
+    tip: { bar: 'Simple', court: 'Court', games: 'Games', box: 'Stats', settings: 'Settings', corner: 'Back to the corner' },
     box: { player: 'PLAYER', min: 'MIN', dnp: 'DNP', noGame: 'No game on screen', team: 'Team stats' },
     teamStat: { fg: 'Field goals', two: '2-pointers', three: '3-pointers', ft: 'Free throws', reb: 'Rebounds', ast: 'Assists', stl: 'Steals', blk: 'Blocks', to: 'Turnovers', fouls: 'Fouls', fastBreak: 'Fast break pts', paint: 'Points in paint', largestLead: 'Largest lead' },
     noGames: 'No games this day',
@@ -172,7 +172,7 @@ export const STRINGS: Record<Lang, Strings> = {
     save: '儲存',
     close: '關閉',
     lineTotal: '總分',
-    tip: { bar: '簡易模式', court: '球場模式', games: '比賽列表', box: '數據', settings: '設定' },
+    tip: { bar: '簡易模式', court: '球場模式', games: '比賽列表', box: '數據', settings: '設定', corner: '回到右下角' },
     box: { player: '球員', min: '時間', dnp: '未上場', noGame: '目前沒有正在看的比賽', team: '團隊數據' },
     teamStat: { fg: '投籃', two: '兩分', three: '三分', ft: '罰球', reb: '籃板', ast: '助攻', stl: '抄截', blk: '火鍋', to: '失誤', fouls: '犯規', fastBreak: '快攻得分', paint: '禁區得分', largestLead: '最大領先' },
     noGames: '這天沒有比賽',

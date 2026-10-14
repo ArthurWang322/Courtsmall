@@ -157,6 +157,14 @@ describe('toolbar and games list', () => {
     expect(html).toContain('data-open="settings"');
   });
 
+  // The way back to the corner only matters once the window has left it; then it comes first, so
+  // the buttons people know stay where they were.
+  it('offers the way back to the corner only once the window was dragged away', () => {
+    expect(controlsView('bar', zh)).not.toContain('data-corner');
+    const moved = controlsView('bar', zh, false, true);
+    expect([...moved.matchAll(/data-tip="([^"]+)"/g)].map((m) => m[1])).toEqual(['回到右下角', '簡易模式', '球場模式', '比賽列表', '數據', '設定']);
+  });
+
   // The list answers "what can I watch now": games on first; a finished game can only be replayed.
   it('lists the games on first, then those to come, then the finished ones, which open as results', () => {
     const card = (id: string, status: GameCard['status'], start: number): GameCard => ({
