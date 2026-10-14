@@ -269,16 +269,17 @@ const pct = (m: MadeOf) => (m.att ? Math.round((m.made / m.att) * 100) : 0);
 
 /**
  * The two teams' stats as a butterfly chart: each row a stat, the away bar growing left from the
- * middle and the home bar right, in the team colours, the longer one as long as the half. Shooting
- * rows compare the percentage and say made-attempted too. The better side's number is brighter
+ * middle and the home bar right, in the team colours. A shooting row's bar is its percentage, the
+ * whole half 100% (made-attempted beside it); a count's bars compare the two, the larger as long as
+ * the half. The better side's number is brighter
  * (for turnovers and fouls, the fewer).
  */
 export function teamView(teams: Record<Side, TeamRef>, stats: Partial<Record<Side, TeamStats>>, T: Strings, favs: readonly string[] = []): string {
   const a = stats.away, h = stats.home;
   if (!a || !h) return `<span class="muted">${esc(T.loading)}</span>`;
   const c = gameColours(teams, favIn(teams, favs));
-  type Row = { label: string; av: number; hv: number; at: string; ht: string; fewer?: boolean };
-  const shot = (label: string, x: MadeOf, y: MadeOf): Row => ({ label, av: pct(x), hv: pct(y), at: `${x.made}-${x.att} · ${pct(x)}%`, ht: `${pct(y)}% · ${y.made}-${y.att}` });
+  type Row = { label: string; av: number; hv: number; at: string; ht: string; fewer?: boolean; percent?: boolean };
+  const shot = (label: string, x: MadeOf, y: MadeOf): Row => ({ label, av: pct(x), hv: pct(y), at: `${x.made}-${x.att} · ${pct(x)}%`, ht: `${pct(y)}% · ${y.made}-${y.att}`, percent: true });
   const count = (label: string, x: number, y: number, fewer = false): Row => ({ label, av: x, hv: y, at: String(x), ht: String(y), fewer });
   const S = T.teamStat;
   const rows: Row[] = [
@@ -289,7 +290,7 @@ export function teamView(teams: Record<Side, TeamRef>, stats: Partial<Record<Sid
     count(S.fastBreak, a.fastBreak, h.fastBreak), count(S.paint, a.paint, h.paint), count(S.largestLead, a.largestLead, h.largestLead),
   ];
   const row = (r: Row) => {
-    const max = Math.max(r.av, r.hv) || 1;
+    const max = r.percent ? 100 : Math.max(r.av, r.hv) || 1;
     const better = r.av === r.hv ? '' : (r.av > r.hv) !== !!r.fewer ? 'away' : 'home';
     const bar = (side: Side, v: number) => `<i class="bar ${side}" style="width:${((v / max) * 100).toFixed(1)}%;background:#${esc(c[side])}"></i>`;
     return `<div class="trow" title="${esc(`${teams.away.abbr} ${r.at}  ·  ${r.label}  ·  ${r.ht} ${teams.home.abbr}`)}">`

@@ -283,13 +283,20 @@ describe("teams' stats", () => {
   /** The markup of one stat's row. */
   const row = (label: string) => html.split('<div class="trow"').find((r) => r.includes(`<span class="tlabel">${label}</span>`))!;
 
-  // Shooting is compared by percentage, and says made-attempted too.
-  it('compares shooting by percentage, the longer bar as long as the half, made-attempted beside it', () => {
+  // The maintainer's call (2026-10-14): a percentage's bar is the percentage, the half being 100%;
+  // a count's bars compare the two sides.
+  it("draws a shooting row's bar as its percentage of the whole half, made-attempted beside it", () => {
     const r = row('三分');
     expect(r).toContain('15-30 · 50%');
     expect(r).toContain('33% · 10-30');
-    expect(r).toMatch(/class="bar away" style="width:100\.0%/);
-    expect(r).toMatch(/class="bar home" style="width:66\.0%/);
+    expect(r).toMatch(/class="bar away" style="width:50\.0%/);
+    expect(r).toMatch(/class="bar home" style="width:33\.0%/);
+  });
+
+  it("draws a count's bars against each other, the larger as long as the half", () => {
+    const r = row('失誤');
+    expect(r).toMatch(/class="bar away" style="width:66\.7%/);
+    expect(r).toMatch(/class="bar home" style="width:100\.0%/);
   });
 
   // The fewer turnovers is the better side; everywhere else the more.
