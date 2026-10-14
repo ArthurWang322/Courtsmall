@@ -318,3 +318,10 @@ describe('line score', () => {
   });
 });
 
+describe('games list close', () => {
+  it('closes from a ✕, like the stats window', () => {
+    const html = gamesView('10/13', [], zh, () => '');
+    expect(html).toContain('<button class="icon close" data-done aria-label="關閉">✕</button>');
+    expect(html).not.toContain('完成');
+  });
+});

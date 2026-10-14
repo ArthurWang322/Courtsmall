@@ -258,7 +258,7 @@ export function gamesView(day: string, games: readonly GameCard[], T: Strings, t
       + `<span class="when mono">${esc(cardWhen(g, T, tipOff))}</span></button>`;
   };
   return `<div class="panel games">
-      <div class="head"><button class="icon" data-day="-1" title="${esc(T.prevDay)}">‹</button><b>${esc(day)}</b><button class="icon" data-day="1" title="${esc(T.nextDay)}">›</button><span class="grow"></span><button class="done" data-done>${esc(T.done)}</button></div>
+      <div class="head"><button class="icon" data-day="-1" title="${esc(T.prevDay)}">‹</button><b>${esc(day)}</b><button class="icon" data-day="1" title="${esc(T.nextDay)}">›</button><span class="grow"></span><button class="icon close" data-done aria-label="${esc(T.close)}">✕</button></div>
       <div class="list">${sorted.length ? sorted.map(row).join('') : `<span class="muted">${esc(T.noGames)}</span>`}</div>
     </div>`;
 }
