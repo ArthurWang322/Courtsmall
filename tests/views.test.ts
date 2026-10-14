@@ -238,6 +238,7 @@ describe('settings page', () => {
     expect([...open.matchAll(/<button class="fav-item( on)?" data-fav-pick="(\d*)">([^<]*)</g)].map((m) => `${m[3]}${m[1] ? '*' : ''}`))
       .toEqual(['無（自動跟最緊張的比賽）', 'Denver Nuggets*', 'Philadelphia 76ers']);
     expect(settingsView(teams, settings, zh)).toContain('<span>無（自動跟最緊張的比賽）</span>');
+    expect(settingsView(teams, settings, zh)).toContain('data-done>儲存</button>');
   });
 
   // The keys are only useful if people can find them: each one, in the system's own notation.

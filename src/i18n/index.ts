@@ -53,7 +53,7 @@ export interface Strings {
   shortcut: { mode: string; stats: string; hide: string };
   /** Shown when another app already has the keys. */
   shortcutsTaken: string;
-  done: string;
+  save: string;
   close: string;
   /** The line score's total column. */
   lineTotal: string;
@@ -111,7 +111,7 @@ export const STRINGS: Record<Lang, Strings> = {
     shortcuts: 'Keyboard shortcuts, from any app',
     shortcut: { mode: 'simple / court', stats: 'stats', hide: 'hide / show' },
     shortcutsTaken: 'Some keys are taken by another app.',
-    done: 'Done',
+    save: 'Save',
     close: 'Close',
     lineTotal: 'T',
     tip: { bar: 'Simple', court: 'Court', games: 'Games', box: 'Stats', settings: 'Settings' },
@@ -161,7 +161,7 @@ export const STRINGS: Record<Lang, Strings> = {
     shortcuts: '快捷鍵（在任何程式裡都能用）',
     shortcut: { mode: '切換模式', stats: '數據', hide: '隱藏／顯示' },
     shortcutsTaken: '有些按鍵已被其他程式佔用。',
-    done: '完成',
+    save: '儲存',
     close: '關閉',
     lineTotal: '總分',
     tip: { bar: '簡易模式', court: '球場模式', games: '比賽列表', box: '數據', settings: '設定' },

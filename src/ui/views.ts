@@ -191,7 +191,7 @@ export function settingsView(teams: readonly TeamRef[], s: Settings, T: Strings,
   const check = (key: keyof Settings['notify'], label: string) =>
     `<label class="check"><input type="checkbox" data-notify="${key}"${s.notify[key] ? ' checked' : ''}> ${esc(label)}</label>`;
   return `<div class="settings">
-      <div class="head"><b>${esc(T.chooseTeam)}</b><button class="done" data-done>${esc(T.done)}</button></div>
+      <div class="head"><b>${esc(T.chooseTeam)}</b><button class="done" data-done>${esc(T.save)}</button></div>
       ${picker}
       <span class="hint muted">${esc(fav ? T.favouritesHint : T.noTeam)}</span>
       ${check('start', T.notifyStart)}${check('final', T.notifyFinal)}${check('clutch', T.notifyClutch)}
