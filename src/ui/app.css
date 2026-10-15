@@ -352,12 +352,16 @@ button { font: inherit; color: inherit; border: 0; background: transparent; padd
   background: var(--panel); color: var(--muted); font: 600 13px var(--label); letter-spacing: .06em; }
 .panel.box .side.on { color: var(--text); border-color: var(--accent); }
 .panel.box .table { display: flex; flex-direction: column; min-height: 0; flex: 1; }
-.panel.box .row { display: grid; grid-template-columns: minmax(0, 1fr) repeat(7, 30px); align-items: center; gap: 2px; padding: 3px 4px;
+/* The name keeps room to be read; the numbers give way first, down from 30 px, when the window has
+   less room than it should (on Windows, larger text settings make the same window narrower). */
+.panel.box .row { display: grid; grid-template-columns: minmax(72px, 1fr) repeat(7, minmax(22px, 30px)); align-items: center; gap: 2px; padding: 3px 4px;
   font: 600 13px var(--label); font-variant-numeric: tabular-nums; color: var(--muted); }
 .panel.box .row > span:not(.name) { text-align: right; }
 .panel.box .row .name { font: 500 12px var(--font); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .panel.box .row.starter { color: var(--text); }
-.panel.box .head-row { font-size: 11px; letter-spacing: .08em; color: var(--faint); border-bottom: 1px solid var(--border); }
+.panel.box .head-row { font-size: 11px; letter-spacing: .08em; color: var(--faint); border-bottom: 1px solid var(--border); white-space: nowrap; }
+/* Columns narrowed: the two-character labels stay on one line. */
+@media (max-width: 330px) { .panel.box .head-row { letter-spacing: 0; } }
 .panel.box .row.dnp { color: var(--faint); grid-template-columns: minmax(0, 1fr) auto; }
 .panel.box .row.dnp .why { font-size: 11px; }
 .panel.box .list { gap: 0; }
