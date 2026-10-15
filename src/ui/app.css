@@ -3,9 +3,10 @@
    --background must match BACKGROUND in src/render/colour.ts: team colours are checked against it. */
 :root {
   --background: #141317; --surface: #1c1b20; --panel: #222127; --border: #2e2d34; --edge: rgba(255, 255, 255, .07);
-  --text: #f3efe7; --muted: #9b98a2; --faint: #6c6973; --accent: #f2b544; --info: #5aa9ff; --glow: rgba(242, 181, 68, .07);
-  --wood: #5a3f27; --wood-hi: #7a5735; --plank: rgba(0, 0, 0, .16); --court-line: rgba(243, 239, 231, .55); --court-edge: rgba(243, 239, 231, .22);
-  --board-fill: rgba(243, 239, 231, .08); --board-line: rgba(243, 239, 231, .55); --points-stroke: rgba(0, 0, 0, .6);
+  --text: #f3efe7; --muted: #9b98a2; --faint: #6c6973; --accent: #f2b544; --info: #5aa9ff; --live: #3ddc84; --paused: #ff5a5f; --glow: rgba(242, 181, 68, .07);
+  --wood: #d6b47f; --wood-hi: #f0dab0; --plank: rgba(90, 55, 20, .12); --court-line: rgba(20, 14, 10, .88);
+  --net: rgba(255, 255, 255, .85);
+  --board-fill: rgba(205, 225, 255, .16); --board-line: rgba(255, 255, 255, .9); --points-stroke: rgba(0, 0, 0, .6);
   --display: 'Big Shoulders Display', 'Barlow Condensed', 'PingFang TC', system-ui, sans-serif;
   --label: 'Barlow Condensed', 'PingFang TC', 'Microsoft JhengHei UI', system-ui, sans-serif;
   --font: 'Segoe UI Variable', 'Segoe UI', 'PingFang TC', 'Microsoft JhengHei UI', system-ui, sans-serif;
@@ -73,6 +74,28 @@ button { font: inherit; color: inherit; border: 0; background: transparent; padd
 /* The team with the ball: the whole cell framed in its colour, glowing faintly. */
 /* The glow stays tight to the cell, so it does not wash over the play line below. */
 .bug .team.ball { border-width: 1.5px; box-shadow: inset 0 1px 0 var(--edge), 0 0 0 1px color-mix(in srgb, var(--team) 25%, transparent), 0 0 8px -3px var(--team); }
+/* The clock cell says how the game stands (src/ui/views.ts clockLook): green light flowing round it
+   while the clock runs, red breathing while it is stopped (gold at half time), grey once it is over. One turn or breath is
+   CLOCK_LIGHT_MS (src/ui/main.ts), resumed across redraws through --phase. */
+@property --spin { syntax: '<angle>'; inherits: false; initial-value: 0deg; }
+.bug .clock.live { position: relative; color: var(--text); box-shadow: inset 0 1px 0 var(--edge), 0 0 8px -3px var(--live); }
+.bug .clock.live::before { content: ''; position: absolute; inset: 0; border-radius: inherit; padding: 1.5px; pointer-events: none;
+  background: conic-gradient(from var(--spin), transparent 0 55%, color-mix(in srgb, var(--live) 40%, transparent) 75%, var(--live) 92%, transparent 100%);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
+  animation: clock-spin 2400ms linear var(--phase, 0ms) infinite; }
+@keyframes clock-spin { to { --spin: 360deg; } }
+.bug .clock.paused { --breathe: var(--paused); border-color: var(--breathe); animation: clock-breathe 2400ms ease-in-out var(--phase, 0ms) infinite; }
+@keyframes clock-breathe {
+  0%, 100% { box-shadow: inset 0 1px 0 var(--edge), 0 0 0 0 transparent; border-color: color-mix(in srgb, var(--breathe) 45%, var(--border)); }
+  50% { box-shadow: inset 0 1px 0 var(--edge), 0 0 10px -2px var(--breathe); border-color: var(--breathe); } }
+/* Half time breathes in gold: a long break, not a stop in play. */
+.bug .clock.paused.half { --breathe: var(--accent); }
+.bug .clock.final { color: var(--faint); border-color: var(--border); }
+/* A timeout or review: the period and clock, the reason small under them. */
+.bug .clock.stacked { flex-direction: column; justify-content: center; align-items: center; line-height: 1.05; }
+.bug .clock.stacked small { font-size: 10.5px; letter-spacing: .1em; color: var(--paused); }
+@media (prefers-reduced-motion: reduce) { .bug .clock.live::before, .bug .clock.paused { animation: none; } }
 .bug .clock { padding: 0 9px; font: 600 14px var(--label); letter-spacing: .04em; color: var(--muted); white-space: nowrap; background: var(--surface); }
 .bug .tag { align-self: center; margin: 0 6px 0 auto; white-space: nowrap; flex-shrink: 0; }
 
@@ -100,18 +123,30 @@ button { font: inherit; color: inherit; border: 0; background: transparent; padd
 #app[data-tier='court'] .content { align-items: stretch; }
 .courtwrap { display: flex; flex-direction: column; gap: 6px; width: 100%; min-width: 0; }
 .court { flex: 1; min-height: 0; width: 100%; overflow: visible; filter: drop-shadow(0 6px 10px rgba(0, 0, 0, .45)); }
-.court .floor { fill: url(#wood); stroke: var(--court-edge); stroke-width: 0.6; }
-.court .paint { fill: rgba(0, 0, 0, .22); }
+.court .floor { fill: url(#wood); }
+/* Outside the lines, the home colour (set inline); without one, darker wood. */
+.court .apron.plain { fill: url(#wood); filter: brightness(.8); }
+.court .bounds { fill: none; stroke: #fff; stroke-width: 0.8; stroke-linejoin: round; }
+.court .bounds.plain { stroke: var(--court-line); }
+.court .light { fill: url(#light); }
+.court .glare path { fill: url(#glare); }
+.court .paint.plain { fill: rgba(60, 25, 5, .08); }
 .court .planks path { fill: none; stroke: var(--plank); stroke-width: 0.25; }
-.court .lines path { fill: none; stroke: var(--court-line); stroke-width: 0.6; }
-.court .post { fill: none; stroke: var(--muted); stroke-width: 0.9; }
-.court .board { fill: var(--board-fill); stroke: var(--board-line); stroke-width: 0.6; }
+/* The colour is the group's: the line colour by default, the home side's or the lane's set inline (court.ts). */
+.court .lines { stroke: var(--court-line); }
+.court .lines path { fill: none; stroke: inherit; stroke-width: 0.7; stroke-linejoin: round; }
+.court .stanchion { fill: #2b2d34; stroke: rgba(255, 255, 255, .08); stroke-width: 0.3; }
+.court .stanchion.top { fill: #3a3d46; }
+.court .post { fill: none; stroke: #4a4d57; stroke-width: 1.6; stroke-linecap: round; }
+.court .board { fill: var(--board-fill); stroke: var(--board-line); stroke-width: 0.7; }
+.court .square { fill: none; stroke: var(--board-line); stroke-width: 0.45; }
 .court .rim { fill: none; stroke: #ef7d33; stroke-width: 1; }
 .court .rim-shadow { fill: rgba(0, 0, 0, .35); stroke: none; }
+.court .mark.made { stroke: rgba(255, 255, 255, .85); stroke-width: 0.35; }
 .court .mark.miss { stroke-width: 0.8; }
 .court .shadow { fill: #000; }
 .court .ball { fill: #ef7d33; stroke: rgba(0, 0, 0, .4); stroke-width: 0.3; }
-.court .net { fill: none; stroke: var(--court-line); stroke-width: 0.25; }
+.court .net { fill: none; stroke: var(--net); stroke-width: 0.25; }
 .court .rim.hit { stroke: #ffb27a; stroke-width: 1.2; }
 .court .arc { fill: none; stroke-width: 0.45; stroke-dasharray: 1.2 1; stroke-linecap: round; }
 .court .burst { stroke-width: 1.1; }
@@ -174,6 +209,24 @@ button { font: inherit; color: inherit; border: 0; background: transparent; padd
 .settings .check input { accent-color: var(--accent); }
 .settings .check.off { opacity: .45; }
 
+/* A new play line (src/ui/views.ts SLIDE_MS, 560 ms in all): the older lines move down a place
+   together, each easing from how it looked there to how it looks now; the bottom one slides out and
+   fades; the new one comes in from the left just behind them, into the room they leave. One curve for
+   all, so it reads as one movement. --age resumes it across redraws; the gaps are measured
+   (src/ui/main.ts lineGaps). */
+.bar { position: relative; }
+.bar.moving .play { animation: 480ms cubic-bezier(.22, 1, .36, 1) var(--age, 0ms) both; }
+.bar.moving .play.new { animation-name: line-in; animation-delay: calc(var(--age, 0ms) + 80ms); }
+.bar.moving .play.old-1 { animation-name: line-down-first; }
+.bar.moving .play.old-2 { animation-name: line-down-2; }
+.bar.moving .play.old-3 { animation-name: line-down-3; }
+.bar.moving .play.leaving { position: absolute; left: 0; right: 0; top: var(--last-top); animation-name: line-out; }
+@keyframes line-in { from { transform: translateX(-24px); opacity: 0; } }
+@keyframes line-down-first { from { transform: translateY(calc(-1 * var(--shift-first, 29px))); color: var(--text); } }
+@keyframes line-down-2 { from { transform: translateY(calc(-1 * var(--shift, 21px))); opacity: 1; } }
+@keyframes line-down-3 { from { transform: translateY(calc(-1 * var(--shift, 21px))); opacity: .75; } }
+@keyframes line-out { to { transform: translateY(var(--shift, 21px)); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .bar.moving .play { animation: none; } .bar.moving .play.leaving { display: none; } }
 @media (prefers-reduced-motion: reduce) { .jump { animation: none; } .controls, .panel .game { transition: none; } }
 
 

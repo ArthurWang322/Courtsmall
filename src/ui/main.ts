@@ -33,7 +33,7 @@ import { playLinesAt, TIER_PRESET, tierOf, TOOLBAR_H, type Tier } from '../rende
 import { drawFlights, flightSeconds, LANDED, shotSeconds, WINDUP_SECONDS } from '../render/court.ts';
 import { gameColours } from '../render/colour.ts';
 import { loadSettings, saveSettings, type Settings } from '../settings/store.ts';
-import { barView, changelogView, controlsView, courtView, favIn, gamesView, JUMP_MS, messageView, noLogo, pregameView, settingsView, type ScoreAges } from './views.ts';
+import { barView, changelogView, controlsView, courtView, favIn, gamesView, JUMP_MS, messageView, noLogo, playLines, SLIDE_MS, pregameView, settingsView, type ScoreAges } from './views.ts';
 
 // In `npm run dev`, VITE_PARAMS fills in for the URL, which the desktop window does not have:
 // VITE_PARAMS='game=401898721&replay' npx tauri dev
@@ -95,6 +95,17 @@ const shotSeen = new Map<string, number>();
 
 /** When each side's score last went up, epoch ms, for the score's jump (src/ui/views.ts). */
 const scoreChangedAt: Partial<Record<Side, number>> = {};
+/** The newest play line on screen, and when it changed, epoch ms, for its slide in (src/ui/views.ts).
+ *  Undefined until a game's first state, which shows as it is, nothing sliding. */
+let playKey: string | undefined;
+let playChangedAt: number | undefined;
+/** The state before the newest line changed, for the line it pushed out at the bottom, and the
+ *  state last drawn (which becomes that one when the next line comes). */
+let playBefore: GameState | undefined;
+let playShown: GameState | undefined;
+/** Where the play lines sit, measured after each draw (app.css `.moving`): from the newest down to the
+ *  first older line (across the divider), from one older line to the next, and the last one's top. */
+const lineGaps = { first: 29, step: 21, last: 0 };
 let sizeBeforePanel: { w: number; h: number } | undefined;
 /** The favourite team's list is open on the settings page. */
 let pickerOpen = false;
@@ -158,8 +169,24 @@ app.replaceChildren(contentEl, controlsEl);
 let controlsFor = '';
 
 /** Put `html` in the view; `tier`: the toolbar for that size, or none (a panel). */
+/** One turn of the clock cell's light, and one breath, ms (app.css `--phase`). */
+const CLOCK_LIGHT_MS = 2400;
+
 function show(html: string, tier: Tier | undefined): void {
+  // The clock cell's light is redrawn with the rest: started where the wall clock says it is, it
+  // carries on across redraws instead of starting over.
+  contentEl.style.setProperty('--phase', `${-(Date.now() % CLOCK_LIGHT_MS)}ms`);
+  contentEl.style.setProperty('--shift-first', `${lineGaps.first}px`);
+  contentEl.style.setProperty('--shift', `${lineGaps.step}px`);
+  contentEl.style.setProperty('--last-top', `${lineGaps.last}px`);
   contentEl.innerHTML = html;
+  // Where the lines sit, for the next move (the layout only changes with the window's size).
+  const rows = [...contentEl.querySelectorAll<HTMLElement>('.bar .row.play:not(.leaving)')];
+  if (rows.length > 1) {
+    lineGaps.first = rows[1]!.offsetTop - rows[0]!.offsetTop;
+    if (rows.length > 2) lineGaps.step = rows[2]!.offsetTop - rows[1]!.offsetTop;
+    lineGaps.last = rows.at(-1)!.offsetTop;
+  }
   const want = tier ?? '';
   const key = `${want}:${playersOpen}:${anchored}`;
   if (key !== controlsFor) { controlsFor = key; controlsEl.innerHTML = tier ? controlsView(tier, T, playersOpen, !anchored) : ''; }
@@ -338,7 +365,7 @@ async function sendStats(force = false): Promise<void> {
   if (!shell || !playersOpen || !currentId || !state) return;
   const { emitTo } = await import('@tauri-apps/api/event');
   const players = JSON.stringify({
-    gameId: currentId, teams: state.teams, onCourt: state.onCourt, favourites: settings.favourites,
+    gameId: currentId, teams: state.teams, onCourt: state.onCourt, favourites: settings.favourites, lastPlay: state.recentPlays?.at(-1),
     live: state.status === 'live' || state.status === 'break', lang: langTag(),
   });
   if (force || players !== playersSent) { playersSent = players; await emitTo(PLAYERS, 'players-state', JSON.parse(players)); }
@@ -408,6 +435,15 @@ function render(): void {
     const now = Date.now();
     const ages: ScoreAges = {};
     for (const side of ['away', 'home'] as const) { const at = scoreChangedAt[side]; if (at !== undefined && now - at < JUMP_MS) ages[side] = now - at; }
+    const key = JSON.stringify(state.recentPlays?.at(-1) ?? null);
+    if (key !== playKey) { if (playKey !== undefined && state.recentPlays?.length) { playChangedAt = now; playBefore = playShown; } playKey = key; }
+    playShown = state;
+    if (playChangedAt !== undefined && now - playChangedAt < SLIDE_MS) {
+      ages.play = now - playChangedAt;
+      const n = tier === 'court' && !resultOnly ? 2 : playLinesAt(contentHeight);
+      // The line that was at the bottom: pushed out now, if there was one.
+      if (playBefore) ages.leaving = playLines(playBefore, T, n)[n - 1];
+    }
     // A finished game picked from the list is its result: no court, whatever the size.
     body = tier === 'court' && !resultOnly ? courtView(state, T, landed, tag, settings.favourites, ages)
       : barView(state, T, playLinesAt(contentHeight), tag, settings.favourites, resultOnly, ages, tier === 'court');
@@ -438,9 +474,11 @@ let pacer: Pacer<GameState> | undefined;
 /** A shot in the air before the state that has it shows, and when that state will show. */
 const flying = new Map<string, Shot>();
 let commitTimer: ReturnType<typeof setTimeout> | undefined;
-/** How far apart a poll's plays show, ms, and how many of a backlog are kept. */
+/** How far apart a poll's plays show, ms, and how many of a backlog are kept. A poll's burst (a
+ *  stoppage's substitutions) all shows, line by line: dropping some made the next one bring several
+ *  lines at once. Eight steps still end before the next poll, 10 s on. */
 const PLAY_STEP_MS = 1200;
-const PLAY_BACKLOG = 3;
+const PLAY_BACKLOG = 8;
 
 function leave(): void {
   pacer?.clear();
@@ -453,6 +491,7 @@ function leave(): void {
   shotSeen.clear();
   delete scoreChangedAt.away;
   delete scoreChangedAt.home;
+  playKey = playChangedAt = playBefore = playShown = undefined;
   currentId = undefined;
   finalAt = undefined;
 }

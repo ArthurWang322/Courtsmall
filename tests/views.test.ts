@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { STRINGS } from '../src/i18n/index.ts';
 import { playLinesAt, TIER_PRESET, TOOLBAR_H } from '../src/render/tiers.ts';
 import { CHANGELOG } from '../src/changelog.ts';
-import { barView, boxView, changelogView, clockText, lineScoreView, teamView, controlsView, countdownParts, gamesView, JUMP_MS, leadersTable, noLogo, playLines, pregameView, RUN_MIN, settingsView, whenText } from '../src/ui/views.ts';
+import { barView, boxView, changelogView, clockText, lineScoreView, teamView, controlsView, countdownParts, gamesView, JUMP_MS, leadersTable, noLogo, playLines, SLIDE_MS, pregameView, RUN_MIN, settingsView, whenText } from '../src/ui/views.ts';
 import type { BoxLine, GameCard, GameState, PlayLine, TeamStats } from '../src/model/types.ts';
 
 const en = STRINGS.en, zh = STRINGS['zh-TW'];
@@ -462,3 +462,44 @@ describe('changelog', () => {
     expect(html).toContain('<div class="links"><a data-open="changelog">更新日誌</a><a data-feedback>回饋與問題回報</a></div>');
   });
 });
+
+describe('a new play line', () => {
+  // A new line moves every line at once (the older ones down, the bottom one out, the new one in),
+  // resumed where it was across redraws, so it reads as one movement; once over, all are plain.
+  it('moves all the lines together while new, resumed across redraws, then stays put', () => {
+    const s: GameState = { ...base, recentPlays: [{ type: 'rebound', offensive: false, side: 'home' }] };
+    const html = barView(s, zh, 4, undefined, [], false, { play: 100, leaving: '[SA] 舊的一行' });
+    expect(html).toContain('<div class="bar moving" style="--age:-100ms">');
+    // The line pushed out keeps the look of the bottom place as it goes.
+    expect(html).toContain('<div class="row play old old-3 leaving">[SA] 舊的一行</div>');
+    const done = barView(s, zh, 4, undefined, [], false, { play: SLIDE_MS, leaving: '[SA] 舊的一行' });
+    expect(done).toContain('<div class="bar">');
+    expect(done).not.toContain('leaving');
+    expect(barView(s, zh, 4)).not.toContain('moving');
+  });
+});
+
+describe('the clock cell at a glance', () => {
+  // Green while the clock runs, red while it is stopped (a timeout, a review, between quarters), gold at half time,
+  // grey once it is over, nothing before tip-off: a glance says whether the game is on.
+  it('marks the clock cell by how the game stands', () => {
+    const look = (s: GameState) => barView(s, zh, 1).match(/class="cell clock mono( [\w ]+)?"/)![1]?.replace('stacked', '').trim();
+    expect(look(base)).toBe('live');
+    expect(look({ ...base, stoppage: 'timeout' })).toBe('paused');
+    expect(look({ ...base, status: 'break', period: 2 })).toBe('paused half');
+    expect(look({ ...base, status: 'break', period: 1 })).toBe('paused');
+    expect(look({ ...base, status: 'final' })).toBe('final');
+    expect(look({ ...base, status: 'scheduled' })).toBeUndefined();
+  });
+});
+
+describe('a stopped clock', () => {
+  // "Q3 2:50 · Timeout" on one line ran out of the clock cell: the reason goes under the clock.
+  it('puts a timeout or review under the period and clock, not after them', () => {
+    const html = barView({ ...base, stoppage: 'timeout' }, zh, 1);
+    expect(html).toContain('<span>第4節 7:02</span><small>暫停</small>');
+    expect(html).not.toContain('7:02 · 暫停');
+    expect(barView(base, zh, 1)).not.toContain('stacked');
+  });
+});
+

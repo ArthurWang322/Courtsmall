@@ -14,8 +14,12 @@ import type { UpdateState } from './update.ts';
 
 /** How long a score that just changed keeps its jump, ms (app.css `.jump`). */
 export const JUMP_MS = 600;
-/** Ms since each side's score last changed; a side not in it has not changed lately. */
-export type ScoreAges = Partial<Record<Side, number>>;
+/** How long the play lines take to move when a new one comes, ms: the older ones down a place, the
+ *  oldest out at the bottom, the new one in from the left just behind them (app.css `.moving`). */
+export const SLIDE_MS = 560;
+/** Ms since each side's score last changed, and since the newest play line did (`play`); one not in
+ *  it has not changed lately. `leaving`: the line pushed out at the bottom by the newest, as it was. */
+export type ScoreAges = Partial<Record<Side | 'play', number>> & { leaving?: string };
 
 /** A score number, jumping if it changed less than JUMP_MS ago (resumed across redraws). */
 const scoreNum = (n: number, age?: number) =>
@@ -48,6 +52,13 @@ export function whenText(s: GameState, T: Strings, tipOff?: string): string {
   }
 }
 
+/** The clock cell's look, to tell at a glance how the game stands: running (green light flowing
+ *  round it), half time (gold, breathing), stopped for a timeout, a review or between quarters (red,
+ *  breathing), over (grey). */
+export const clockLook = (s: GameState) =>
+  s.status === 'final' ? ' final' : s.status === 'break' && s.period === 2 ? ' paused half'
+    : s.status === 'break' || (s.status === 'live' && s.stoppage) ? ' paused' : s.status === 'live' ? ' live' : '';
+
 const hasBall = (s: GameState, side: Side) => s.possession === side && s.status === 'live';
 
 /** The favourite playing in this game, if any (it keeps its colour in a clash). */
@@ -76,7 +87,15 @@ function scoreBug(s: GameState, T: Strings, tag?: string, favs: readonly string[
   const cell = (side: Side) => hasBall(s, side)
     ? `<div class="cell team ball" style="--team:#${esc(c[side])};border-color:#${esc(c[side])}">${logo(s.teams[side], c[side])}<span class="abbr">${esc(s.teams[side].abbr)}${star(s.teams[side], favs)}</span>${scoreNum(s.score[side], ages[side])}<span class="ball-mark">◀</span></div>`
     : `<div class="cell team" style="--team:#${esc(c[side])}">${logo(s.teams[side], c[side])}<span class="abbr">${esc(s.teams[side].abbr)}${star(s.teams[side], favs)}</span>${scoreNum(s.score[side], ages[side])}<span class="ball-mark"></span></div>`;
-  return `<div class="bug">${cell('away')}${cell('home')}${tag ? `<span class="tag">${esc(tag)}</span>` : '<span class="grow"></span>'}<div class="cell clock mono">${esc(whenText(s, T))}</div></div>`;
+  return `<div class="bug">${cell('away')}${cell('home')}${tag ? `<span class="tag">${esc(tag)}</span>` : '<span class="grow"></span>'}${clockCell(s, T)}</div>`;
+}
+
+/** The clock cell. Stopped for a timeout or a review, the reason goes small on a line of its own
+ *  under the period and clock: on one line it ran out of the cell, and the red already says stopped. */
+function clockCell(s: GameState, T: Strings): string {
+  if (s.status === 'live' && s.stoppage)
+    return `<div class="cell clock mono stacked${clockLook(s)}"><span>${esc(whenText({ ...s, stoppage: undefined }, T))}</span><small>${esc(T.stoppage(s.stoppage))}</small></div>`;
+  return `<div class="cell clock mono${clockLook(s)}">${esc(whenText(s, T))}</div>`;
 }
 
 /** "[UTAH] I. Collier +2", "[PHI] J. Embiid shooting foul": the team first, so a glance at a
@@ -120,10 +139,13 @@ export function barView(s: GameState, T: Strings, lines: number, tag?: string, f
   const [newest = '', ...older] = playLines(s, T, lines);
   // Every older line has its place even before there are plays for it, so nothing moves later.
   const rows = Array.from({ length: lines - 1 }, (_, i) => `<div class="row play old old-${i + 1}">${older[i] ?? ''}</div>`);
-  return `<div class="bar">
+  // A new line: every line moves together, resumed where it was across redraws (`--age`).
+  const moving = ages.play !== undefined && ages.play < SLIDE_MS;
+  const leaving = moving && ages.leaving && lines > 1 ? `<div class="row play old old-${lines - 1} leaving">${ages.leaving}</div>` : '';
+  return `<div class="bar${moving ? ` moving" style="--age:${-ages.play!}ms` : ''}">
       ${scoreBug(s, T, tag, favs, ages)}
       <div class="row play new">${newest}</div>${lines > 1 ? `
-      <hr class="divider">${rows.join('')}` : ''}
+      <hr class="divider">${rows.join('')}${leaving}` : ''}
     </div>`;
 }
 

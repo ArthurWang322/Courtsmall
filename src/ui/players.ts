@@ -24,12 +24,23 @@ export interface PlayersState {
   teams: Record<Side, TeamRef>;
   onCourt?: Record<Side, readonly string[]>;
   favourites: readonly string[];
-  /** The game is on: the box score is asked again every BOX_EVERY_MS. */
+  /** The game is on: the box score is asked again every BOX_EVERY_MS, and soon after each new play. */
   live: boolean;
+  /** The newest play on the main window's screen: when it changes, the box score is asked again. */
+  lastPlay?: unknown;
   lang: string;
 }
 
 const BOX_EVERY_MS = 30_000;
+/** After a new play the box score is asked again, but not sooner than this after the last time:
+ *  a poll's burst of plays is one request, and ESPN's box score trails the plays a little. */
+const BOX_MIN_GAP_MS = 10_000;
+let lastLoadAt = 0;
+let loadTimer: ReturnType<typeof setTimeout> | undefined;
+function loadSoon(): void {
+  if (loadTimer !== undefined) return;
+  loadTimer = setTimeout(() => { loadTimer = undefined; void load(); }, Math.max(0, lastLoadAt + BOX_MIN_GAP_MS - Date.now()));
+}
 const params = new URLSearchParams(location.search);
 const app = document.getElementById('app')!;
 const shell = '__TAURI_INTERNALS__' in window;
@@ -57,6 +68,7 @@ const get = async (url: string) => { const r = await fetch(url); if (!r.ok) thro
 async function load(): Promise<void> {
   const id = game?.gameId;
   if (!id) return;
+  lastLoadAt = Date.now();
   try {
     let data: Awaited<ReturnType<typeof loadBox>>;
     if (import.meta.env.DEV && params.has('fixture')) {
@@ -69,6 +81,8 @@ async function load(): Promise<void> {
 
 function receive(next: PlayersState): void {
   const changed = next.gameId !== game?.gameId;
+  // A new play on the main window: the box score follows it, not up to BOX_EVERY_MS later.
+  if (!changed && next.live && JSON.stringify(next.lastPlay) !== JSON.stringify(game?.lastPlay)) loadSoon();
   T = STRINGS[langOf(next.lang)];
   game = next;
   if (changed) {

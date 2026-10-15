@@ -1,6 +1,6 @@
 // The court view in 3D: a half court seen from behind and above at 45 degrees, the basket at the
 // far end, the latest shots on the floor, and a new shot's ball flying to the rim. Only basic
-// geometry (CLAUDE.md rule 4): lines, a disc for the shooter, the ball and its shadow.
+// geometry: lines, a disc for the shooter, the ball and its shadow; the arena is lit with gradients.
 //
 // Coordinates are ESPN's, in feet: x 0-50 across, y from the baseline, the basket at (25, 1)
 // (docs/PROBE_REPORT.md §11); z is height. The static court is drawn as a string; flights are
@@ -8,6 +8,7 @@
 // shot first appeared, so the page can redraw at any time without restarting a flight.
 
 import { BASKET, type GameState, type Shot, type Side } from '../model/types.ts';
+import { contrast } from './colour.ts';
 
 export interface P3 { x: number; y: number; z: number }
 export interface P2 { x: number; y: number }
@@ -68,32 +69,78 @@ export function viewBox(): string {
   return `${f(x0)} ${f(y0)} ${f(Math.max(...xs) + pad - x0)} ${f(Math.max(...ys) + pad - y0)}`;
 }
 
-/** The floor, its lines, and the basket standing on the far baseline. */
-export function courtLines(): string {
-  const floor = path([ground(0, FAR), ground(50, FAR), ground(50, NEAR), ground(0, NEAR)], true);
+/** The floor, its lines, and the basket standing on the far baseline, lit like an arena, dressed as
+ *  NBA floors are in the home side's colour (`home`): pale maple inside the lines, the apron outside
+ *  them and the lane in that colour, a white boundary between, the court's lines in that colour too
+ *  (near black where it would not show on the wood), the lane's lines white or near black, whichever
+ *  stands out on it. Then the overhead lights' glow and reflections, and a padded stanchion holding a
+ *  glass backboard. Without a colour, all of it is wood with dark lines. */
+export function courtLines(home?: string): string {
+  const quad = (x0: number, x1: number, y0: number, y1: number) => path([ground(x0, y0), ground(x1, y0), ground(x1, y1), ground(x0, y1)], true);
+  // The apron: a few feet past the lines on every side; the floor inside them.
+  const apron = quad(-3, 53, FAR - 3, NEAR);
+  const floor = quad(0, 50, FAR, NEAR);
+  const bounds = path([ground(0, NEAR), ground(0, FAR), ground(50, FAR), ground(50, NEAR)]);
   const lane = path([ground(17, FAR), ground(17, FAR + 19), ground(33, FAR + 19), ground(33, FAR)]);
-  const ftCircle = path(arcPts(25, FAR + 19, 6, 0, Math.PI));
+  // The free-throw circle: solid on the court side, dashed inside the lane.
+  const ftNear = path(arcPts(25, FAR + 19, 6, 0, Math.PI));
+  // Inside the lane the half circle is six long dashes, as painted, measured on the floor so they
+  // shorten with distance like the rest.
+  const DASHES = 6, step = Math.PI / DASHES;
+  const ftFar = Array.from({ length: DASHES }, (_, i) => path(arcPts(25, FAR + 19, 6, Math.PI + step * (i + 0.2), Math.PI + step * (i + 0.8), 0, 6))).join(' ');
+  // The lane-space marks along both sides, outside the lane: where players line up for a free throw,
+  // 7, 8, 11 and 14 feet from the baseline, each a short line out from the lane.
+  const marks = [7, 8, 11, 14].flatMap((d) => [path([ground(17, FAR + d), ground(16.3, FAR + d)]), path([ground(33, FAR + d), ground(33.7, FAR + d)])]).join(' ');
+  const restricted = path(arcPts(BASKET.x, BASKET.y, 4, 0, Math.PI, 0, 20));
   const a = Math.asin((arcY - BASKET.y) / ARC);
   const three = path([ground(BASKET.x - CORNER_X, FAR), ground(BASKET.x - CORNER_X, arcY),
     ...arcPts(BASKET.x, BASKET.y, ARC, Math.PI - a, a), ground(BASKET.x + CORNER_X, arcY), ground(BASKET.x + CORNER_X, FAR)]);
-  const post = path([{ x: 25, y: FAR - 2, z: 0 }, { x: 25, y: FAR - 2, z: RIM_Z + 1.5 }, { x: 25, y: BOARD_Y, z: RIM_Z + 1.5 }]);
+  // The stanchion: a padded block behind the baseline, an arm up and over to the board.
+  const baseY = FAR - 2, baseZ = 3;
+  const baseFront = path([{ x: 23, y: baseY, z: 0 }, { x: 27, y: baseY, z: 0 }, { x: 27, y: baseY, z: baseZ }, { x: 23, y: baseY, z: baseZ }], true);
+  const baseTop = path([{ x: 23, y: baseY, z: baseZ }, { x: 27, y: baseY, z: baseZ }, { x: 27, y: baseY - 2.5, z: baseZ }, { x: 23, y: baseY - 2.5, z: baseZ }], true);
+  const post = path([{ x: 25, y: baseY - 1, z: baseZ }, { x: 25, y: baseY - 1, z: RIM_Z + 1.5 }, { x: 25, y: BOARD_Y, z: RIM_Z + 1.5 }]);
   const board = path([{ x: 22, y: BOARD_Y, z: RIM_Z - 0.5 }, { x: 28, y: BOARD_Y, z: RIM_Z - 0.5 }, { x: 28, y: BOARD_Y, z: RIM_Z + 3 }, { x: 22, y: BOARD_Y, z: RIM_Z + 3 }], true);
+  const square = path([{ x: 24, y: BOARD_Y, z: RIM_Z }, { x: 26, y: BOARD_Y, z: RIM_Z }, { x: 26, y: BOARD_Y, z: RIM_Z + 1.5 }, { x: 24, y: BOARD_Y, z: RIM_Z + 1.5 }], true);
   const rim = path(arcPts(BASKET.x, BASKET.y, RIM_R, 0, 2 * Math.PI, RIM_Z), true);
   const rimShadow = path(arcPts(BASKET.x, BASKET.y, RIM_R, 0, 2 * Math.PI), true);
-  // The floor is wood: a warm gradient, lighter toward the near end where the light falls, and the
-  // seams of its boards running toward the basket every foot and a half.
+  // Board seams toward the basket every foot and a half.
   const planks = Array.from({ length: 33 }, (_, i) => `<path d="${path([ground(i * 1.5 + 1, FAR), ground(i * 1.5 + 1, NEAR)])}"/>`).join('');
-  const paint = path([ground(17, FAR), ground(17, FAR + 19), ground(33, FAR + 19), ground(33, FAR)], true);
-  return `<defs><linearGradient id="wood" x1="0" y1="0" x2="0" y2="1"><stop offset="0" style="stop-color:var(--wood)"/><stop offset="1" style="stop-color:var(--wood-hi)"/></linearGradient></defs>
-    <path class="floor" d="${floor}"/><g class="planks">${planks}</g><path class="paint" d="${paint}"/>
-    <g class="lines"><path d="${lane}"/><path d="${ftCircle}"/><path d="${three}"/></g>
-    <path class="rim-shadow" d="${rimShadow}"/><path class="post" d="${post}"/><path class="board" d="${board}"/>${net(1.8, 0.9, '')}<path class="rim" d="${rim}"/>`;
+  const fill = (cls: string) => (home ? `class="${cls}" style="fill:#${home}"` : `class="${cls} plain"`);
+  // Where the overhead lights shine back off the boards.
+  const glare = [[13, 12, 3.2], [37, 13, 3.2], [25, 21, 4]].map(([x, y, r]) => `<path d="${path(arcPts(x!, y!, r!, 0, 2 * Math.PI, 0, 24), true)}"/>`).join('');
+  return `<defs>
+      <linearGradient id="wood" x1="0" y1="0" x2="0" y2="1"><stop offset="0" style="stop-color:var(--wood)"/><stop offset="1" style="stop-color:var(--wood-hi)"/></linearGradient>
+      <radialGradient id="light" cx=".5" cy=".55" r=".65"><stop offset="0" stop-color="#fff" stop-opacity=".16"/><stop offset=".55" stop-color="#fff" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".38"/></radialGradient>
+      <radialGradient id="glare"><stop offset="0" stop-color="#fff" stop-opacity=".3"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></radialGradient>
+    </defs>
+    <path ${fill('apron')} d="${apron}"/><path class="floor" d="${floor}"/><g class="planks">${planks}</g>
+    <path ${fill('paint')} d="${quad(17, 33, FAR, FAR + 19)}"/>
+    <path class="light" d="${apron}"/><g class="glare">${glare}</g>
+    <g class="lines"${home ? ` style="stroke:${woodLine(home)}"` : ''}><path d="${ftNear}"/><path d="${three}"/><path d="${marks}"/></g>
+    <g class="lines on-paint"${home ? ` style="stroke:${laneLine(home)}"` : ''}><path d="${lane}"/><path d="${ftFar}"/><path d="${restricted}"/></g>
+    <path class="bounds${home ? '' : ' plain'}" d="${bounds}"/>
+    <path class="rim-shadow" d="${rimShadow}"/>
+    <path class="stanchion" d="${baseFront}"/><path class="stanchion top" d="${baseTop}"/><path class="post" d="${post}"/>
+    <path class="board" d="${board}"/><path class="square" d="${square}"/>${net(1.8, 0.9, '')}<path class="rim" d="${rim}"/>`;
 }
+
+/** The lane's lines on a painted lane: white on a dark colour, near black on a light one, whichever
+ *  stands out more, so the lines never disappear into the paint. */
+export const LANE_LINE_LIGHT = '#ffffff', LANE_LINE_DARK = '#140e0a';
+/** The court's lines on the maple: the home colour, unless it is too pale to show there (a gold on
+ *  the light boards), then near black. WOOD is about the boards' middle shade (app.css --wood-*). */
+export const WOOD = 'e6c99a';
+export const woodLine = (home: string) => (contrast(home, WOOD) >= 2 ? `#${home}` : LANE_LINE_DARK);
+export const laneLine = (paint: string) => (contrast(paint, LANE_LINE_LIGHT.slice(1)) >= contrast(paint, LANE_LINE_DARK.slice(1)) ? LANE_LINE_LIGHT : LANE_LINE_DARK);
 
 // ---- Flights ------------------------------------------------------------------------------------
 
-/** A heave from past half court starts at the edge of the floor drawn. */
-const spotOf = (s: Shot): P3 => ({ x: s.x, y: Math.min(NEAR - 1, Math.max(BASKET.y + 1, s.y)), z: 0 });
+/** Where a shot is drawn from. A heave from past half court starts at the edge of the floor drawn;
+ *  a corner shot ESPN places on or by the sideline (its feet were inbounds, or it would not count)
+ *  stays inside the line, its mark clear of it. */
+const SIDELINE_CLEAR = 1.5;
+export const spotOf = (s: Shot): P3 => ({ x: Math.min(50 - SIDELINE_CLEAR, Math.max(SIDELINE_CLEAR, s.x)), y: Math.min(NEAR - 1, Math.max(BASKET.y + 1, s.y)), z: 0 });
 
 /** The shooter stands this long before the release, seconds. */
 export const WINDUP_SECONDS = 0.25;
@@ -232,7 +279,7 @@ export function flightSvg(s: Shot, t: number, colour: string): string {
 /** The court for a state. Flights are drawn into `.flights` by `drawFlights`, every frame. */
 export function courtSvg(s: GameState, colours: Record<Side, string>, landed: (id: string) => boolean): string {
   return `<svg class="court" viewBox="${viewBox()}" preserveAspectRatio="xMidYMid meet" aria-hidden="true">
-    ${courtLines()}<g class="marks">${shotMarks(s.recentShots ?? [], colours, landed)}</g><g class="flights"></g>
+    ${courtLines(s.teams.home.color)}<g class="marks">${shotMarks(s.recentShots ?? [], colours, landed)}</g><g class="flights"></g>
   </svg>`;
 }
 

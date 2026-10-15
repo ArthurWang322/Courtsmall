@@ -3,7 +3,7 @@
 // bounces out onto the court, and the floor keeps the latest shots, newest strongest.
 
 import { describe, expect, it } from 'vitest';
-import { AFTER_SECONDS, ballAt, BOUNCE_FEET, flightSeconds, flightSvg, project, RIM_Z, SCORE_SECONDS, shotMarks, WINDUP_SECONDS } from '../src/render/court.ts';
+import { AFTER_SECONDS, ballAt, BOUNCE_FEET, courtLines, flightSeconds, flightSvg, LANE_LINE_DARK, LANE_LINE_LIGHT, laneLine, project, woodLine, RIM_Z, SCORE_SECONDS, shotMarks, spotOf, WINDUP_SECONDS } from '../src/render/court.ts';
 import { BASKET, type Shot } from '../src/model/types.ts';
 
 const colours = { away: 'c8102e', home: '008348' };
@@ -109,5 +109,43 @@ describe('shotMarks', () => {
   // The mark is the shot's result: it must not be on the floor before the ball has landed.
   it('leaves a shot still in the air off the floor', () => {
     expect(shotMarks([shot({ id: '1' })], colours, (id) => id !== '1')).toBe('');
+  });
+});
+
+describe('where a shot is drawn', () => {
+  // The floor now shows its sidelines and the apron past them: a corner shot ESPN puts on the line
+  // must not look out of bounds (its feet were in, or it would not count), so its mark stays clear.
+  it('keeps a corner shot inside the sideline, and leaves the rest where ESPN put them', () => {
+    expect(spotOf(shot({ x: 0.2, y: 3 })).x).toBe(1.5);
+    expect(spotOf(shot({ x: 49.9, y: 3 })).x).toBe(48.5);
+    expect(spotOf(shot({ x: 3, y: 3 })).x).toBe(3);
+    expect(spotOf(shot({ x: 25, y: 25 }))).toEqual({ x: 25, y: 25, z: 0 });
+  });
+});
+
+describe('the painted lane', () => {
+  // The lane takes the home side's colour; its lines must stay visible on it, whatever the colour.
+  it('draws the lane\'s lines white on a dark paint and near black on a light one', () => {
+    expect(laneLine('4e008e')).toBe(LANE_LINE_LIGHT); // Jazz purple
+    expect(laneLine('000000')).toBe(LANE_LINE_LIGHT); // Nets black
+    expect(laneLine('fec524')).toBe(LANE_LINE_DARK); // Nuggets gold
+    expect(laneLine('ffffff')).toBe(LANE_LINE_DARK);
+  });
+
+  // NBA floors wear the home colour: the apron and the lane in it, the court's lines in it on the
+  // maple unless it is too pale to show there, the boundary white between apron and floor.
+  it('dresses the floor in the home colour, and leaves it wood without one', () => {
+    const html = courtLines('4e008e');
+    expect(html).toContain('class="apron" style="fill:#4e008e"');
+    expect(html).toContain('class="paint" style="fill:#4e008e"');
+    expect(html).toContain('<g class="lines" style="stroke:#4e008e">');
+    expect(html).toContain(`<g class="lines on-paint" style="stroke:${LANE_LINE_LIGHT}">`);
+    expect(html).toContain('<path class="bounds"');
+    expect(courtLines()).not.toContain('fill:#');
+  });
+
+  it('draws the court\'s lines near black where the home colour would not show on the maple', () => {
+    expect(woodLine('4e008e')).toBe('#4e008e');
+    expect(woodLine('fec524')).toBe(LANE_LINE_DARK);
   });
 });

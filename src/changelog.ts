@@ -13,6 +13,27 @@ export interface Release {
 
 export const CHANGELOG: readonly Release[] = [
   {
+    version: '0.3.3',
+    date: '2026-10-15',
+    title: { 'zh-TW': 'NBA 風格球場', en: 'An NBA-style court' },
+    items: {
+      'zh-TW': [
+        '球場改為 NBA 風格，套用主場配色',
+        '節次時間以燈號顯示比賽狀態',
+        '文字直播逐行滑入，更連貫',
+        '數據視窗隨新事件更新',
+        '修正暫停文字被截斷',
+      ],
+      en: [
+        'An NBA-style court in the home colours',
+        'The clock lights up with the game state',
+        'Smoother play-by-play lines',
+        'Stats follow new plays',
+        'Fixed: a clipped timeout label',
+      ],
+    },
+  },
+  {
     version: '0.3.2',
     date: '2026-10-14',
     title: { 'zh-TW': '隊徽與球隊配色', en: 'Team logos and colours' },
