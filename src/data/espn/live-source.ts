@@ -95,6 +95,15 @@ class LiveGame {
     this.timer = null;
   }
 
+  /** Poll now instead of at the next scheduled time: the window is back from hidden, where it
+   *  waited `backgroundFactor` times longer. Nothing to do while a poll is already running (its own
+   *  timer is not set yet) or after the game ended (none is set again). */
+  pollNow(): void {
+    if (this.timer === null || this.cancelled) return;
+    this.o.clock.clearTimeout(this.timer);
+    void this.tick();
+  }
+
   private schedule(ms: number): void {
     if (this.cancelled) return;
     const wait = this.background ? ms * this.o.backgroundFactor : ms;
@@ -236,7 +245,11 @@ export class EspnLiveSource implements GameSource {
 
   /** Poll less often while the window is hidden. */
   setBackground(background: boolean): void {
-    for (const g of this.games.values()) g.background = background;
+    for (const g of this.games.values()) {
+      // Back in view: the score now, not after what is left of a background wait.
+      if (g.background && !background) g.pollNow();
+      g.background = background;
+    }
   }
 
   subscribe(gameId: string, handlers: GameHandlers): Unsubscribe {

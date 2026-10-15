@@ -117,6 +117,26 @@ describe.skipIf(!hasFixture(ID))('EspnLiveSource on 401810362', () => {
     expect(r.events).toContainEqual(expect.objectContaining({ type: 'basket', basket: expect.objectContaining({ points: 1, clock: ft.clock.value }) }));
   });
 
+  // Hidden, the window polls three times slower; shown again (Ctrl+Alt+H), it must not keep the
+  // score up to 30 s old while that slow wait runs out.
+  it('polls at once when the window comes back from hidden, then at the normal pace', async () => {
+    const r = run({ joinAt: 200, step: 0 });
+    await flush();
+    r.source.setBackground(true);
+    await r.poll();
+    expect(r.clock.nextIn).toBe(30_000);
+    const before = r.server.urls.length;
+    r.source.setBackground(false);
+    await flush();
+    expect(r.server.urls.length).toBeGreaterThan(before);
+    expect(r.clock.nextIn).toBe(10_000);
+    // Shown while already shown: nothing extra.
+    const after = r.server.urls.length;
+    r.source.setBackground(false);
+    await flush();
+    expect(r.server.urls.length).toBe(after);
+  });
+
   it('backs off after failures, then returns to the normal pace', async () => {
     const r = run({ joinAt: 200, step: 0 });
     await flush();
