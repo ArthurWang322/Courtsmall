@@ -175,6 +175,13 @@ describe('toolbar and games list', () => {
     expect([...html.matchAll(/data-game="(\w)" data-how="(\w+)"/g)].map((m) => `${m[1]}:${m[2]}`)).toEqual(['l:live', 's:live', 'f:result']);
     expect(html).toContain('class="game on live" data-game="l"');
     expect(gamesView('10/13', [], zh, () => '')).toContain('這天沒有比賽');
+    // The game on screen says so in words, not only by its frame; no other card does.
+    expect(html.match(/<span class="watching"><i><\/i>觀看中<\/span>/g)).toHaveLength(1);
+    expect(html).toMatch(/data-game="l"[^>]*>.*?觀看中/);
+    // Picked: the list gives way to that card.
+    const picking = gamesView('10/13', [card('f', 'final', 1), card('l', 'live', 2)], zh, () => '', undefined, [], 'f');
+    expect(picking).toContain('<div class="panel games picking">');
+    expect(picking).toMatch(/class="game picked[^"]*" data-game="f"/);
   });
 });
 

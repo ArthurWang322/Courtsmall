@@ -190,10 +190,32 @@ button { font: inherit; color: inherit; border: 0; background: transparent; padd
 /* The settings' ✕, like the games list's: the settings' own button frame dropped. */
 .settings .head .icon { font-size: 16px; padding: 0; border: 0; }
 .panel .list { display: flex; flex-direction: column; gap: 4px; overflow-x: hidden; overflow-y: auto; min-height: 0; }
+/* Room round the games for a card to lift into (not cut by the scrolling list). */
+.panel.games .list { padding: 3px 4px 6px; margin: -3px -4px 0; }
 .panel .game { display: flex; align-items: center; gap: 8px; padding: 7px 10px; border-radius: 8px; border: 1px solid var(--border);
-  background: linear-gradient(180deg, var(--panel), var(--surface)); color: var(--text); text-align: left; transition: border-color .12s; }
-.panel .game:hover { border-color: var(--muted); }
+  background: linear-gradient(180deg, var(--panel), var(--surface)); color: var(--text); text-align: left;
+  transition: border-color .18s, transform .18s cubic-bezier(.22, 1, .36, 1), box-shadow .18s, opacity .22s; }
+/* Hovered, a card lifts off the list. (The list leaves room round the cards for it.) */
+.panel .game:hover { border-color: var(--muted); transform: translateY(-2px); box-shadow: 0 6px 14px -6px rgba(0, 0, 0, .7), inset 0 1px 0 var(--edge); }
 .panel .game.on { border-color: var(--accent); }
+/* The game on screen: a small "watching" tag before its time, its dot breathing. */
+.panel .game .watching { margin-left: auto; display: inline-flex; align-items: center; gap: 4px; padding: 1px 7px; border-radius: 999px;
+  font: 600 10.5px var(--label); letter-spacing: .06em; color: var(--accent); background: color-mix(in srgb, var(--accent) 14%, transparent); }
+.panel .game .watching i { width: 5px; height: 5px; border-radius: 50%; background: var(--accent); animation: watching 1.6s ease-in-out infinite; }
+@keyframes watching { 50% { opacity: .3; } }
+.panel .game .watching + .when { margin-left: 2px; }
+/* A game picked: its card lifts and glows, the rest of the list sinks and fades (src/ui/main.ts PICK_MS). */
+.panel.games.picking .head, .panel.games.picking .game:not(.picked) { opacity: 0; transform: translateY(8px) scale(.97); transition: opacity .26s, transform .32s cubic-bezier(.22, 1, .36, 1); }
+.panel.games.picking .game.picked { border-color: var(--accent); animation: picked 320ms cubic-bezier(.22, 1, .36, 1) both; }
+/* The picked card lifts and glows, then goes too, so the list is gone as the window starts to move. */
+@keyframes picked {
+  45% { transform: scale(1.03); opacity: 1; box-shadow: 0 0 0 1px var(--accent), 0 8px 22px -8px var(--accent); }
+  100% { transform: scale(1.045); opacity: 0; box-shadow: 0 0 0 1px var(--accent), 0 8px 22px -8px var(--accent); } }
+/* Back to the game: hidden while the window glides to its size, then in from below, small, soft and
+   faint, to sharp (src/ui/main.ts ENTER_MS). */
+.content.veiled > * { opacity: 0; }
+.content.entering > * { animation: view-in 700ms cubic-bezier(.16, 1, .3, 1) var(--enter-age, 0ms) both; }
+@keyframes view-in { from { opacity: 0; transform: translateY(16px) scale(.96); filter: blur(6px); } }
 .panel .game .who { display: inline-flex; align-items: center; gap: 6px; font: 600 14px var(--label); letter-spacing: .05em; }
 .panel .game .who b { font: 800 17px var(--display); letter-spacing: .02em; }
 .panel .game .who .logo { width: 18px; height: 18px; flex: 0 0 18px; object-fit: contain; }
@@ -227,7 +249,7 @@ button { font: inherit; color: inherit; border: 0; background: transparent; padd
 @keyframes line-down-3 { from { transform: translateY(calc(-1 * var(--shift, 21px))); opacity: .75; } }
 @keyframes line-out { to { transform: translateY(var(--shift, 21px)); opacity: 0; } }
 @media (prefers-reduced-motion: reduce) { .bar.moving .play { animation: none; } .bar.moving .play.leaving { display: none; } }
-@media (prefers-reduced-motion: reduce) { .jump { animation: none; } .controls, .panel .game { transition: none; } }
+@media (prefers-reduced-motion: reduce) { .jump { animation: none; } .controls, .panel .game { transition: none; } .panel .game:hover { transform: none; } .content.entering > *, .panel .game .watching i, .panel.games.picking .game.picked { animation: none; } }
 
 
 /* A finished game's leaders (src/ui/views.ts leadersTable): stat in the middle, each side on its side. */

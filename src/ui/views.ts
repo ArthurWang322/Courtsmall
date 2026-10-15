@@ -331,7 +331,7 @@ const ORDER: Partial<Record<GameCard['status'], number>> = { live: 0, break: 0, 
  * or to come is followed live; a finished one shows its result. `current`: the game on screen.
  * The favourites' games come first in each group, starred.
  */
-export function gamesView(day: string, games: readonly GameCard[], T: Strings, tipOff: (g: GameCard) => string, current?: string, favs: readonly string[] = []): string {
+export function gamesView(day: string, games: readonly GameCard[], T: Strings, tipOff: (g: GameCard) => string, current?: string, favs: readonly string[] = [], picking?: string): string {
   // Within each group (on, to come, finished), the favourites' games come first.
   const isFav = (g: GameCard) => (favIn(g.teams, favs) ? 0 : 1);
   const sorted = [...games].sort((a, b) => (ORDER[a.status] ?? 3) - (ORDER[b.status] ?? 3) || isFav(a) - isFav(b) || a.start - b.start);
@@ -342,11 +342,14 @@ export function gamesView(day: string, games: readonly GameCard[], T: Strings, t
     const c = gameColours(g.teams, favIn(g.teams, favs));
     const abbr = (sd: Side) => `${logo(g.teams[sd], c[sd])}<span>${esc(g.teams[sd].abbr)}${star(g.teams[sd], favs)}</span>`;
     const mid = showScore ? `<b>${g.score.away}</b><span class="muted">–</span><b>${g.score.home}</b>` : '<span class="muted">@</span>';
-    return `<button class="game${g.id === current ? ' on' : ''}${how === 'live' && g.status !== 'scheduled' ? ' live' : ''}${favIn(g.teams, favs) ? ' fav' : ''}" data-game="${esc(g.id)}" data-how="${how}">`
+    return `<button class="game${g.id === current ? ' on' : ''}${g.id === picking ? ' picked' : ''}${how === 'live' && g.status !== 'scheduled' ? ' live' : ''}${favIn(g.teams, favs) ? ' fav' : ''}" data-game="${esc(g.id)}" data-how="${how}">`
       + `<span class="who">${abbr('away')}${mid}${abbr('home')}</span>`
+      // The game on screen says so, besides its frame.
+      + (g.id === current ? `<span class="watching"><i></i>${esc(T.watching)}</span>` : '')
       + `<span class="when mono">${esc(cardWhen(g, T, tipOff))}</span></button>`;
   };
-  return `<div class="panel games">
+  // `picking`: a game just picked, the list giving way to it (app.css `.picking`).
+  return `<div class="panel games${picking ? ' picking' : ''}">
       <div class="head"><button class="icon" data-day="-1" title="${esc(T.prevDay)}">‹</button><b>${esc(day)}</b><button class="icon" data-day="1" title="${esc(T.nextDay)}">›</button><span class="grow"></span><button class="icon close" data-done aria-label="${esc(T.close)}">✕</button></div>
       <div class="list">${sorted.length ? sorted.map(row).join('') : `<span class="muted">${esc(T.noGames)}</span>`}</div>
     </div>`;

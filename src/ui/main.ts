@@ -175,6 +175,14 @@ let controlsFor = '';
 /** Put `html` in the view; `tier`: the toolbar for that size, or none (a panel). */
 /** One turn of the clock cell's light, and one breath, ms (app.css `--phase`). */
 const CLOCK_LIGHT_MS = 2400;
+/** A game picked from the list: how long the list gives way, then how long the game takes to come
+ *  in once a panel closes (app.css `.picking`, `.entering`), ms. */
+const PICK_MS = 320;
+const ENTER_MS = 700;
+let picking: string | undefined;
+let enteredAt = 0;
+/** The window is gliding back from a panel: the view is hidden until it is there. */
+let gliding = false;
 
 function show(html: string, tier: Tier | undefined): void {
   // The clock cell's light is redrawn with the rest: started where the wall clock says it is, it
@@ -184,6 +192,11 @@ function show(html: string, tier: Tier | undefined): void {
   contentEl.style.setProperty('--shift', `${lineGaps.step}px`);
   contentEl.style.setProperty('--last-top', `${lineGaps.last}px`);
   contentEl.innerHTML = html;
+  // Back from a panel: the view comes in, resumed across redraws like the rest.
+  const enterAge = Date.now() - enteredAt;
+  contentEl.classList.toggle('veiled', gliding && tier !== undefined);
+  contentEl.classList.toggle('entering', !gliding && tier !== undefined && enterAge < ENTER_MS);
+  contentEl.style.setProperty('--enter-age', `${-enterAge}ms`);
   // Where the lines sit, for the next move (the layout only changes with the window's size).
   const rows = [...contentEl.querySelectorAll<HTMLElement>('.bar .row.play:not(.leaving)')];
   if (rows.length > 1) {
@@ -426,7 +439,7 @@ function render(): void {
     return;
   }
   if (panel === 'changelog') { show(changelogView(CHANGELOG, T, langTag()), undefined); return; }
-  if (panel === 'games') { show(gamesView(dayLabel(gamesDay), dayList, T, tipOff, currentId, settings.favourites), undefined); return; }
+  if (panel === 'games') { show(gamesView(dayLabel(gamesDay), dayList, T, tipOff, currentId, settings.favourites, picking), undefined); return; }
   const tag = replaying ? T.replay : undefined;
   // The toolbar has a row of its own along the bottom.
   const contentHeight = app.clientHeight - TOOLBAR_H;
@@ -660,7 +673,15 @@ async function closePanel(): Promise<void> {
   if (panel === 'changelog') { await openPanel('settings'); return; }
   panel = undefined;
   pickerOpen = false;
-  if (shell && sizeBeforePanel) await sizeMain(sizeBeforePanel.w, sizeBeforePanel.h);
+  // While the window glides back to the game's size, the view stays hidden: drawn at every passing
+  // size it jumped about (and between sizes); once the window is there, it comes in.
+  if (shell && sizeBeforePanel) {
+    gliding = true;
+    render();
+    await sizeMain(sizeBeforePanel.w, sizeBeforePanel.h);
+    gliding = false;
+  }
+  enteredAt = Date.now();
   render();
 }
 
@@ -705,10 +726,13 @@ app.addEventListener('click', (e) => {
   if (el.dataset.done !== undefined) { void closePanel(); return; }
   if (el.dataset.day) { gamesDay += Number(el.dataset.day); dayList = []; render(); void loadDay(); return; }
   if (el.dataset.game) {
+    if (picking) return;
     // Picked from the list: a game on or to come is followed live, a finished one shows its result.
-    pinned = el.dataset.game;
+    // Its card lifts and the others give way first (PICK_MS), the game already loading; then the
+    // window goes back to the game, which comes in (show's `.entering`).
+    pinned = picking = el.dataset.game;
     follow(el.dataset.game, el.dataset.how === 'result' ? 'result' : 'live');
-    void closePanel();
+    setTimeout(() => { picking = undefined; void closePanel(); }, PICK_MS);
     return;
   }
   if (panel !== 'settings') return;

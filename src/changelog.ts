@@ -13,6 +13,15 @@ export interface Release {
 
 export const CHANGELOG: readonly Release[] = [
   {
+    version: '0.4.2',
+    date: '2026-10-15',
+    title: { 'zh-TW': '比賽列表優化', en: 'Games list polish' },
+    items: {
+      'zh-TW': ['卡片懸停浮起', '標示觀看中的比賽', '切換比賽的轉場更順'],
+      en: ['Cards lift on hover', 'The game on screen is marked', 'A smoother switch to a game'],
+    },
+  },
+  {
     version: '0.4.1',
     date: '2026-10-15',
     title: { 'zh-TW': '比分即時更新修正', en: 'Live score fix' },

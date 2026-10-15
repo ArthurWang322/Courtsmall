@@ -60,6 +60,8 @@ export interface Strings {
   /** The version and updating, at the foot of the settings (src/ui/update.ts). */
   update: { version: (v: string) => string; check: string; checking: string; latest: string; available: (v: string) => string; install: string; installing: (pct: number | undefined) => string; checkFailed: string; installFailed: string };
   close: string;
+  /** The game on screen, marked in the games list. */
+  watching: string;
   /** The line score's total column. */
   lineTotal: string;
   /** The toolbar's tips, one per button. */
@@ -125,6 +127,7 @@ export const STRINGS: Record<Lang, Strings> = {
       checkFailed: 'Could not check. Are you online?', installFailed: 'Could not update. Try again later.',
     },
     close: 'Close',
+    watching: 'Watching',
     lineTotal: 'T',
     tip: { bar: 'Simple', court: 'Court', games: 'Games', box: 'Stats', settings: 'Settings', corner: 'Back to the corner' },
     box: { player: 'PLAYER', min: 'MIN', dnp: 'DNP', noGame: 'No game on screen', team: 'Team stats' },
@@ -182,6 +185,7 @@ export const STRINGS: Record<Lang, Strings> = {
       checkFailed: '無法檢查更新，請確認網路連線', installFailed: '更新失敗，請稍後再試',
     },
     close: '關閉',
+    watching: '觀看中',
     lineTotal: '總分',
     tip: { bar: '簡易模式', court: '球場模式', games: '比賽列表', box: '數據', settings: '設定', corner: '回到右下角' },
     box: { player: '球員', min: '時間', dnp: '未上場', noGame: '目前沒有正在看的比賽', team: '團隊數據' },
