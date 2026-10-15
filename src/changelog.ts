@@ -13,7 +13,7 @@ export interface Release {
 
 export const CHANGELOG: readonly Release[] = [
   {
-    version: '0.3.3',
+    version: '0.4.0',
     date: '2026-10-15',
     title: { 'zh-TW': 'NBA 風格球場', en: 'An NBA-style court' },
     items: {
