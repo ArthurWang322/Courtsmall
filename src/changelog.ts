@@ -13,6 +13,15 @@ export interface Release {
 
 export const CHANGELOG: readonly Release[] = [
   {
+    version: '0.4.1',
+    date: '2026-10-15',
+    title: { 'zh-TW': '比分即時更新修正', en: 'Live score fix' },
+    items: {
+      'zh-TW': ['修正比賽進度落後，例如顯示舊的中場畫面'],
+      en: ['Fixed: a game could show an old moment, such as half time'],
+    },
+  },
+  {
     version: '0.4.0',
     date: '2026-10-15',
     title: { 'zh-TW': 'NBA 風格球場', en: 'An NBA-style court' },

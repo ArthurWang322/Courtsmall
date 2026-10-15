@@ -54,9 +54,13 @@ const FEEDBACK_MAIL = 'arthur800322@hotmail.com';
 
 // One request in flight at a time across the whole app.
 let chain: Promise<unknown> = Promise.resolve();
+/** Never from the web view's cache: ESPN sends `stale-while-revalidate=7200`, so the cache answered
+ *  with the previous response (a poll behind, or a game as it was hours ago, at half time, when it
+ *  was last opened) while it fetched the new one in the background. */
+const FRESH: RequestInit = { cache: 'no-store' };
 const fetchJson: FetchJson = (url) => {
   const run = async () => {
-    const res = await fetch(url);
+    const res = await fetch(url, FRESH);
     if (!res.ok) throw new Error(`${res.status} ${url}`);
     return res.json() as Promise<unknown>;
   };

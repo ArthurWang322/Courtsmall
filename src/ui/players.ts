@@ -63,7 +63,8 @@ function render(): void {
   if (c) { app.style.setProperty('--away', `#${c.away}`); app.style.setProperty('--home', `#${c.home}`); }
 }
 
-const get = async (url: string) => { const r = await fetch(url); if (!r.ok) throw new Error(`${r.status} ${url}`); return r.json() as Promise<unknown>; };
+// Never from the cache, which answers with a previous response (src/ui/main.ts FRESH).
+const get = async (url: string) => { const r = await fetch(url, { cache: 'no-store' }); if (!r.ok) throw new Error(`${r.status} ${url}`); return r.json() as Promise<unknown>; };
 
 async function load(): Promise<void> {
   const id = game?.gameId;
