@@ -27,15 +27,31 @@ describe('visibleColour', () => {
 });
 
 describe('gameColours', () => {
-  it('leaves two distinct colours alone', () => {
-    expect(gameColours({ away: ATL, home: BOS })).toEqual({ away: 'c8102e', home: '008348' });
+  const GS = { id: '9', abbr: 'GS', name: 'Golden State Warriors', color: 'fdb927', alternateColor: '1d428a' };
+  const LAL = { id: '13', abbr: 'LAL', name: 'Los Angeles Lakers', color: '552583', alternateColor: 'fdb927' };
+  const DET = { id: '8', abbr: 'DET', name: 'Detroit Pistons', color: '1d428a', alternateColor: 'c8102e' };
+
+  // Teams dress home and away: the home side in its first colour, the visitors in their second.
+  it('dresses the home side in its first colour and the visitors in their second', () => {
+    expect(gameColours({ away: ATL, home: BOS })).toEqual({ away: 'fdb927', home: '008348' });
   });
 
-  // Two reds: the home team keeps its colour, the visitors change, unless the visitors are the favourite.
+  // A colour too dark for the background is lightened, keeping its hue: the Lakers stay purple.
+  it('lightens a dark colour rather than giving it up', () => {
+    const c = gameColours({ away: GS, home: LAL });
+    expect(contrast(c.home, BACKGROUND)).toBeGreaterThanOrEqual(MIN_CONTRAST);
+    expect(oklabDistance(c.home, '552583')).toBeLessThan(0.2);
+    // Warriors blue and that purple are too close: the visitors go back to their gold, not to grey.
+    expect(c.away).toBe('fdb927');
+  });
+
+  // Two reds: the visitors change to their first colour, unless they are the favourite.
   it('changes one side of a clash, and never the favourite', () => {
     expect(oklabDistance('c8102e', 'ce1141')).toBeLessThan(CLASH_DISTANCE);
-    expect(gameColours({ away: ATL, home: CHI })).toEqual({ away: 'fdb927', home: 'ce1141' });
-    const fav = gameColours({ away: ATL, home: CHI }, '1');
+    const c = gameColours({ away: DET, home: CHI });
+    expect(c.home).toBe('ce1141');
+    expect(oklabDistance(c.away, c.home)).toBeGreaterThanOrEqual(CLASH_DISTANCE);
+    const fav = gameColours({ away: DET, home: CHI }, '8');
     expect(fav.away).toBe('c8102e');
     expect(oklabDistance(fav.away, fav.home)).toBeGreaterThanOrEqual(CLASH_DISTANCE);
   });

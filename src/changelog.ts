@@ -17,8 +17,8 @@ export const CHANGELOG: readonly Release[] = [
     date: '2026-10-15',
     title: { 'zh-TW': '比賽列表優化', en: 'Games list polish' },
     items: {
-      'zh-TW': ['卡片懸停浮起', '標示觀看中的比賽', '切換比賽的轉場更順'],
-      en: ['Cards lift on hover', 'The game on screen is marked', 'A smoother switch to a game'],
+      'zh-TW': ['卡片懸停浮起', '標示觀看中的比賽', '切換比賽的轉場更順', '主隊用主色、客隊用副色', '修正 Windows 數據表人名被擠掉'],
+      en: ['Cards lift on hover', 'The game on screen is marked', 'A smoother switch to a game', 'Home in first colours, visitors in second', 'Fixed: names squeezed out on Windows'],
     },
   },
   {
