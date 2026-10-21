@@ -50,10 +50,26 @@ let game: PlayersState | undefined;
 let box: Record<Side, BoxLine[]> | undefined;
 let stats: Partial<Record<Side, TeamStats>> | undefined;
 let side: BoxTab = 'away';
+/** The full box score (every column, scrolled sideways) or the simple one; this window remembers which. */
+const FULL_KEY = 'courtsmall.boxFull';
+let full = (() => { try { return localStorage.getItem(FULL_KEY) === '1'; } catch { return false; } })();
+/** The full view's columns' timing, from app.css (`--box-*`), in ms. */
+const css = (v: string) => parseFloat(getComputedStyle(document.documentElement).getPropertyValue(v)) || 0;
+/** How long the columns take to open (the numbers in last) or close: the switch waits this long
+ *  before it can be turned again, or clicks in a row turn the columns back halfway, again and again,
+ *  and the switch's thumb jumps. */
+const SWITCH_MS = Math.max(css('--box-cols'), css('--box-in-delay') + css('--box-in'), css('--box-close-delay') + css('--box-cols'));
+let switchedAt = 0;
 
 function render(): void {
   const onCourt = new Set(game?.onCourt ? [...game.onCourt.away, ...game.onCourt.home] : []);
-  app.innerHTML = boxView(game?.teams, box, side, T, game?.favourites ?? [], onCourt, stats);
+  // The box score is drawn again with each new play: where the list was scrolled to stays.
+  const list = app.querySelector('.list'), cols = app.querySelector('.list > [data-box-cols]');
+  const top = list?.scrollTop ?? 0, left = cols?.scrollLeft ?? 0;
+  app.innerHTML = boxView(game?.teams, box, side, T, game?.favourites ?? [], onCourt, stats, full);
+  const nextList = app.querySelector('.list');
+  if (nextList) nextList.scrollTop = top;
+  for (const el of app.querySelectorAll('[data-box-cols]')) el.scrollLeft = left;
   // The window shaded in the colour of the side shown (app.css `.tinted`), or for the teams' stats
   // in both, the away side's on the left and the home side's on the right, as their bars grow.
   const c = game?.teams.away.id ? gameColours(game.teams, favIn(game.teams, game.favourites)) : undefined;
@@ -102,7 +118,44 @@ setInterval(() => { if (game?.live) void load(); }, BOX_EVERY_MS);
 app.addEventListener('click', (e) => {
   const el = (e.target as HTMLElement).closest<HTMLElement>('[data-box-side]');
   if (el?.dataset.boxSide) { side = el.dataset.boxSide as BoxTab; render(); }
+  if ((e.target as HTMLElement).closest('[data-box-full]') && Date.now() - switchedAt >= SWITCH_MS) {
+    switchedAt = Date.now();
+    full = !full;
+    try { localStorage.setItem(FULL_KEY, full ? '1' : '0'); } catch { /* blocked storage: for this session only */ }
+    // Not drawn again: the same cells stay, so the full view's columns open and close in place and
+    // the switch's thumb travels (app.css). The next box score is drawn as it now is.
+    const sw = app.querySelector<HTMLElement>('[data-box-full]');
+    const track = sw?.querySelector<HTMLElement>('.t-toggle');
+    sw?.classList.toggle('on', full);
+    sw?.setAttribute('aria-checked', String(full));
+    if (track) { track.dataset.on = String(full); track.classList.add('is-init'); }
+    app.querySelector('.table')?.classList.toggle('full', full);
+    // Closing from the right: back to the left as the columns close, in step with them.
+    const cols = app.querySelector<HTMLElement>('.list > [data-box-cols]');
+    if (!full && cols?.scrollLeft) scrollBack(cols);
+  }
 });
+
+/**
+ * Scrolls the full box score's numbers back to the left as its columns close, keeping to the share of
+ * what is left to scroll that it was at, frame by frame: what is on screen moves one way only, and
+ * reaches the left as the columns finish. The browser's own smooth scroll, quicker, threw it right,
+ * then the columns pulled it back; one on its own clock ran ahead of the columns near the end.
+ */
+function scrollBack(el: HTMLElement): void {
+  const share = el.scrollLeft / Math.max(1, el.scrollWidth - el.clientWidth), until = performance.now() + SWITCH_MS;
+  const step = (now: number) => {
+    el.scrollLeft = share * (el.scrollWidth - el.clientWidth);
+    if (now < until && el.isConnected && !full) requestAnimationFrame(step);
+  };
+  requestAnimationFrame(step);
+}
+
+// The full box score's header follows its numbers sideways.
+app.addEventListener('scroll', (e) => {
+  const el = e.target as HTMLElement;
+  if (el.matches?.('.list > [data-box-cols]')) for (const h of app.querySelectorAll('.head-row [data-box-cols]')) h.scrollLeft = el.scrollLeft;
+}, true);
 
 render();
 void closeOnRequest(app);

@@ -67,7 +67,9 @@ export interface Strings {
   /** The toolbar's tips, one per button. */
   tip: { bar: string; court: string; games: string; box: string; settings: string; corner: string };
   /** The players' panel. */
-  box: { player: string; min: string; dnp: string; noGame: string; team: string };
+  box: { player: string; min: string; dnp: string; noGame: string; team: string; full: string };
+  /** The full view's own columns' labels (the others are T.box.min and T.stat). */
+  boxFull: { two: string; three: string; ft: string; pf: string; pm: string };
   /** Team stats' labels. */
   teamStat: { fg: string; two: string; three: string; ft: string; reb: string; ast: string; stl: string; blk: string; to: string; fouls: string; fastBreak: string; paint: string; largestLead: string };
   noGames: string;
@@ -130,7 +132,8 @@ export const STRINGS: Record<Lang, Strings> = {
     watching: 'Watching',
     lineTotal: 'T',
     tip: { bar: 'Simple', court: 'Court', games: 'Games', box: 'Stats', settings: 'Settings', corner: 'Back to the corner' },
-    box: { player: 'PLAYER', min: 'MIN', dnp: 'DNP', noGame: 'No game on screen', team: 'Team stats' },
+    box: { player: 'PLAYER', min: 'MIN', dnp: 'DNP', noGame: 'No game on screen', team: 'Team stats', full: 'Full' },
+    boxFull: { two: '2PT', three: '3PT', ft: 'FT', pf: 'PF', pm: '+/-' },
     teamStat: { fg: 'Field goals', two: '2-pointers', three: '3-pointers', ft: 'Free throws', reb: 'Rebounds', ast: 'Assists', stl: 'Steals', blk: 'Blocks', to: 'Turnovers', fouls: 'Fouls', fastBreak: 'Fast break pts', paint: 'Points in paint', largestLead: 'Largest lead' },
     noGames: 'No games this day',
     prevDay: 'Previous day',
@@ -188,7 +191,8 @@ export const STRINGS: Record<Lang, Strings> = {
     watching: '觀看中',
     lineTotal: '總分',
     tip: { bar: '簡易模式', court: '球場模式', games: '比賽列表', box: '數據', settings: '設定', corner: '回到右下角' },
-    box: { player: '球員', min: '時間', dnp: '未上場', noGame: '目前沒有正在看的比賽', team: '團隊數據' },
+    box: { player: '球員', min: '時間', dnp: '未上場', noGame: '目前沒有正在看的比賽', team: '團隊數據', full: '詳細' },
+    boxFull: { two: '兩分', three: '三分', ft: '罰球', pf: '犯規', pm: '+/-' },
     teamStat: { fg: '投籃', two: '兩分', three: '三分', ft: '罰球', reb: '籃板', ast: '助攻', stl: '抄截', blk: '火鍋', to: '失誤', fouls: '犯規', fastBreak: '快攻得分', paint: '禁區得分', largestLead: '最大領先' },
     noGames: '這天沒有比賽',
     prevDay: '前一天',

@@ -4,7 +4,10 @@
 import type { BoxLine, MadeOf, Side, TeamStats } from '../../model/types.ts';
 import type { Summary } from './feed-types.ts';
 
-const COLUMNS = { min: 'MIN', pts: 'PTS', reb: 'REB', ast: 'AST', stl: 'STL', blk: 'BLK', to: 'TO' } as const;
+const COLUMNS = {
+  min: 'MIN', pts: 'PTS', reb: 'REB', ast: 'AST', stl: 'STL', blk: 'BLK', to: 'TO',
+  fg: 'FG', three: '3PT', ft: 'FT', pf: 'PF', pm: '+/-',
+} as const;
 
 export function boxScore(summary: Summary): Record<Side, BoxLine[]> {
   const out: Record<Side, BoxLine[]> = { away: [], home: [] };
@@ -14,6 +17,8 @@ export function boxScore(summary: Summary): Record<Side, BoxLine[]> {
     const g = team.statistics[0];
     if (!side || !g) continue;
     const at = (stats: string[], col: string) => Number(stats[g.names.indexOf(col)]) || 0;
+    // "5-13": made, attempted.
+    const of = (stats: string[], col: string): MadeOf => { const [m, a] = (stats[g.names.indexOf(col)] ?? '').split('-').map(Number); return { made: m || 0, att: a || 0 }; };
     for (const a of g.athletes) {
       const line: BoxLine = {
         player: { id: a.athlete.id, name: a.athlete.displayName, short: a.athlete.shortName },
@@ -21,6 +26,8 @@ export function boxScore(summary: Summary): Record<Side, BoxLine[]> {
         dnp: a.didNotPlay === true || a.stats.length === 0,
         min: at(a.stats, COLUMNS.min), pts: at(a.stats, COLUMNS.pts), reb: at(a.stats, COLUMNS.reb), ast: at(a.stats, COLUMNS.ast),
         stl: at(a.stats, COLUMNS.stl), blk: at(a.stats, COLUMNS.blk), to: at(a.stats, COLUMNS.to),
+        fg: of(a.stats, COLUMNS.fg), three: of(a.stats, COLUMNS.three), ft: of(a.stats, COLUMNS.ft),
+        pf: at(a.stats, COLUMNS.pf), pm: at(a.stats, COLUMNS.pm),
       };
       if (line.dnp && a.reason) line.reason = a.reason;
       out[side].push(line);

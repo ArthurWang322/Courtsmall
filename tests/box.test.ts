@@ -26,6 +26,21 @@ for (const fx of FIXTURES) {
       }
     });
 
+    // The full view's shooting columns are read from "made-attempted" text: they are only right if
+    // each player's twos, threes and free throws make their points.
+    it("each player's twos, threes and free throws make their points", () => {
+      for (const side of ['away', 'home'] as const)
+        for (const l of box[side]) expect({ who: l.player.short, pts: 2 * (l.fg.made - l.three.made) + 3 * l.three.made + l.ft.made }).toEqual({ who: l.player.short, pts: l.pts });
+    });
+
+    // Five players are always on the court, so each point is in five players' plus-minus: a side's
+    // plus-minus adds up to five times its margin. A sign read wrong ("+3" or "-2") breaks this.
+    it("each side's plus-minus adds up to five times its margin", () => {
+      const score = Object.fromEntries(feed!.summary.header.competitions[0]!.competitors.map((c) => [c.homeAway, Number(c.score)]));
+      expect(box.away.reduce((n, l) => n + l.pm, 0)).toBe(5 * (score.away! - score.home!));
+      expect(box.home.reduce((n, l) => n + l.pm, 0)).toBe(5 * (score.home! - score.away!));
+    });
+
     it('lists five starters first and those who did not play last', () => {
       for (const side of ['away', 'home'] as const) {
         const lines = box[side];

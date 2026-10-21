@@ -332,17 +332,25 @@ describe('settings page', () => {
 
 describe("players' window", () => {
   const line = (id: string, short: string, o: Partial<BoxLine> = {}): BoxLine => ({
-    player: { id, name: short, short }, starter: false, dnp: false, min: 20, pts: 10, reb: 5, ast: 3, stl: 1, blk: 0, to: 2, ...o,
+    player: { id, name: short, short }, starter: false, dnp: false, min: 20, pts: 10, reb: 5, ast: 3, stl: 1, blk: 0, to: 2,
+    fg: { made: 4, att: 9 }, three: { made: 1, att: 4 }, ft: { made: 1, att: 2 }, pf: 3, pm: -2, ...o,
   });
   const box = { away: [line('1', 'D. Fox', { starter: true, pts: 31 }), line('2', 'K. Ellis'), line('3', 'X. Tillman', { dnp: true, min: 0 })], home: [line('9', 'L. Markkanen', { starter: true })] };
+
+  /** What a view shows: the names, then the header's numbers and each player's, the full view's own columns only when open. */
+  const shown = (html: string, open: boolean) => ({
+    names: [...html.matchAll(/<span class="name">(.*?)<\/span>/g)].map((m) => m[1]!.replace(/<[^>]+>/g, '')),
+    nums: [...html.matchAll(/<div class="nums">(.*?)<\/div>/g)]
+      .map((m) => (open ? m[1]! : m[1]!.replace(/<span class="x[^"]*"[^>]*>.*?<\/span>/g, '')).replace(/<[^>]+>/g, ' ').trim().split(/\s+/)),
+  });
 
   // A player's line reads left to right in the order of the header: minutes, then the six stats.
   it("shows the chosen side's players with minutes and the six stats, those who did not play marked", () => {
     const html = boxView(base.teams, box, 'away', zh);
-    const rows = [...html.matchAll(/<div class="row( starter| head-row)?">(.*?)<\/div>/g)].map((m) => m[2]!.replace(/<[^>]+>/g, ' ').trim().split(/\s+/));
-    expect(rows[0]).toEqual(['球員', '時間', '得分', '籃板', '助攻', '抄截', '火鍋', '失誤']);
-    expect(rows[1]).toEqual(['D.', 'Fox', '20', '31', '5', '3', '1', '0', '2']);
-    expect(html).toContain('<div class="row dnp"><span class="name">X. Tillman</span><span class="why">未上場</span></div>');
+    expect(shown(html, false).names).toEqual(['球員', 'D. Fox', 'K. Ellis', 'X. Tillman']);
+    expect(shown(html, false).nums.slice(0, 2)).toEqual([['時間', '得分', '籃板', '助攻', '抄截', '火鍋', '失誤'], ['20', '31', '5', '3', '1', '0', '2']]);
+    expect(shown(html, false).nums[3]).toEqual(['未上場']);
+    expect(html).toContain('<div class="row dnp"><span class="name">X. Tillman</span></div>');
     expect(html).not.toContain('Markkanen');
     expect(html).toContain('class="side on" data-box-side="away"');
   });
@@ -354,6 +362,36 @@ describe("players' window", () => {
     expect(html.indexOf('<hr class="bench">')).toBeLessThan(html.indexOf('K. Ellis'));
     expect(html.match(/class="on-court"/g)).toHaveLength(1);
     expect(html).toContain('<b class="on-court">*</b>K. Ellis');
+  });
+
+  // Asked for by a user (2026-10-21): the whole line, the field goals split into twos and threes.
+  // The maintainer's calls: no field goals or offensive/defensive rebounds, and the simple view's
+  // columns in the simple view's order, so switching moves none of them; the simple view stays as it was until the switch is turned.
+  it('shows the full line when switched to it: twos worked out from the field goals, shots made-attempted, plus-minus signed', () => {
+    const html = boxView(base.teams, { ...box, away: [line('1', 'D. Fox', { starter: true, pts: 31, pm: 7 }), ...box.away.slice(1)] }, 'away', en, [], new Set(), undefined, true);
+    const { names, nums } = shown(html, true);
+    expect(names).toEqual(['PLAYER', 'D. Fox', 'K. Ellis', 'X. Tillman']);
+    expect(nums[0]).toEqual(['MIN', 'PTS', '2PT', '3PT', 'FT', 'REB', 'AST', 'STL', 'BLK', 'TO', 'PF', '+/-']);
+    expect(nums[1]).toEqual(['20', '31', '3-5', '1-4', '1-2', '5', '3', '1', '0', '2', '3', '+7']);
+    expect(nums[2]!.at(-1)).toBe('-2');
+    expect(nums[3]).toEqual(['DNP']);
+    // The percentage on hover, to the nearest whole one to fit the column; none for a shot never taken.
+    expect(html).toContain('<span class="x shot" data-pct="60%">3-5</span>');
+    expect(html).toContain('<span class="x shot" data-pct="25%">1-4</span>');
+    expect(boxView(base.teams, { ...box, away: [line('1', 'D. Fox', { ft: { made: 0, att: 0 } })] }, 'away', en, [], new Set(), undefined, true)).toContain('<span class="x">0-0</span>');
+    // The line under the starters runs through both halves, the names and the numbers.
+    expect(html.match(/<hr class="bench">/g)).toHaveLength(2);
+    // The switch is lit in the full view only.
+    expect(html).toContain('<button class="mode on" data-box-full role="switch" aria-checked="true">');
+    expect(html).toContain('<i class="track t-toggle" data-on="true">');
+    expect(boxView(base.teams, box, 'away', en)).toContain('<button class="mode" data-box-full role="switch" aria-checked="false">');
+  });
+
+  // The maintainer asked for the full view's columns to slide open and closed (2026-10-21), not the
+  // table drawn anew: that needs the same cells in both views, the switch and the table's class aside.
+  it('draws the same cells in both views, so switching only opens or closes the full view\'s own', () => {
+    const bare = (html: string) => html.replace(/<button class="mode[\s\S]*?<\/button>/, '').replace('<div class="table full">', '<div class="table">');
+    expect(bare(boxView(base.teams, box, 'away', zh, [], new Set(['2']), undefined, true))).toBe(bare(boxView(base.teams, box, 'away', zh, [], new Set(['2']))));
   });
 
   // One control opens and closes the stats: the main window's stats button, not a ✕ of its own.

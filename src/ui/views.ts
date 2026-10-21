@@ -2,7 +2,7 @@
 // What a glance needs (docs/PLAN.md Q3): score, period and clock, possession, the last basket,
 // and a run once it is worth noticing.
 
-import { STAT_KEYS, type BoxLine, type MadeOf, type TeamStats, type GameCard, type GameState, type PlayLine, type Side, type TeamRef } from '../model/types.ts';
+import { STAT_KEYS, type BoxLine, type StatKey, type MadeOf, type TeamStats, type GameCard, type GameState, type PlayLine, type Side, type TeamRef } from '../model/types.ts';
 import type { Settings } from '../settings/store.ts';
 import type { Tier } from '../render/tiers.ts';
 import { gameColours, visibleColour } from '../render/colour.ts';
@@ -399,24 +399,50 @@ export function teamView(teams: Record<Side, TeamRef>, stats: Partial<Record<Sid
  * buttons switch between the sides and the teams' stats (`stats`); the main window's stats button
  * opens and closes it. `box` is undefined while it loads.
  */
-export function boxView(teams: Record<Side, TeamRef> | undefined, box: Record<Side, BoxLine[]> | undefined, side: BoxTab, T: Strings, favs: readonly string[] = [], onCourt: ReadonlySet<string> = new Set(), stats?: Partial<Record<Side, TeamStats>>): string {
+export function boxView(teams: Record<Side, TeamRef> | undefined, box: Record<Side, BoxLine[]> | undefined, side: BoxTab, T: Strings, favs: readonly string[] = [], onCourt: ReadonlySet<string> = new Set(), stats?: Partial<Record<Side, TeamStats>>, full = false): string {
   if (!teams) return `<div class="panel box"><span class="muted">${esc(T.box.noGame)}</span></div>`;
   const c = gameColours(teams, favIn(teams, favs));
   const tab = (sd: Side) => `<button class="side${sd === side ? ' on' : ''}" data-box-side="${sd}">${colourDot(c[sd])}${esc(teams[sd].abbr)}${star(teams[sd], favs)}</button>`;
   const tabs = `${tab('away')}${tab('home')}<button class="side${side === 'team' ? ' on' : ''}" data-box-side="team">${esc(T.box.team)}</button>`;
   if (side === 'team') return `<div class="panel box"><div class="head">${tabs}</div>${stats ? teamView(teams, stats, T, favs) : `<span class="muted">${esc(T.loading)}</span>`}</div>`;
-  const cols = ['min', ...STAT_KEYS] as const;
-  const head = `<div class="row head-row"><span class="name">${esc(T.box.player)}</span>${cols.map((k) => `<span>${esc(k === 'min' ? T.box.min : T.stat(k))}</span>`).join('')}</div>`;
+  const toggle = `<button class="mode${full ? ' on' : ''}" data-box-full role="switch" aria-checked="${full}">${esc(T.box.full)}<i class="track t-toggle" data-on="${full}"><i class="t-toggle-thumb"></i></i></button>`;
+  const label = (k: BoxCol) => (k === 'min' ? T.box.min : k in T.boxFull ? T.boxFull[k as keyof Strings['boxFull']] : T.stat(k as StatKey));
+  const labels = BOX_COLS.map((k) => `<span${FULL_ONLY.has(k) ? ' class="x"' : ''}>${esc(label(k))}</span>`).join('');
   const name = (l: BoxLine) => `<span class="name">${onCourt.has(l.player.id) ? '<b class="on-court">*</b>' : ''}${esc(l.player.short)}</span>`;
-  const row = (l: BoxLine) => l.dnp
-    ? `<div class="row dnp">${name(l)}<span class="why">${esc(T.box.dnp)}</span></div>`
-    : `<div class="row${l.starter ? ' starter' : ''}">${name(l)}${cols.map((k) => `<span>${l[k]}</span>`).join('')}</div>`;
+  const why = `<span class="why">${esc(T.box.dnp)}</span>`;
+  const cls = (l: BoxLine) => `row${l.dnp ? ' dnp' : l.starter ? ' starter' : ''}`;
   // A line between the starters and the bench.
   const lines = box?.[side];
+  const each = (row: (l: BoxLine) => string) => lines!.map((l, i) => (i > 0 && lines![i - 1]!.starter && !l.starter ? '<hr class="bench">' : '') + row(l)).join('');
+  // Simple and full are the same cells: the full view's own (.x) are there in the simple view too,
+  // closed, so the switch opens and closes them in place (app.css, src/ui/players.ts). The names stay
+  // at the left; the numbers beside them scroll sideways, their header with them.
+  const head = `<div class="row head-row"><span class="name">${esc(T.box.player)}</span><div class="cols" data-box-cols><div class="nums">${labels}</div></div></div>`;
   const body = lines
-    ? lines.map((l, i) => (i > 0 && lines[i - 1]!.starter && !l.starter ? '<hr class="bench">' : '') + row(l)).join('')
+    ? `<div class="names">${each((l) => `<div class="${cls(l)}">${name(l)}</div>`)}</div>`
+      + `<div class="cols" data-box-cols>${each((l) => `<div class="${cls(l)}"><div class="nums">${l.dnp ? why : BOX_COLS.map((k) => boxCell(l, k)).join('')}</div></div>`)}</div>`
     : `<span class="muted">${esc(T.loading)}</span>`;
-  return `<div class="panel box"><div class="head">${tabs}</div><div class="table">${head}<div class="list">${body}</div></div></div>`;
+  return `<div class="panel box"><div class="head">${tabs}${toggle}</div><div class="table${full ? ' full' : ''}">${head}<div class="list">${body}</div></div></div>`;
+}
+
+/** A player's columns: the simple view's, in its order, and the full view's own among them, the shots after the points, fouls and plus-minus last. */
+const BOX_COLS = ['min', 'pts', 'two', 'three', 'ft', 'reb', 'ast', 'stl', 'blk', 'to', 'pf', 'pm'] as const;
+type BoxCol = (typeof BOX_COLS)[number];
+const FULL_ONLY: ReadonlySet<BoxCol> = new Set(['two', 'three', 'ft', 'pf', 'pm']);
+
+/** One cell of a player's line: shots made-attempted, the percentage in their place on hover; plus-minus signed. */
+function boxCell(l: BoxLine, k: BoxCol): string {
+  const cls = FULL_ONLY.has(k) ? ['x'] : [];
+  let text: string, pct = '';
+  if (k === 'pm') {
+    text = `${l.pm > 0 ? '+' : ''}${l.pm}`;
+    if (l.pm) cls.push(l.pm > 0 ? 'plus' : 'minus');
+  } else if (k === 'two' || k === 'three' || k === 'ft') {
+    const s = k === 'two' ? { made: l.fg.made - l.three.made, att: l.fg.att - l.three.att } : l[k];
+    text = `${s.made}-${s.att}`;
+    if (s.att) { cls.push('shot'); pct = ` data-pct="${Math.round(100 * s.made / s.att)}%"`; }
+  } else text = String(l[k]);
+  return `<span${cls.length ? ` class="${cls.join(' ')}"` : ''}${pct}>${text}</span>`;
 }
 
 /**

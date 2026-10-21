@@ -13,6 +13,15 @@ export interface Release {
 
 export const CHANGELOG: readonly Release[] = [
   {
+    version: '0.4.3',
+    date: '2026-10-21',
+    title: { 'zh-TW': '詳細數據', en: 'Full box score' },
+    items: {
+      'zh-TW': ['數據表新增簡易／詳細切換', '詳細：兩分、三分、罰球、犯規、+/-', '滑過投籃數字顯示命中率'],
+      en: ['Stats: switch between simple and full', 'Full: twos, threes, free throws, fouls, +/-', 'Shooting percentage on hover'],
+    },
+  },
+  {
     version: '0.4.2',
     date: '2026-10-15',
     title: { 'zh-TW': '比賽列表優化', en: 'Games list polish' },

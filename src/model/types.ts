@@ -95,6 +95,14 @@ export interface BoxLine {
   stl: number;
   blk: number;
   to: number;
+  /** The full line (the players' window's full view); two-pointers are worked out from these. */
+  fg: MadeOf;
+  three: MadeOf;
+  ft: MadeOf;
+  /** Personal fouls. */
+  pf: number;
+  /** Plus-minus: the side's points less the other side's while the player was on the court. */
+  pm: number;
 }
 
 /** Made and attempted. */

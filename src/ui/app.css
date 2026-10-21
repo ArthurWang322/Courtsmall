@@ -351,23 +351,120 @@ button { font: inherit; color: inherit; border: 0; background: transparent; padd
 .panel.box .side { display: inline-flex; align-items: center; gap: 5px; padding: 4px 10px; border-radius: 8px; border: 1px solid var(--border);
   background: var(--panel); color: var(--muted); font: 600 13px var(--label); letter-spacing: .06em; }
 .panel.box .side.on { color: var(--text); border-color: var(--accent); }
+/* Room for the switch beside them in a narrow window: the tabs stay on one line each, a little tighter. */
+.panel.box .side { white-space: nowrap; }
+@media (max-width: 330px) { .panel.box .side { padding: 4px 7px; } }
 .panel.box .table { display: flex; flex-direction: column; min-height: 0; flex: 1; }
-/* The name keeps room to be read; the numbers give way first, down from 30 px, when the window has
-   less room than it should (on Windows, larger text settings make the same window narrower). */
-.panel.box .row { display: grid; grid-template-columns: minmax(72px, 1fr) repeat(7, minmax(22px, 30px)); align-items: center; gap: 2px; padding: 3px 4px;
+.panel.box .row { display: flex; align-items: center; height: 23px; padding: 0 4px;
   font: 600 13px var(--label); font-variant-numeric: tabular-nums; color: var(--muted); }
-.panel.box .row > span:not(.name) { text-align: right; }
 .panel.box .row .name { font: 500 12px var(--font); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .panel.box .row.starter { color: var(--text); }
 .panel.box .head-row { font-size: 11px; letter-spacing: .08em; color: var(--faint); border-bottom: 1px solid var(--border); white-space: nowrap; }
 /* Columns narrowed: the two-character labels stay on one line. */
 @media (max-width: 330px) { .panel.box .head-row { letter-spacing: 0; } }
-.panel.box .row.dnp { color: var(--faint); grid-template-columns: minmax(0, 1fr) auto; }
+.panel.box .row.dnp { color: var(--faint); }
 .panel.box .row.dnp .why { font-size: 11px; }
 .panel.box .list { gap: 0; }
 /* A line under the starters; a star on who is on the court. */
 .panel.box hr.bench { border: 0; border-top: 1px solid var(--border); margin: 3px 4px; }
 .panel.box .on-court { color: var(--accent); margin-right: 3px; }
+/* Simple or full: a switch at the right of the tabs, lit when full. Its thumb travels over and back
+   when switched (transitions.dev's toggle), the colours fading; src/ui/players.ts switches it in
+   place and adds .is-init on a click only, so the box score drawn again with each new play does not
+   play it again. */
+:root {
+  --toggle-dur: 450ms;
+  --toggle-travel: 12px;
+  --toggle-ov1: 1px;
+  --toggle-ov2: 0px;
+  --toggle-track: 250ms;
+  --toggle-ease: cubic-bezier(0.34, 1.35, 0.64, 1);
+}
+.panel.box .mode { margin-left: auto; display: inline-flex; align-items: center; gap: 6px; padding: 4px 2px; border: 0; background: transparent;
+  color: var(--muted); font: 600 11px var(--label); letter-spacing: .08em; white-space: nowrap; cursor: pointer; }
+.panel.box .mode:hover, .panel.box .mode.on { color: var(--text); }
+.panel.box .mode .track { position: relative; display: block; width: 28px; height: 16px; border-radius: 999px; background: var(--border); }
+.panel.box .mode .t-toggle-thumb { position: absolute; top: 2px; left: 2px; width: 12px; height: 12px; border-radius: 50%; background: var(--muted);
+  transition: background var(--toggle-track) ease-in-out; }
+.panel.box .mode .track[data-on="true"] { background: var(--accent); }
+.panel.box .mode .track[data-on="true"] .t-toggle-thumb { background: var(--background); }
+.t-toggle { transition: background var(--toggle-track) var(--toggle-ease); }
+.t-toggle-thumb { translate: 0 0; will-change: translate; }
+.t-toggle[data-on="true"] .t-toggle-thumb { translate: var(--toggle-travel) 0; }
+.t-toggle.is-init[data-on="true"] .t-toggle-thumb { animation: t-toggle-on var(--toggle-dur) var(--toggle-ease) both; }
+.t-toggle.is-init[data-on="false"] .t-toggle-thumb { animation: t-toggle-off var(--toggle-dur) var(--toggle-ease) both; }
+@keyframes t-toggle-on {
+  0% { translate: 0 0; }
+  55% { translate: calc(var(--toggle-travel) + var(--toggle-ov1)) 0; }
+  80% { translate: calc(var(--toggle-travel) - var(--toggle-ov2)) 0; }
+  100% { translate: var(--toggle-travel) 0; }
+}
+@keyframes t-toggle-off {
+  0% { translate: var(--toggle-travel) 0; }
+  55% { translate: calc(0px - var(--toggle-ov1)) 0; }
+  80% { translate: var(--toggle-ov2) 0; }
+  100% { translate: 0 0; }
+}
+@media (prefers-reduced-motion: reduce) { .t-toggle-thumb { animation: none !important; } .t-toggle, .panel.box .mode .t-toggle-thumb { transition: none; } }
+/* How the full view's columns open and close (src/ui/players.ts reads these too): they ease open and
+   shut, slow to start and slow to stop; opening, the numbers fade in as they settle; closing, the
+   numbers start to fade before the columns move. */
+:root {
+  --box-cols: 800ms;
+  --box-ease: cubic-bezier(0.65, 0, 0.35, 1);
+  --box-in-delay: 400ms;
+  --box-in: 450ms;
+  --box-out: 400ms;
+  --box-close-delay: 200ms;
+}
+/* The numbers. Simple and full are the same cells (src/ui/views.ts boxView): the full view's own
+   (.x) are closed in the simple view, and the switch opens them in place, the columns after them
+   moving aside, and closes them again. The names stay at the left; the numbers beside them scroll
+   sideways when they do not fit, the header's with them (src/ui/players.ts). */
+/* Each half as tall as its lines, not the list's height: the numbers' half clips what it does not
+   show (to scroll sideways), and stretched to the list it cut off the lines scrolled to. */
+.panel.box .list { flex-direction: row; align-items: flex-start; }
+/* The names are as wide in both views, so switching moves nothing beside them: what the simple
+   view's numbers leave at their widest (7 columns of 32 px, and the 4 px at the right), never under
+   76 px. The header's name is 4 px less: its row's own padding. */
+.panel.box .names { flex: none; width: max(76px, calc(100% - 228px)); }
+.panel.box .head-row .name { flex: none; width: max(72px, calc(100% - 224px)); }
+.panel.box .names .row { padding-right: 0; }
+.panel.box .names .name { width: 100%; }
+.panel.box .cols { flex: 1 1 0; min-width: 0; overflow-x: auto; overflow-y: hidden; scrollbar-width: none; container-type: inline-size; }
+.panel.box .head-row .cols { overflow-x: hidden; }
+.panel.box .list > .cols { display: grid; grid-template-columns: 100%; align-content: start; scrollbar-width: thin; }
+.panel.box .list > .cols .row { padding-left: 0; }
+/* The simple view: the name keeps room to be read; the numbers give way first, down from 32 px, when
+   the window has less room than it should (on Windows, larger text settings make the same window
+   narrower): a seventh each of the room beside the names (--room: the header's, or a line's less its
+   4 px at the right). A set width, not one the browser fits, so the columns close at one pace to
+   the end, the scrolling back with them (src/ui/players.ts scrollBack). */
+.panel.box .head-row .nums { --room: 100cqw; }
+.panel.box .list .nums { --room: calc(100cqw - 4px); }
+.panel.box .nums { --col: clamp(24px, var(--room) / 7, 32px); display: grid; width: max-content; align-items: center;
+  /* Track for track as in the full view, no repeat(), or the browser cannot slide between them. */
+  grid-template-columns: var(--col) var(--col) 0px 0px 0px var(--col) var(--col) var(--col) var(--col) var(--col) 0px 0px;
+  /* Closing. */
+  transition: grid-template-columns var(--box-cols) var(--box-close-delay) var(--box-ease); }
+.panel.box .nums > span { min-width: 0; padding-left: 2px; overflow: hidden; white-space: nowrap; text-align: right; }
+.panel.box .nums > .x { opacity: 0; pointer-events: none; transition: opacity var(--box-out) ease-in-out; }
+/* "Did not play" at the left in both views, so switching does not move it. */
+.panel.box .row.dnp .nums { display: block; text-align: left; }
+/* The full view: every column one width, room for "10-25", so the gaps between them are even; the
+   numbers as wide as they are, scrolled when they do not fit, and every line as wide as the widest,
+   so the line under the starters runs the whole way. */
+.panel.box .table.full .list > .cols { grid-template-columns: minmax(100%, max-content); }
+/* Opening. */
+.panel.box .table.full .nums { transition: grid-template-columns var(--box-cols) var(--box-ease); grid-template-columns: 40px 40px 40px 40px 40px 40px 40px 40px 40px 40px 40px 40px; }
+.panel.box .table.full .nums > .x { opacity: 1; pointer-events: auto; transition: opacity var(--box-in) var(--box-in-delay) ease-in-out; }
+@media (prefers-reduced-motion: reduce) { .panel.box .nums, .panel.box .nums > .x { transition: none; } }
+/* A shot's percentage, in place of made-attempted while the pointer is on it: at once, unlike a
+   tooltip, and never cut off at the edge of the scrolling numbers. */
+.panel.box .shot:hover { font-size: 0; }
+.panel.box .shot:hover::after { content: attr(data-pct); font-size: 13px; color: var(--accent); }
+.panel.box .plus { color: var(--live); }
+.panel.box .minus { color: var(--paused); }
 /* The stats windows unfold out of the main window: the stats from its left edge, the line score
    from its top edge a beat later, sharpening as they open; leaving, they fold back the same way. */
 .players-page #app { animation: unfold-right .6s cubic-bezier(.16, 1, .3, 1) both; transform-origin: left center; }
