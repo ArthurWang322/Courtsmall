@@ -133,12 +133,13 @@ if (shell) {
     // This window's place in points, once each time the cards come up: it does not move while they are.
     // The pointer's pixels are counted at the main screen's scale, this window's at its own screen's:
     // with two screens of different scales (the maintainer's, 2026-10-22) they cannot simply be subtracted.
-    place ??= await (async () => {
+    // Its own copy: a bring-up while this one waits clears `place`.
+    const at = place ??= await (async () => {
       const [p, scale, primary] = await Promise.all([me.outerPosition(), me.scaleFactor(), primaryMonitor()]);
       return { x: p.x / scale, y: p.y / scale, cursorScale: primary?.scaleFactor ?? scale };
     })();
     const c = await cursorPosition();
-    return { x: c.x / place.cursorScale - place.x, y: c.y / place.cursorScale - place.y };
+    return { x: c.x / at.cursorScale - at.x, y: c.y / at.cursorScale - at.y };
   };
   bus.on('stack-show', () => { place = undefined; });
 }
@@ -149,7 +150,8 @@ if (shell) {
 async function watch(): Promise<void> {
   const mine = run;
   while (up && mine === run) {
-    const at = await pointerAt();
+    // A look that fails (the system not answering) is skipped, not the end of the watching.
+    const at = await pointerAt().catch(() => undefined);
     if (!up || mine !== run) break;
     if (at && !picking) {
       const top = behind.offsetHeight, w = window.innerWidth;
