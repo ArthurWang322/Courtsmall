@@ -528,8 +528,16 @@ button { font: inherit; color: inherit; border: 0; background: transparent; padd
    (src/ui/stack-window.ts, stack.html) above and over the main window, so the main window never changes
    size for them. Its bottom part is the main window's place: the cards behind sit in the part above it
    (.behind, clipped there so they never cover the main window); a card drawn out comes down over it. */
-.stack-page .behind { position: fixed; left: 0; right: 0; top: 0; bottom: var(--card-h); overflow: hidden; }
-.stack-page .behind .stack { position: absolute; left: 0; right: 0; top: 100%; height: var(--card-h); }
+/* Down to the main window's top edge, and around its two rounded top corners (radius 14 px): cut there
+   in a straight line, the cards left a notch of nothing at each corner. */
+.stack-page .behind { position: fixed; left: 0; right: 0; top: 0; bottom: calc(var(--card-h) - 14px); overflow: hidden;
+  -webkit-mask: linear-gradient(#000 0 0) top / 100% calc(100% - 14px) no-repeat,
+    radial-gradient(circle at 100% 100%, transparent 13.5px, #000 14px) left bottom / 14px 14px no-repeat,
+    radial-gradient(circle at 0 100%, transparent 13.5px, #000 14px) right bottom / 14px 14px no-repeat;
+  mask: linear-gradient(#000 0 0) top / 100% calc(100% - 14px) no-repeat,
+    radial-gradient(circle at 100% 100%, transparent 13.5px, #000 14px) left bottom / 14px 14px no-repeat,
+    radial-gradient(circle at 0 100%, transparent 13.5px, #000 14px) right bottom / 14px 14px no-repeat; }
+.stack-page .behind .stack { position: absolute; left: 0; right: 0; top: calc(100% - 14px); height: var(--card-h); }
 .stack-page .stack.drawn { position: fixed; left: 0; right: 0; bottom: 0; height: var(--card-h); }
 /* A card drawn out lands in front of the main window; while it does, nothing else answers the pointer. */
 .stack.drawn .scard { opacity: 1; }
@@ -558,7 +566,7 @@ html.stack-up .scard.live.lit .strip .when { color: var(--live); }
 .edge { position: fixed; left: 0; right: 0; top: 0; height: 16px; z-index: 2; }
 .edge.none { display: none; }
 /* The hint: faint while the pointer is on the window, lit and wider once the stack is up. */
-.edge::after { content: ''; position: absolute; left: 50%; top: 5px; width: 44px; height: 4px; border-radius: 4px; transform: translateX(-50%);
+.edge::after { content: ''; position: absolute; left: 50%; top: 2px; width: 44px; height: 3px; border-radius: 3px; transform: translateX(-50%);
   background: transparent; transition: background .2s ease, width .2s ease; }
 #app:hover ~ .edge::after { background: rgba(255, 255, 255, .22); }
 .edge:hover::after, html.stack-up .edge::after { background: var(--accent); width: 64px; }

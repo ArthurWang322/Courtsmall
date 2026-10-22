@@ -21,7 +21,6 @@ import { stackView } from './views.ts';
 const shell = '__TAURI_INTERNALS__' in window;
 const root = document.documentElement;
 const bus = await makeBus('stack');
-const behind = document.querySelector<HTMLElement>('.behind')!;
 const layer = document.querySelector<HTMLElement>('.behind .stack')!;
 const drawn = document.querySelector<HTMLElement>('.stack.drawn')!;
 
@@ -154,7 +153,8 @@ async function watch(): Promise<void> {
     const at = await pointerAt().catch(() => undefined);
     if (!up || mine !== run) break;
     if (at && !picking) {
-      const top = behind.offsetHeight, w = window.innerWidth;
+      // The main window's top edge here: this window's height less the main window's.
+      const top = window.innerHeight - (show?.cardH ?? 0), w = window.innerWidth;
       const across = at.x >= 0 && at.x < w;
       const cardsTop = Math.min(top, ...els().map((el) => el.getBoundingClientRect().top));
       const onCards = across && at.y >= cardsTop && at.y < top;
