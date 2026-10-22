@@ -23,6 +23,8 @@ let fake = false;
 /** Under `npm run dev` only: as if `version` were out, with this build's changelog as its notes. */
 export async function fakeCheck(set: (s: UpdateState) => void, version: string): Promise<void> {
   const { CHANGELOG } = await import('../changelog.ts');
+  // As long as a check over the network takes, so the screen before it is seen too.
+  await new Promise((r) => setTimeout(r, 1200));
   fake = true;
   set({ kind: 'available', version, notes: JSON.stringify(CHANGELOG) });
 }
