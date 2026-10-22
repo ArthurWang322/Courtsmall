@@ -56,6 +56,14 @@ describe('settings', () => {
     expect(normalize({ team: '7', favourites: ['9'] }).favourites).toEqual(['9']);
   });
 
+  // Settings saved before the card stack existed get it on, like a new install; an off stays off,
+  // and anything that is not a yes or a no is taken as never set.
+  it('keeps the card stack on unless it was switched off', () => {
+    expect(normalize({}).stack).toBe(true);
+    expect(normalize({ stack: false }).stack).toBe(false);
+    expect(normalize({ stack: 'no' }).stack).toBe(true);
+  });
+
   // Settings saved before the shortcuts existed get them on, like a new install; an off stays off.
   it('turns the shortcuts on for older settings and keeps them off once switched off', () => {
     expect(normalize({ favourites: ['7'] }).shortcuts).toBe(true);
@@ -64,7 +72,7 @@ describe('settings', () => {
 
   it('falls back to the defaults for anything missing or malformed', () => {
     expect(normalize(null)).toEqual(DEFAULTS);
-    expect(normalize({ team: 7, notify: { start: 'yes', final: false } })).toEqual({ favourites: [], notify: { start: true, clutch: true }, shortcuts: true });
+    expect(normalize({ team: 7, notify: { start: 'yes', final: false } })).toEqual({ favourites: [], notify: { start: true, clutch: true }, shortcuts: true, stack: true });
     // One favourite: the first valid one is kept.
     expect(normalize({ favourites: [7, '', '7', '9'] }).favourites).toEqual(['7']);
   });

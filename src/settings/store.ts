@@ -11,12 +11,14 @@ export interface Settings {
   notify: { start: boolean; clutch: boolean };
   /** The global shortcuts (src/ui/shortcuts.ts), on or off. */
   shortcuts: boolean;
+  /** The card stack behind the main window (src/ui/stack.ts), on or off. */
+  stack: boolean;
 }
 
 /** One favourite team (the maintainer's call, 2026-10-13); kept as a list should that change. */
 export const MAX_FAVOURITES = 1;
 
-export const DEFAULTS: Settings = { favourites: [], notify: { start: true, clutch: true }, shortcuts: true };
+export const DEFAULTS: Settings = { favourites: [], notify: { start: true, clutch: true }, shortcuts: true, stack: true };
 const KEY = 'courtsmall.settings';
 
 /** Fill in what a stored object lacks, drop what it should not have. */
@@ -30,6 +32,7 @@ export function normalize(raw: unknown): Settings {
       : typeof o.team === 'string' && o.team ? [o.team] : []).slice(0, MAX_FAVOURITES),
     notify: { start: flag(n.start, DEFAULTS.notify.start), clutch: flag(n.clutch, DEFAULTS.notify.clutch) },
     shortcuts: flag(o.shortcuts, DEFAULTS.shortcuts),
+    stack: flag(o.stack, DEFAULTS.stack),
   };
 }
 

@@ -256,7 +256,7 @@ describe('favourite team', () => {
 
 describe('settings page', () => {
   const teams = [{ id: '7', abbr: 'DEN', name: 'Denver Nuggets', color: 'fec524' }, { id: '20', abbr: 'PHI', name: 'Philadelphia 76ers', color: 'ed174c' }];
-  const settings = { favourites: [] as string[], notify: { start: true, clutch: true }, shortcuts: true };
+  const settings = { favourites: [] as string[], notify: { start: true, clutch: true }, shortcuts: true, stack: true };
 
   // One favourite, picked from a drop-down whose first choice is none; the teams by full name.
   it('shows the choice, and when open lists none and every team by full name, the choice marked', () => {
@@ -323,6 +323,14 @@ describe('settings page', () => {
   });
 
   // On or off is one choice of two, so exactly one is ever marked, and it is the one in effect.
+  // Every feature is a switch (docs/PLAN.md §0): the card stack too, on or off like the shortcuts.
+  it('offers the card stack as on or off, the one in effect marked', () => {
+    const marked = (html: string) => [...html.matchAll(/data-stack="(on|off)"( checked)?/g)].map((m) => `${m[1]}${m[2] ? '*' : ''}`);
+    expect(marked(settingsView(teams, settings, zh))).toEqual(['on*', 'off']);
+    expect(marked(settingsView(teams, { ...settings, stack: false }, zh))).toEqual(['on', 'off*']);
+    expect(settingsView(teams, settings, zh)).toContain('比賽卡片疊');
+  });
+
   it('offers the shortcuts as on or off, the one in effect marked', () => {
     const marked = (html: string) => [...html.matchAll(/data-shortcuts="(on|off)"( checked)?/g)].map((m) => `${m[1]}${m[2] ? '*' : ''}`);
     expect(marked(settingsView(teams, settings, zh))).toEqual(['on*', 'off']);
@@ -503,7 +511,7 @@ describe('changelog', () => {
   });
 
   it('links the changelog and feedback from the foot of the settings', () => {
-    const html = settingsView([], { favourites: [], notify: { start: true, clutch: true }, shortcuts: true }, zh);
+    const html = settingsView([], { favourites: [], notify: { start: true, clutch: true }, shortcuts: true, stack: true }, zh);
     expect(html).toContain('<div class="links"><a data-open="changelog">更新日誌</a><a data-feedback>回饋與問題回報</a></div>');
   });
 });

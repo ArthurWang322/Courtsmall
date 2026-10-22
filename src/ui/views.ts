@@ -240,6 +240,9 @@ export function settingsView(teams: readonly TeamRef[], s: Settings, T: Strings,
   // The shortcuts, on or off: a choice of two, set apart from the notices above.
   const radio = (on: boolean, label: string) =>
     `<label class="check"><input type="radio" name="shortcuts" data-shortcuts="${on ? 'on' : 'off'}"${s.shortcuts === on ? ' checked' : ''}> ${esc(label)}</label>`;
+  // The card stack, on or off, the same way; "on" and "off" are the shortcuts' words.
+  const stackRadio = (on: boolean, label: string) =>
+    `<label class="check"><input type="radio" name="stack" data-stack="${on ? 'on' : 'off'}"${s.stack === on ? ' checked' : ''}> ${esc(label)}</label>`;
   const check = (key: keyof Settings['notify'], label: string, hint?: string) =>
     `<label class="check${hasFav ? '' : ' off'}"><input type="checkbox" data-notify="${key}"${hasFav && s.notify[key] ? ' checked' : ''}${hasFav ? '' : ' disabled'}><span>${esc(label)}${hint ? `<small class="sub">${esc(hint)}</small>` : ''}</span></label>`;
   return `${watermark}<div class="settings">
@@ -249,6 +252,7 @@ export function settingsView(teams: readonly TeamRef[], s: Settings, T: Strings,
       <div class="shortcuts-row"><span class="label">${esc(T.shortcuts)}</span>${radio(true, T.shortcutsOn)}${radio(false, T.shortcutsOff)}</div>
       <span class="keys">${(Object.keys(SHORTCUTS) as ShortcutAction[]).map((a) => `<kbd>${esc(keyLabel(SHORTCUTS[a], mac))}</kbd> ${esc(T.shortcut[a])}`).join('<i>·</i>')}</span>
       ${s.shortcuts && shortcutsTaken ? `<span class="hint warn">${esc(T.shortcutsTaken)}</span>` : ''}
+      <div class="shortcuts-row"><span class="label">${esc(T.stack)}<small class="sub">${esc(T.stackHint)}</small></span>${stackRadio(true, T.shortcutsOn)}${stackRadio(false, T.shortcutsOff)}</div>
       ${version ? updateRow(version, update, T) : ''}
       <div class="links"><a data-open="changelog">${esc(T.changelog.title)}</a><a data-feedback>${esc(T.feedback)}</a></div>
     </div>`;

@@ -702,7 +702,7 @@ async function setTier(t: Tier): Promise<void> {
 app.addEventListener('click', (e) => {
   // The size buttons only: #app carries data-tier too (the size it shows), so a click anywhere else
   // would ask for the size it already has, and snap the window back to that size's preset.
-  const el = (e.target as HTMLElement).closest<HTMLElement>('button[data-tier], [data-corner], [data-open], [data-day], [data-players], [data-game], [data-done], [data-notify], [data-shortcuts], [data-update], [data-fav-open], [data-fav-pick], [data-feedback]');
+  const el = (e.target as HTMLElement).closest<HTMLElement>('button[data-tier], [data-corner], [data-open], [data-day], [data-players], [data-game], [data-done], [data-notify], [data-shortcuts], [data-stack], [data-update], [data-fav-open], [data-fav-pick], [data-feedback]');
   // The favourite's list: its button opens and closes it, a team in it is picked, a click
   // anywhere else closes it.
   if (pickerOpen && !el?.closest('.favourite')) { pickerOpen = false; render(); }
@@ -739,6 +739,11 @@ app.addEventListener('click', (e) => {
   if (el.dataset.update) {
     const set = (u: UpdateState) => { updateState = u; if (panel === 'settings') render(); };
     void (el.dataset.update === 'install' ? installUpdate(set) : checkForUpdate(set));
+    return;
+  }
+  if (el.dataset.stack !== undefined) {
+    settings = { ...settings, stack: el.dataset.stack === 'on' };
+    saveSettings(settings);
     return;
   }
   if (el.dataset.shortcuts !== undefined) {

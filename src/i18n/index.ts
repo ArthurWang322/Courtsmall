@@ -53,6 +53,9 @@ export interface Strings {
   shortcutsTaken: string;
   shortcutsOn: string;
   shortcutsOff: string;
+  /** The card stack's switch (src/ui/stack.ts), and what it does, small under it. */
+  stack: string;
+  stackHint: string;
   /** The changelog (src/changelog.ts) and the feedback link, at the foot of the settings. */
   changelog: { title: string; intro: string; latest: string };
   feedback: string;
@@ -119,6 +122,8 @@ export const STRINGS: Record<Lang, Strings> = {
     shortcutsTaken: 'Some keys are taken by another app.',
     shortcutsOn: 'On',
     shortcutsOff: 'Off',
+    stack: 'Card stack',
+    stackHint: "Touch the window's top edge for today's other games",
     changelog: { title: 'Changelog', intro: "What is new in Courtsmall, version by version.", latest: 'Latest' },
     feedback: 'Feedback and bug reports',
     notifyNeedsFavourite: 'Choose a favourite team to get notices for its games.',
@@ -178,6 +183,8 @@ export const STRINGS: Record<Lang, Strings> = {
     shortcutsTaken: '有些按鍵已被其他程式佔用。',
     shortcutsOn: '開啟',
     shortcutsOff: '關閉',
+    stack: '比賽卡片疊',
+    stackHint: '摸視窗上緣，換今天的其他比賽',
     changelog: { title: '更新日誌', intro: '查看 Courtsmall 每個版本的新功能與改進。', latest: '最新' },
     feedback: '回饋與問題回報',
     notifyNeedsFavourite: '選擇最愛球隊後，開啟比賽通知設定',
