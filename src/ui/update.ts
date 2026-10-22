@@ -22,8 +22,10 @@ let found: Found = null;
 /** Under `npm run dev` only (src/ui/main.ts &fakeupdate): an update that is not there, to see the screens;
  *  `fakeFail`: its install fails (&fakefail) rather than restarting as the new version. */
 let fake: string | undefined, fakeFail = false;
-/** Under `npm run dev` only: the version a fake update restarted as (sessionStorage, across the reload). */
-export const FAKE_UPDATED_KEY = 'courtsmall.fakeUpdated';
+/** The version just installed, kept across the restart (localStorage): the app then starts without
+ *  asking again whether a newer one is out (src/ui/main.ts justUpdated). */
+export const JUST_UPDATED_KEY = 'courtsmall.justUpdated';
+const keepJustUpdated = (version: string) => { try { localStorage.setItem(JUST_UPDATED_KEY, version); } catch { /* it asks again: no harm */ } };
 
 /** Under `npm run dev` only: as if `version` were out, with this build's changelog as its notes. */
 export async function fakeCheck(set: (s: UpdateState) => void, version: string, fail = false): Promise<void> {
@@ -50,12 +52,12 @@ export async function checkForUpdate(set: (s: UpdateState) => void): Promise<voi
 export async function installUpdate(set: (s: UpdateState) => void): Promise<void> {
   if (fake) {
     // Under `npm run dev`: a download that runs, then fails (&fakefail) or "restarts": the page loads
-    // again as the new version, and finds no newer one.
+    // again as the new version, just updated.
     for (let p = 0; p <= 100; p += 20) { set({ kind: 'installing', percent: p }); await new Promise((r) => setTimeout(r, 300)); }
     if (fakeFail) { set({ kind: 'failed', during: 'install' }); return; }
     set({ kind: 'restarting' });
     await new Promise((r) => setTimeout(r, 1500));
-    try { sessionStorage.setItem(FAKE_UPDATED_KEY, fake); } catch { /* the reload then offers it again */ }
+    keepJustUpdated(fake);
     location.reload();
     return;
   }
@@ -68,6 +70,7 @@ export async function installUpdate(set: (s: UpdateState) => void): Promise<void
       if (e.event === 'Progress') { got += e.data.chunkLength; set({ kind: 'installing', percent: total ? Math.min(100, Math.round((got / total) * 100)) : undefined }); }
     });
     set({ kind: 'restarting' });
+    keepJustUpdated(found.version);
     const { relaunch } = await import('@tauri-apps/plugin-process');
     await relaunch();
   } catch (e) {

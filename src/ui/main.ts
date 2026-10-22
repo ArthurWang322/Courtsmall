@@ -25,7 +25,7 @@ import { langOf, STRINGS } from '../i18n/index.ts';
 import { Notifier, showNotice, testNoticeFor, testOutcome, type NoticeTest } from '../notify/notifier.ts';
 import { assumedBefore, notices } from '../notify/rules.ts';
 import { SHORTCUTS, type ShortcutAction } from './shortcuts.ts';
-import { checkForUpdate, FAKE_UPDATED_KEY, fakeCheck, installUpdate, newerReleases, parseNotes, type UpdateState } from './update.ts';
+import { checkForUpdate, fakeCheck, JUST_UPDATED_KEY, installUpdate, newerReleases, parseNotes, type UpdateState } from './update.ts';
 import { between, cornerRect, ease, GLIDE_MS, LINE_H, PLAYERS_W, sideRects, SIDE_GAP, type Rect } from './placement.ts';
 import { LEAVE_MS } from './side-window.ts';
 import { createStack } from './stack.ts';
@@ -122,9 +122,11 @@ let playersOpen = false;
  *  at most START_CHECK_MS, the window says so; with one, it is the update screen (panel 'update'). In
  *  `npm run dev`, &fakeupdate=<version>[&from=<version>] shows the screens without a release. */
 const START_CHECK_MS = 3000;
-const fakeUpdated = import.meta.env.DEV ? (() => { try { return sessionStorage.getItem(FAKE_UPDATED_KEY); } catch { return null; } })() : null;
-const fakeUpdate = import.meta.env.DEV && !fakeUpdated ? params.get('fakeupdate') : null;
-let checkingAtStart = (shell && !import.meta.env.DEV) || !!fakeUpdate || !!fakeUpdated;
+/** Restarted by an update just installed (src/ui/update.ts JUST_UPDATED_KEY): this is the newest, nothing to
+ *  ask; read once, the next start asks again. */
+const justUpdated = (() => { try { const v = localStorage.getItem(JUST_UPDATED_KEY); localStorage.removeItem(JUST_UPDATED_KEY); return v; } catch { return null; } })();
+const fakeUpdate = import.meta.env.DEV && !justUpdated ? params.get('fakeupdate') : null;
+let checkingAtStart = ((shell && !import.meta.env.DEV) || !!fakeUpdate) && !justUpdated;
 /** The newer version found, and its notes (src/ui/update.ts parseNotes). */
 let offered: { version: string; notes?: string } | undefined;
 /** The settings page's test notice: how the last one went (src/notify/notifier.ts testNoticeFor). */
@@ -910,6 +912,8 @@ const isMac = navigator.userAgent.includes('Mac');
 // ---- Version and updates (src/ui/update.ts) ------------------------------------------------------
 
 let appVersion: string | undefined;
+// Under `npm run dev`, a fake update "restarted" as its version.
+if (import.meta.env.DEV && justUpdated) appVersion = justUpdated;
 let updateState: UpdateState = { kind: 'idle' };
 if (shell) void import('@tauri-apps/api/app').then(async ({ getVersion }) => { appVersion = await getVersion(); if (panel === 'settings') render(); });
 /** Another app holds some of the keys: the settings say so. */
@@ -967,13 +971,10 @@ setInterval(() => { if (!panel && (state?.status === 'scheduled' || (!state && u
 
 // At start: a newer version first (checkingAtStart), the game meanwhile, in the background.
 if (checkingAtStart) void (async () => {
-  if (fakeUpdated) appVersion = fakeUpdated;
-  else if (fakeUpdate) appVersion = params.get('from') ?? '0.4.2';
+  if (fakeUpdate) appVersion = params.get('from') ?? '0.4.2';
   else appVersion ??= await (await import('@tauri-apps/api/app')).getVersion().catch(() => undefined);
   const set = (u: UpdateState) => { updateState = u; if (u.kind === 'available') offered = { version: u.version, ...(u.notes ? { notes: u.notes } : {}) }; };
-  // Under `npm run dev`, after a fake update "restarted": a check that finds nothing newer.
-  const check = fakeUpdated ? new Promise((r) => setTimeout(r, 1200)).then(() => set({ kind: 'latest' }))
-    : fakeUpdate ? fakeCheck(set, fakeUpdate, params.has('fakefail')) : checkForUpdate(set);
+  const check = fakeUpdate ? fakeCheck(set, fakeUpdate, params.has('fakefail')) : checkForUpdate(set);
   await Promise.race([check, new Promise((r) => setTimeout(r, START_CHECK_MS))]);
   checkingAtStart = false;
   if (offered) await openPanel('update');
