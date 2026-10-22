@@ -175,36 +175,38 @@ function hover(hovered: number): void {
   for (const el of els()) { set(el, hoverPlace(depthOf(el), hovered)); el.classList.toggle('lit', depthOf(el) === hovered); }
 }
 
-/** A card drawn out: up clear of the stack, then down over the main window, which by then shows its
- *  game; it fades into it, the game watched before goes back to its place, and the stack goes down. */
+/** A card drawn out: up clear of the stack and down over the main window in one arc, the other cards
+ *  going down at the same time; on the main window it fades into the game, which by then is there. */
 async function pick(el: HTMLElement): Promise<void> {
   const card = cards.find((g) => g.id === el.dataset.game);
   if (!card || !show) return;
   picking = true;
   clearTimeout(closeTimer);
   root.classList.add('stack-busy');
-  // Onto the layer that reaches over the main window, where it is now: then up and down.
+  // Onto the layer that reaches over the main window, where it is now; the others go down meanwhile.
+  const from = getComputedStyle(el).transform, lit = getComputedStyle(el).filter;
   el.style.transitionDelay = '0ms';
   drawn.append(el);
+  void putDown();
   if (!reducedMotion.matches) {
-    void el.offsetHeight;
-    el.style.setProperty('--move', `${RISE_MS}ms`);
-    set(el, { y: pickRise(depthOf(el), show.cardH), scale: 1, brightness: 1.05 });
-    await wait(RISE_MS);
-    bus.send('main', 'stack-landing', null);
-    el.style.setProperty('--move', `${LAND_MS}ms`);
-    set(el, cardPlace(0));
-    await wait(LAND_MS);
+    // One arc: slowing to a stop at the top, then gathering speed down and settling, so it never turns
+    // sharply at the top (two moves, the second starting at full speed, did).
+    const top = `translateY(${pickRise(depthOf(el), show.cardH)}px) scale(1)`;
+    setTimeout(() => bus.send('main', 'stack-landing', null), RISE_MS);
+    await el.animate([
+      { transform: from, filter: lit, easing: 'cubic-bezier(.33, 1, .68, 1)' },
+      { transform: top, filter: 'brightness(1.05)', offset: RISE_MS / (RISE_MS + LAND_MS), easing: 'cubic-bezier(.65, 0, .35, 1)' },
+      { transform: 'translateY(0px) scale(1)', filter: 'brightness(1)' },
+    ], { duration: RISE_MS + LAND_MS, fill: 'forwards' }).finished;
   }
   bus.send('main', 'stack-picked', { card });
   show = { ...show, currentId: card.id };
-  draw();
+  el.style.transition = 'opacity 300ms ease';
   el.style.opacity = '0';
   await wait(reducedMotion.matches ? 0 : 300);
   el.remove();
   root.classList.remove('stack-busy');
   picking = false;
-  await putDown();
 }
 
 bus.on('stack-show', (s) => bringUp(s));
