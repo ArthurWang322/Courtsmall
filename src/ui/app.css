@@ -570,7 +570,7 @@ html.stack-up .scard.live.lit .strip .when { color: var(--live); }
 .edge::after { content: ''; position: absolute; left: 50%; top: 0; width: 56px; height: 3px; border-radius: 0 0 3px 3px; transform: translateX(-50%);
   background: transparent; transition: background .2s ease, width .2s ease; }
 #app:hover ~ .edge::after { background: rgba(255, 255, 255, .22); }
-.edge:hover::after, html.stack-up .edge::after { background: var(--accent); width: 110px; }
+.edge:hover::after, html.stack-up .edge::after { background: var(--accent); width: 150px; }
 @media (prefers-reduced-motion: reduce) { .scard, .edge::after { transition: none; } }
 /* Under `npm run dev` only (src/ui/main.ts &stackroom): the room above the view, and the cards' window
    an iframe over the page, letting the pointer through as the window would. */
