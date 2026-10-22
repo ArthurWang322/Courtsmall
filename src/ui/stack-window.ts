@@ -1,4 +1,4 @@
-// The cards' own window: today's other games as cards behind the main window. It is always there,
+// The cards' own window: the day's other games as cards behind the main window. It is always there,
 // above the main window and over it, and never resized for the stack: a resize makes the web view
 // paint its old frame out of place for a moment (the flash the maintainer saw, 2026-10-22). Clear
 // and letting the pointer through, it is not seen and takes no clicks; the main window brings the
@@ -66,21 +66,21 @@ function fan(out: boolean): void {
   clearTimeout(settleTimer);
   settleTimer = setTimeout(() => { for (const el of els()) el.style.transitionDelay = '0ms'; root.style.removeProperty('--move'); }, all.length * STAGGER_MS + 50);
 }
-/** Today's cards behind the game on screen, as many as there is room for, where `up` puts them. */
+/** The day's cards behind the game on screen, as many as there is room for, where `up` puts them. */
 function draw(): void {
   if (!show) return;
-  cards = backCards(show.today, show.currentId, show.favourites).slice(0, show.shown);
+  cards = backCards(show.games, show.currentId, show.favourites).slice(0, show.shown);
   layer.innerHTML = stackView(cards, T, tipOff, show.favourites);
   for (const el of els()) { el.style.transition = 'none'; set(el, cardPlace(up ? depthOf(el) : 0)); }
   void layer.offsetHeight;
   for (const el of els()) el.style.transition = '';
 }
 /** ESPN's newer list: the same cards, their strips as they now stand, not drawn again (which would put them in place at once). */
-function refresh(today: GameCard[]): void {
+function refresh(games: GameCard[]): void {
   if (!show) return;
-  show = { ...show, today };
+  show = { ...show, games };
   for (const el of els()) {
-    const g = today.find((x) => x.id === el.dataset.game);
+    const g = games.find((x) => x.id === el.dataset.game);
     const strip = el.querySelector('.strip');
     if (!g || !strip) continue;
     const tmp = document.createElement('div');
@@ -210,7 +210,7 @@ async function pick(el: HTMLElement): Promise<void> {
 }
 
 bus.on('stack-show', (s) => bringUp(s));
-bus.on('stack-refresh', ({ today }) => { if (up && !picking) refresh(today); });
+bus.on('stack-refresh', ({ games }) => { if (up && !picking) refresh(games); });
 bus.on('stack-close', () => {
   ++run;
   clearTimeout(closeTimer);

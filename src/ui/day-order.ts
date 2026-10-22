@@ -3,6 +3,10 @@
 
 import type { GameCard } from '../model/types.ts';
 
+/** The day a moment falls on as ESPN counts days, in US Eastern time: "YYYYMMDD". */
+export const espnDay = (at: number): string =>
+  new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York' }).format(at).replaceAll('-', '');
+
 const ORDER: Partial<Record<GameCard['status'], number>> = { live: 0, break: 0, delayed: 0, scheduled: 1, final: 2 };
 
 /** On, then to come, then finished; within each, the favourites' games first, then by tip-off. */

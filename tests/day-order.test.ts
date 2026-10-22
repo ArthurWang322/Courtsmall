@@ -2,7 +2,7 @@
 // card next behind the window would not be the game next in the list.
 
 import { describe, expect, it } from 'vitest';
-import { backCards, dayOrder } from '../src/ui/day-order.ts';
+import { backCards, dayOrder, espnDay } from '../src/ui/day-order.ts';
 import type { GameCard } from '../src/model/types.ts';
 
 const game = (id: string, status: GameCard['status'], start: number, away = 'a', home = 'h'): GameCard => ({
@@ -36,5 +36,18 @@ describe("a day's order", () => {
 
   it('has no cards behind when today has only the game on screen', () => {
     expect(backCards([game('only', 'live', 1)], 'only', [])).toEqual([]);
+  });
+});
+
+// The card stack holds the other games of the day of the game on screen (the maintainer, 2026-10-22),
+// as ESPN and the games list count days: in US Eastern time, whatever the time here.
+describe("a game's day", () => {
+  it('puts a game on the US Eastern day it is played, as the games list does', () => {
+    // 19:30 in New York on 22 October.
+    expect(espnDay(Date.parse('2026-10-22T23:30:00Z'))).toBe('20261022');
+    // A late game in the west: past midnight in UTC (and in Taipei), still the 22nd in New York.
+    expect(espnDay(Date.parse('2026-10-23T02:30:00Z'))).toBe('20261022');
+    // The next morning in New York is the next day.
+    expect(espnDay(Date.parse('2026-10-23T14:00:00Z'))).toBe('20261023');
   });
 });

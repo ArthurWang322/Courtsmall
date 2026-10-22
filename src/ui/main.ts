@@ -29,6 +29,7 @@ import { checkForUpdate, installUpdate, type UpdateState } from './update.ts';
 import { between, cornerRect, ease, GLIDE_MS, LINE_H, PLAYERS_W, sideRects, SIDE_GAP, type Rect } from './placement.ts';
 import { LEAVE_MS } from './side-window.ts';
 import { createStack } from './stack.ts';
+import { espnDay } from './day-order.ts';
 import { LAND_MS, overlayRoom } from './stack-layout.ts';
 import { Pacer } from './pacer.ts';
 import { playLinesAt, TIER_PRESET, tierOf, TOOLBAR_H, type Tier } from '../render/tiers.ts';
@@ -117,15 +118,14 @@ let sizeBeforePanel: { w: number; h: number } | undefined;
 let pickerOpen = false;
 /** The stats windows are open (src/ui/players.ts, src/ui/linescore.ts). */
 let playersOpen = false;
-/** Today's games as last asked, for the card stack (src/ui/stack.ts); how much taller the window is for it, px. */
-let stackToday: GameCard[] | undefined;
+/** Each day's games as last asked, for the card stack (src/ui/stack.ts), by ESPN day ("YYYYMMDD"). */
+const stackDays = new Map<string, GameCard[]>();
 /** A game drawn out of the card stack whose own feed has not come yet: the view stays empty until it has,
  *  then fades in, so no number shows that then changes (the maintainer, 2026-10-22). */
 let drawnOut: GameCard | undefined;
 
 /** ESPN's day `offset` days from today, "YYYYMMDD": ESPN counts days in US Eastern time. */
-const espnDate = (offset: number) =>
-  new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York' }).format(Date.now() + offset * 86_400_000).replaceAll('-', '');
+const espnDate = (offset: number) => espnDay(Date.now() + offset * 86_400_000);
 const dayLabel = (offset: number) =>
   new Intl.DateTimeFormat(undefined, { timeZone: 'America/New_York', month: 'numeric', day: 'numeric', weekday: 'short' }).format(Date.now() + offset * 86_400_000);
 const tipOff = (g: GameCard) => new Intl.DateTimeFormat(undefined, { hour: '2-digit', minute: '2-digit' }).format(g.start);
@@ -192,10 +192,18 @@ if (devRoom) {
   document.body.append(frame);
   void import('./stack-bus.ts').then(async ({ bus }) => (await bus('main')).on('stack-through', (on) => { frame.style.pointerEvents = on ? 'none' : 'auto'; }));
 }
+/** The card stack holds the other games of the day of the game on screen (the maintainer, 2026-10-22):
+ *  the game followed, the one counted down to, or one drawn out whose feed is not here yet; today with none. */
+const stackDay = () => { const at = state?.start ?? upcoming?.start ?? drawnOut?.start; return at !== undefined ? espnDay(at) : espnDate(0); };
 const stack = createStack({
-  // Under `npm run dev` with &fixture, today is fixtures/nba/scoreboard.json, as in the games list.
-  today: async () => (stackToday = await dayGames(import.meta.env.DEV && params.has('fixture') ? () => fetch('/fixtures/nba/scoreboard.json').then((r) => r.json()) : fetchJson)),
-  lastToday: () => stackToday,
+  // Under `npm run dev` with &fixture, every day is fixtures/nba/scoreboard.json, as in the games list.
+  games: async () => {
+    const day = stackDay();
+    const list = await dayGames(import.meta.env.DEV && params.has('fixture') ? () => fetch('/fixtures/nba/scoreboard.json').then((r) => r.json()) : fetchJson, day);
+    stackDays.set(day, list);
+    return list;
+  },
+  lastGames: () => stackDays.get(stackDay()),
   currentId: () => currentId,
   favourites: () => settings.favourites,
   lang: () => langTag(),
@@ -690,7 +698,7 @@ async function decideNow(): Promise<void> {
   deciding = true;
   try {
     const today = await dayGames(fetchJson);
-    stackToday = today;
+    stackDays.set(espnDate(0), today);
     const teamSchedule = settings.favourites.length ? await scheduleOf(settings.favourites) : undefined;
     for (const g of [...today, ...(teamSchedule ?? [])]) if (g.status === 'scheduled') knownScheduled.add(g.id); else knownScheduled.delete(g.id);
     const current = currentId && state ? { id: currentId, status: state.status, ...(finalAt !== undefined ? { finalAt } : {}) } : undefined;

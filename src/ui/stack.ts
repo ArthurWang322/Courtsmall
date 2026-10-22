@@ -1,7 +1,7 @@
-// The card stack, the main window's side: today's other games as cards behind it, brought up from the
+// The card stack, the main window's side: the day's other games as cards behind it, brought up from the
 // strip along its top edge. The cards are drawn in their own window (src/ui/stack-window.ts), always
 // there above and over this one: this window never changes size for them. Here: the strip and its
-// hint, today's games, and the game drawn out; the cards' window watches the pointer itself.
+// hint, the day's games, and the game drawn out; the cards' window watches the pointer itself.
 
 import type { GameCard } from '../model/types.ts';
 import { backCards } from './day-order.ts';
@@ -10,10 +10,11 @@ import { overlayRoom, stackRoom } from './stack-layout.ts';
 
 /** What the stack asks of the main window. */
 export interface StackHost {
-  /** Today's games, asked of ESPN once each time the stack comes up; rejects when that fails. */
-  today(): Promise<GameCard[]>;
-  /** The last list of today's games there was (perhaps old), if any. */
-  lastToday(): GameCard[] | undefined;
+  /** The games of the day of the game on screen, asked of ESPN once each time the stack comes up;
+   *  rejects when that fails. */
+  games(): Promise<GameCard[]>;
+  /** The last list of that day's games there was (perhaps old), if any. */
+  lastGames(): GameCard[] | undefined;
   currentId(): string | undefined;
   favourites(): readonly string[];
   lang(): string;
@@ -46,8 +47,8 @@ export function createStack(host: StackHost): Stack {
     if (asking || !host.allowed()) return;
     asking = true;
     try {
-      const fresh = host.today().catch(() => undefined);
-      const list = host.lastToday() ?? (await fresh);
+      const fresh = host.games().catch(() => undefined);
+      const list = host.lastGames() ?? (await fresh);
       if (!list) return;
       const count = backCards(list, host.currentId(), host.favourites()).length;
       edge.classList.toggle('none', !count);
@@ -58,9 +59,9 @@ export function createStack(host: StackHost): Stack {
       if (!shown) return;
       const b = await bus;
       const id = host.currentId();
-      b.send('stack', 'stack-show', { today: list, ...(id ? { currentId: id } : {}), favourites: host.favourites(), lang: host.lang(), cardH, shown });
+      b.send('stack', 'stack-show', { games: list, ...(id ? { currentId: id } : {}), favourites: host.favourites(), lang: host.lang(), cardH, shown });
       // ESPN's newer list, when it comes: the cards' strips as they now stand.
-      void fresh.then((newer) => { if (newer) b.send('stack', 'stack-refresh', { today: newer }); });
+      void fresh.then((newer) => { if (newer) b.send('stack', 'stack-refresh', { games: newer }); });
     } finally { asking = false; }
   }
 
@@ -71,7 +72,7 @@ export function createStack(host: StackHost): Stack {
 
   // The hint along the top edge only when there is something behind (as far as the last list knows).
   app.addEventListener('pointerenter', () => {
-    const list = host.lastToday();
+    const list = host.lastGames();
     edge.classList.toggle('none', !host.allowed() || (!!list && !backCards(list, host.currentId(), host.favourites()).length));
   });
   void bus.then((b) => {

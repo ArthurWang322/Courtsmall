@@ -8,8 +8,8 @@ export type Side = 'main' | 'stack';
 
 /** What the main window tells the cards' window. */
 export interface Show {
-  /** Today's games, the game on screen, the favourites: the cards' window works out the cards behind. */
-  today: GameCard[];
+  /** The day's games, the game on screen, the favourites: the cards' window works out the cards behind. */
+  games: GameCard[];
   currentId?: string;
   favourites: readonly string[];
   lang: string;
@@ -21,7 +21,7 @@ export interface Messages {
   /** main → stack: bring the cards up. */
   'stack-show': Show;
   /** main → stack: ESPN's newer list, for the cards' strips. */
-  'stack-refresh': { today: GameCard[] };
+  'stack-refresh': { games: GameCard[] };
   /** main → stack, in a browser only: where the pointer is on the page (the cards' window watches it). */
   'stack-cursor': { x: number; y: number };
   /** main → stack: down at once (a panel, a size, the stats, a drag). */
