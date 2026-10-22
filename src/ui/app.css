@@ -567,8 +567,8 @@ html.stack-up .scard.live.lit .strip .when { color: var(--live); }
 .edge.none { display: none; }
 /* The hint: hanging from the window's top edge (square on top, rounded below), faint while the pointer
    is on the window, lit and wider once the stack is up. */
-.edge::after { content: ''; position: absolute; left: 50%; top: 0; width: 56px; height: 3px; border-radius: 0 0 3px 3px; transform: translateX(-50%);
-  background: transparent; transition: background .2s ease, width .2s ease; }
+.edge::after { content: ''; position: absolute; left: 50%; top: 0; width: 56px; height: 4px; border-radius: 0 0 4px 4px; transform: translateX(-50%);
+  background: transparent; transition: background .4s ease, width .4s ease; }
 #app:hover ~ .edge::after { background: rgba(255, 255, 255, .22); }
 .edge:hover::after, html.stack-up .edge::after { background: var(--accent); width: 150px; }
 @media (prefers-reduced-motion: reduce) { .scard, .edge::after { transition: none; } }
