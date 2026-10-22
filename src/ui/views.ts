@@ -294,6 +294,7 @@ function updateRow(version: string, u: UpdateState, T: Strings): string {
     u.kind === 'latest' ? [U.latest, `<button data-update="check">${esc(U.check)}</button>`] :
     u.kind === 'available' ? [U.available(u.version), `<button class="on" data-update="install">${esc(U.install)}</button>`] :
     u.kind === 'installing' ? [U.installing(u.percent), ''] :
+    u.kind === 'restarting' ? [U.restarting, ''] :
     u.kind === 'failed' ? [u.during === 'check' ? U.checkFailed : U.installFailed, `<button data-update="check">${esc(U.check)}</button>`] :
     ['', `<button data-update="check">${esc(U.check)}</button>`];
   return `<div class="update"><span class="version">${esc(U.version(version))}</span><span class="note${u.kind === 'available' ? ' new' : ''}">${esc(note)}</span>${button}</div>`;
@@ -378,6 +379,7 @@ export function gamesView(day: string, games: readonly GameCard[], T: Strings, t
  */
 export function updateView(current: string, latest: string, u: UpdateState, releases: readonly Release[], T: Strings, lang: Lang): string {
   const actions = u.kind === 'installing' ? `<span class="mono">${esc(T.update.installing(u.percent))}</span>`
+    : u.kind === 'restarting' ? `<span>${esc(T.update.restarting)}</span>`
     : u.kind === 'failed' ? `<span class="hint warn">${esc(T.update.installFailed)}</span><button class="on" data-update-now>${esc(T.update.retry)}</button><button data-update-later>${esc(T.update.later)}</button>`
     : `<button class="on" data-update-now>${esc(T.update.install)}</button>`;
   return `<div class="panel changelog update">

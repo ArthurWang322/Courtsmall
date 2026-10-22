@@ -17,8 +17,8 @@ export const CHANGELOG: readonly Release[] = [
     date: '2026-10-22',
     title: { 'zh-TW': '快速切換比賽', en: 'Quick game switching' },
     items: {
-      'zh-TW': ['新增卡片疊：摸視窗上緣，叫出同一天的其他比賽', '點一張卡片就換場', '設定裡可以關掉', '比賽列表標示延遲與延長賽', '修正 macOS 系統通知不會跳出', '設定新增測試通知按鈕', '打開時有新版本會提醒更新'],
-      en: ["New card stack: touch the window's top edge for the day's other games", 'Pick a card to switch to that game', 'Can be switched off in the settings', 'The games list shows delays and overtime', 'Fixed: system notices never showing on macOS', 'A test notice button in the settings', 'A newer version is offered at start'],
+      'zh-TW': ['快速切換比賽：摸視窗上緣，叫出同一天的其他比賽', '修正 macOS 通知不會跳出', '有新版本時，打開 app 會提醒更新'],
+      en: ["Quick game switching: touch the window's top edge for the day's other games", 'Fixed: notices not showing on macOS', 'A newer version is offered when the app opens'],
     },
   },
   {

@@ -517,6 +517,10 @@ describe('update screen', () => {
   it('shows the download as it goes, and once it fails, a retry and the old version for now', () => {
     expect(updateView('0.4.2', '0.5.0', { kind: 'installing', percent: 42 }, notes, zh, 'zh-TW')).toContain('42%');
     expect(updateView('0.4.2', '0.5.0', { kind: 'installing', percent: 42 }, notes, zh, 'zh-TW')).not.toContain('data-update-now');
+    // Downloaded and installed: it says it is restarting, nothing left to press.
+    const done = updateView('0.4.2', '0.5.0', { kind: 'restarting' }, notes, zh, 'zh-TW');
+    expect(done).toContain('重新啟動');
+    expect(done).not.toContain('data-update-now');
     const failed = updateView('0.4.2', '0.5.0', { kind: 'failed', during: 'install' }, notes, zh, 'zh-TW');
     expect(failed).toContain('v0.5.0');
     expect(failed).toContain('data-update-now');
