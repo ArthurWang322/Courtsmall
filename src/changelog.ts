@@ -15,10 +15,10 @@ export const CHANGELOG: readonly Release[] = [
   {
     version: '0.5.0',
     date: '2026-10-22',
-    title: { 'zh-TW': '比賽卡片疊', en: 'Card stack' },
+    title: { 'zh-TW': '快速切換比賽', en: 'Quick game switching' },
     items: {
-      'zh-TW': ['摸視窗上緣，叫出今天其他比賽', '點一張卡片就換場', '設定裡可以關掉'],
-      en: ["Touch the window's top edge for today's other games", 'Pick a card to switch to that game', 'Can be switched off in the settings'],
+      'zh-TW': ['新增卡片疊：摸視窗上緣，叫出同一天的其他比賽', '點一張卡片就換場', '設定裡可以關掉', '比賽列表標示延遲與延長賽'],
+      en: ["New card stack: touch the window's top edge for the day's other games", 'Pick a card to switch to that game', 'Can be switched off in the settings', 'The games list shows delays and overtime'],
     },
   },
   {
