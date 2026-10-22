@@ -11,6 +11,7 @@ import type { Lang, Strings } from '../i18n/index.ts';
 import type { Release } from '../changelog.ts';
 import { keyLabel, SHORTCUTS, type ShortcutAction } from './shortcuts.ts';
 import type { UpdateState } from './update.ts';
+import { dayOrder } from './day-order.ts';
 
 /** How long a score that just changed keeps its jump, ms (app.css `.jump`). */
 export const JUMP_MS = 600;
@@ -324,17 +325,13 @@ function cardWhen(g: GameCard, T: Strings, tipOff: (g: GameCard) => string): str
   }
 }
 
-const ORDER: Partial<Record<GameCard['status'], number>> = { live: 0, break: 0, delayed: 0, scheduled: 1, final: 2 };
-
 /**
  * A day's games: the ones on first, then the ones still to come, then the finished ones. A game on
  * or to come is followed live; a finished one shows its result. `current`: the game on screen.
  * The favourites' games come first in each group, starred.
  */
 export function gamesView(day: string, games: readonly GameCard[], T: Strings, tipOff: (g: GameCard) => string, current?: string, favs: readonly string[] = [], picking?: string): string {
-  // Within each group (on, to come, finished), the favourites' games come first.
-  const isFav = (g: GameCard) => (favIn(g.teams, favs) ? 0 : 1);
-  const sorted = [...games].sort((a, b) => (ORDER[a.status] ?? 3) - (ORDER[b.status] ?? 3) || isFav(a) - isFav(b) || a.start - b.start);
+  const sorted = dayOrder(games, favs);
   const row = (g: GameCard) => {
     const how = g.status === 'final' ? 'result' : 'live';
     const showScore = g.status !== 'scheduled' && g.status !== 'postponed' && g.status !== 'cancelled';
