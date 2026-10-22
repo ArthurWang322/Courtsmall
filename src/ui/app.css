@@ -543,11 +543,12 @@ html.stack-busy .scard { pointer-events: none; }
   /* --move: how long a move takes (src/ui/stack-window.ts): coming out, going back, drawn out; quick otherwise (a lift). */
   transition: transform var(--move, 320ms) cubic-bezier(.33, 1, .68, 1), filter 300ms ease, opacity 400ms ease; }
 html.stack-up .scard { opacity: 1; pointer-events: auto; }
-.scard .strip { position: absolute; left: 14px; right: 14px; top: 3px; height: 14px; display: flex; align-items: center; gap: 5px;
-  font: 600 10.5px/1 var(--label); letter-spacing: .06em; color: var(--muted); white-space: nowrap; }
-.scard .strip .dot { width: 6px; height: 6px; flex: 0 0 6px; box-shadow: none; }
+.scard .strip { position: absolute; left: 14px; right: 14px; top: 1.5px; height: 11px; display: flex; align-items: center; gap: 5px;
+  font: 600 12px/1 var(--label); letter-spacing: .05em; color: var(--muted); white-space: nowrap; }
+.scard .strip .dot { width: 7px; height: 7px; flex: 0 0 7px; box-shadow: none; }
 .scard .strip b { color: var(--text); font-weight: 600; }
-.scard .strip .when { margin-left: auto; color: var(--faint); }
+/* The teams and the score a little larger (the maintainer, 2026-10-22); the time as it was. */
+.scard .strip .when { margin-left: auto; color: var(--faint); font-size: 10.5px; }
 .scard.live .strip .when { color: var(--live); }
 /* Under the pointer (src/ui/stack-window.ts hover), the strip's words as bright as the main window's. */
 html.stack-up .scard.lit .strip { color: var(--text); }
