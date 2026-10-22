@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { STRINGS } from '../src/i18n/index.ts';
 import { playLinesAt, TIER_PRESET, TOOLBAR_H } from '../src/render/tiers.ts';
 import { CHANGELOG } from '../src/changelog.ts';
-import { barView, boxView, courtView, periodTable, stackView, changelogView, clockText, lineScoreView, teamView, controlsView, countdownParts, gamesView, JUMP_MS, leadersTable, noLogo, playLines, SLIDE_MS, pregameView, RUN_MIN, settingsView, whenText } from '../src/ui/views.ts';
+import { barView, boxView, courtView, periodTable, stackView, updateView, changelogView, clockText, lineScoreView, teamView, controlsView, countdownParts, gamesView, JUMP_MS, leadersTable, noLogo, playLines, SLIDE_MS, pregameView, RUN_MIN, settingsView, whenText } from '../src/ui/views.ts';
 import type { BoxLine, GameCard, GameState, PlayLine, TeamStats } from '../src/model/types.ts';
 
 const en = STRINGS.en, zh = STRINGS['zh-TW'];
@@ -495,6 +495,32 @@ describe('a result in the main window', () => {
     const html = barView(s, en, 1, undefined, [], true);
     const head = html.match(/<div class="row period head">(.*?)<\/div>/)![1]!;
     expect([...head.matchAll(/<span class="mono">(.*?)<\/span>/g)].map((m) => m[1])).toEqual(['1', '2', '3', '4', 'OT']);
+  });
+});
+
+// With a newer version out, the window at start is the update screen (the maintainer, 2026-10-22):
+// the two versions, what changed, and updating as the only way on, unless the update fails.
+describe('update screen', () => {
+  const notes = CHANGELOG.slice(0, 2);
+  it('shows the version in hand and the newest, what changed in between, and one button to update', () => {
+    const html = updateView('0.4.2', '0.5.0', { kind: 'available', version: '0.5.0' }, notes, zh, 'zh-TW');
+    expect(html).toContain('v0.4.2');
+    expect(html).toContain('v0.5.0');
+    expect(html).toContain(notes[0]!.title['zh-TW']);
+    expect(html).toContain(notes[1]!.items['zh-TW'][0]!);
+    expect(html.match(/data-update-now/g)).toHaveLength(1);
+    // No way past it but updating: no close, no "later".
+    expect(html).not.toContain('data-done');
+    expect(html).not.toContain('data-update-later');
+  });
+
+  it('shows the download as it goes, and once it fails, a retry and the old version for now', () => {
+    expect(updateView('0.4.2', '0.5.0', { kind: 'installing', percent: 42 }, notes, zh, 'zh-TW')).toContain('42%');
+    expect(updateView('0.4.2', '0.5.0', { kind: 'installing', percent: 42 }, notes, zh, 'zh-TW')).not.toContain('data-update-now');
+    const failed = updateView('0.4.2', '0.5.0', { kind: 'failed', during: 'install' }, notes, zh, 'zh-TW');
+    expect(failed).toContain('v0.5.0');
+    expect(failed).toContain('data-update-now');
+    expect(failed).toContain('data-update-later');
   });
 });
 

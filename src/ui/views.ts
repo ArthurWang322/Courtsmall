@@ -272,10 +272,13 @@ export function settingsView(teams: readonly TeamRef[], s: Settings, T: Strings,
  * The changelog, opened from the settings: each version newest first along a timeline, its date,
  * number and title, then what it brought. The ✕ goes back to the settings.
  */
+/** One version on the changelog's timeline: when, which, what; the first is the newest. */
+const releaseEntry = (T: Strings, lang: Lang) => (r: Release, i: number) => `<li class="release${i === 0 ? ' newest' : ''}">`
+  + `<div class="when"><span class="date mono">${esc(r.date.replaceAll('-', '/'))}</span><span class="ver">v${esc(r.version)}</span>${i === 0 ? `<span class="tag">${esc(T.changelog.latest)}</span>` : ''}</div>`
+  + `<b class="title">${esc(r.title[lang])}</b><ul>${r.items[lang].map((x) => `<li>${esc(x)}</li>`).join('')}</ul></li>`;
+
 export function changelogView(releases: readonly Release[], T: Strings, lang: Lang): string {
-  const entry = (r: Release, i: number) => `<li class="release${i === 0 ? ' newest' : ''}">`
-    + `<div class="when"><span class="date mono">${esc(r.date.replaceAll('-', '/'))}</span><span class="ver">v${esc(r.version)}</span>${i === 0 ? `<span class="tag">${esc(T.changelog.latest)}</span>` : ''}</div>`
-    + `<b class="title">${esc(r.title[lang])}</b><ul>${r.items[lang].map((x) => `<li>${esc(x)}</li>`).join('')}</ul></li>`;
+  const entry = releaseEntry(T, lang);
   return `<div class="panel changelog">
       <div class="head"><b>${esc(T.changelog.title)}</b><span class="grow"></span><button class="icon close" data-done aria-label="${esc(T.close)}">✕</button></div>
       <span class="intro">${esc(T.changelog.intro)}</span>
@@ -365,6 +368,23 @@ export function gamesView(day: string, games: readonly GameCard[], T: Strings, t
   return `<div class="panel games${picking ? ' picking' : ''}">
       <div class="head"><button class="icon" data-day="-1" title="${esc(T.prevDay)}">‹</button><b>${esc(day)}</b><button class="icon" data-day="1" title="${esc(T.nextDay)}">›</button><span class="grow"></span><button class="icon close" data-done aria-label="${esc(T.close)}">✕</button></div>
       <div class="list">${sorted.length ? sorted.map(row).join('') : `<span class="muted">${esc(T.noGames)}</span>`}</div>
+    </div>`;
+}
+
+/**
+ * The window at start when a newer version is out (src/ui/main.ts): the version in hand and the newest,
+ * what changed in between (the release's notes, src/ui/update.ts newerReleases), and updating as the
+ * only way on; once an update has failed, a retry, or this version for now (the maintainer, 2026-10-22).
+ */
+export function updateView(current: string, latest: string, u: UpdateState, releases: readonly Release[], T: Strings, lang: Lang): string {
+  const actions = u.kind === 'installing' ? `<span class="mono">${esc(T.update.installing(u.percent))}</span>`
+    : u.kind === 'failed' ? `<span class="hint warn">${esc(T.update.installFailed)}</span><button class="on" data-update-now>${esc(T.update.retry)}</button><button data-update-later>${esc(T.update.later)}</button>`
+    : `<button class="on" data-update-now>${esc(T.update.install)}</button>`;
+  return `<div class="panel changelog update">
+      <div class="head"><b>${esc(T.update.title)}</b></div>
+      <span class="intro mono">v${esc(current)} → v${esc(latest)}</span>
+      ${releases.length ? `<ol class="list timeline">${releases.map(releaseEntry(T, lang)).join('')}</ol>` : ''}
+      <div class="update-actions">${actions}</div>
     </div>`;
 }
 

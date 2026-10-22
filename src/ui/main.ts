@@ -25,7 +25,7 @@ import { langOf, STRINGS } from '../i18n/index.ts';
 import { Notifier, showNotice, testNoticeFor, testOutcome, type NoticeTest } from '../notify/notifier.ts';
 import { assumedBefore, notices } from '../notify/rules.ts';
 import { SHORTCUTS, type ShortcutAction } from './shortcuts.ts';
-import { checkForUpdate, installUpdate, type UpdateState } from './update.ts';
+import { checkForUpdate, fakeCheck, installUpdate, newerReleases, parseNotes, type UpdateState } from './update.ts';
 import { between, cornerRect, ease, GLIDE_MS, LINE_H, PLAYERS_W, sideRects, SIDE_GAP, type Rect } from './placement.ts';
 import { LEAVE_MS } from './side-window.ts';
 import { createStack } from './stack.ts';
@@ -36,7 +36,7 @@ import { playLinesAt, TIER_PRESET, tierOf, TOOLBAR_H, type Tier } from '../rende
 import { drawFlights, flightSeconds, LANDED, shotSeconds, WINDUP_SECONDS } from '../render/court.ts';
 import { gameColours } from '../render/colour.ts';
 import { loadSettings, saveSettings, type Settings } from '../settings/store.ts';
-import { barView, changelogView, controlsView, courtView, favIn, gamesView, JUMP_MS, messageView, noLogo, playLines, SLIDE_MS, pregameView, settingsView, type ScoreAges } from './views.ts';
+import { barView, changelogView, updateView, controlsView, courtView, favIn, gamesView, JUMP_MS, messageView, noLogo, playLines, SLIDE_MS, pregameView, settingsView, type ScoreAges } from './views.ts';
 
 // In `npm run dev`, VITE_PARAMS fills in for the URL, which the desktop window does not have:
 // VITE_PARAMS='game=401898721&replay' npx tauri dev
@@ -51,7 +51,7 @@ const DECIDE_EVERY_MS = 60_000;
 /** How long a team's schedule is reused, ms. */
 const TEAM_SCHEDULE_TTL_MS = 5 * 60_000;
 /** The window's size while a panel is open: the games list is long, the settings are short. */
-const PANEL_SIZE = { games: { w: 360, h: 330 }, settings: { w: 360, h: 300 }, changelog: { w: 360, h: 330 } } as const;
+const PANEL_SIZE = { games: { w: 360, h: 330 }, settings: { w: 360, h: 300 }, changelog: { w: 360, h: 330 }, update: { w: 360, h: 330 } } as const;
 /** Where feedback and bug reports go, by mail from the settings. */
 const FEEDBACK_MAIL = 'arthur800322@hotmail.com';
 
@@ -90,7 +90,7 @@ const knownScheduled = new Set<string>();
 let message = T.loading;
 let messageSub: string | undefined;
 /** A panel over the game: the games list or the settings. */
-type Panel = 'games' | 'settings' | 'changelog';
+type Panel = 'games' | 'settings' | 'changelog' | 'update';
 let panel: Panel | undefined;
 /** The games list: which day (0 = ESPN's today), and its games. */
 let gamesDay = 0;
@@ -118,6 +118,14 @@ let sizeBeforePanel: { w: number; h: number } | undefined;
 let pickerOpen = false;
 /** The stats windows are open (src/ui/players.ts, src/ui/linescore.ts). */
 let playersOpen = false;
+/** At start, whether a newer version is out is asked first (the maintainer, 2026-10-22): until it is known,
+ *  at most START_CHECK_MS, the window says so; with one, it is the update screen (panel 'update'). In
+ *  `npm run dev`, &fakeupdate=<version>[&from=<version>] shows the screens without a release. */
+const START_CHECK_MS = 3000;
+const fakeUpdate = import.meta.env.DEV ? params.get('fakeupdate') : null;
+let checkingAtStart = (shell && !import.meta.env.DEV) || !!fakeUpdate;
+/** The newer version found, and its notes (src/ui/update.ts parseNotes). */
+let offered: { version: string; notes?: string } | undefined;
 /** The settings page's test notice: how the last one went (src/notify/notifier.ts testNoticeFor). */
 let noticeTest: NoticeTest = { kind: 'idle' };
 /** Each day's games as last asked, for the card stack (src/ui/stack.ts), by ESPN day ("YYYYMMDD"). */
@@ -209,7 +217,7 @@ const stack = createStack({
   currentId: () => currentId,
   favourites: () => settings.favourites,
   lang: () => langTag(),
-  allowed: () => settings.stack && !panel,
+  allowed: () => settings.stack && !panel && !checkingAtStart,
   roomAbove: async () => {
     if (!shell) return devRoom;
     const area = await workArea(), r = await mainRect();
@@ -527,6 +535,12 @@ function render(): void {
     return;
   }
   if (panel === 'changelog') { show(changelogView(CHANGELOG, T, langTag()), undefined); return; }
+  if (panel === 'update' && offered) {
+    const current = appVersion ?? '';
+    show(updateView(current, offered.version, updateState, newerReleases(parseNotes(offered.notes), current), T, langTag()), undefined);
+    return;
+  }
+  if (checkingAtStart) { show(messageView(T.update.atStart), undefined); return; }
   if (panel === 'games') { show(gamesView(dayLabel(gamesDay), dayList, T, tipOff, currentId, settings.favourites, picking), undefined); return; }
   const tag = replaying ? T.replay : undefined;
   // The toolbar has a row of its own along the bottom.
@@ -730,6 +744,8 @@ async function loadDay(): Promise<void> {
 }
 
 async function openPanel(kind: Panel): Promise<void> {
+  // The update screen is the only way on (src/ui/views.ts updateView): no other panel over it.
+  if (panel === 'update' && kind !== 'update') return;
   closeStack();
   const was = panel;
   panel = kind;
@@ -799,7 +815,7 @@ async function setTier(t: Tier): Promise<void> {
 app.addEventListener('click', (e) => {
   // The size buttons only: #app carries data-tier too (the size it shows), so a click anywhere else
   // would ask for the size it already has, and snap the window back to that size's preset.
-  const el = (e.target as HTMLElement).closest<HTMLElement>('button[data-tier], [data-corner], [data-open], [data-day], [data-players], [data-game], [data-done], [data-notify], [data-shortcuts], [data-stack], [data-notice-test], [data-update], [data-fav-open], [data-fav-pick], [data-feedback]');
+  const el = (e.target as HTMLElement).closest<HTMLElement>('button[data-tier], [data-corner], [data-open], [data-day], [data-players], [data-game], [data-done], [data-notify], [data-shortcuts], [data-stack], [data-notice-test], [data-update-now], [data-update-later], [data-update], [data-fav-open], [data-fav-pick], [data-feedback]');
   // The favourite's list: its button opens and closes it, a team in it is picked, a click
   // anywhere else closes it.
   if (pickerOpen && !el?.closest('.favourite')) { pickerOpen = false; render(); }
@@ -832,6 +848,9 @@ app.addEventListener('click', (e) => {
     setTimeout(() => { picking = undefined; void closePanel(); }, PICK_MS);
     return;
   }
+  if (el.dataset.updateNow !== undefined) { void installUpdate((u) => { updateState = u; if (panel === 'update') render(); }); return; }
+  // An update that failed: this version for now; at the next start it is asked again.
+  if (el.dataset.updateLater !== undefined) { void closePanel(); return; }
   if (panel !== 'settings') return;
   if (el.dataset.noticeTest !== undefined) {
     // The favourite's tip-off as the real notice would read: its next game, when the window knows it.
@@ -944,6 +963,17 @@ new ResizeObserver(() => requestAnimationFrame(() => {
 render();
 // The countdown ticks once a second while a game not started yet is on screen.
 setInterval(() => { if (!panel && (state?.status === 'scheduled' || (!state && upcoming))) render(); }, 1000);
+
+// At start: a newer version first (checkingAtStart), the game meanwhile, in the background.
+if (checkingAtStart) void (async () => {
+  if (fakeUpdate) appVersion = params.get('from') ?? '0.4.2';
+  else appVersion ??= await (await import('@tauri-apps/api/app')).getVersion().catch(() => undefined);
+  const set = (u: UpdateState) => { updateState = u; if (u.kind === 'available') offered = { version: u.version, ...(u.notes ? { notes: u.notes } : {}) }; };
+  await Promise.race([fakeUpdate ? fakeCheck(set, fakeUpdate) : checkForUpdate(set), new Promise((r) => setTimeout(r, START_CHECK_MS))]);
+  checkingAtStart = false;
+  if (offered) await openPanel('update');
+  else render();
+})();
 
 const devGame = params.get('game');
 if (devGame) follow(devGame, params.has('replay') ? 'replay' : params.has('result') ? 'result' : 'live');

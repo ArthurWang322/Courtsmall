@@ -59,3 +59,21 @@ jobs:
           includeUpdaterJson: true
           prerelease: false
           args: ${{ matrix.args }}
+
+  # Once both builds have written latest.json: the changelog in it as its notes, which the app's update
+  # screen shows (scripts/updater-notes.ts). Fails when src/changelog.ts has no entry for this version.
+  notes:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+      - run: |
+          gh release download "$TAG" --pattern latest.json
+          node scripts/updater-notes.ts latest.json
+          gh release upload "$TAG" latest.json --clobber
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.ref_name }}

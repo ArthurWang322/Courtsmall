@@ -66,7 +66,9 @@ export interface Strings {
   feedback: string;
   notifyNeedsFavourite: string;
   /** The version and updating, at the foot of the settings (src/ui/update.ts). */
-  update: { version: (v: string) => string; check: string; checking: string; latest: string; available: (v: string) => string; install: string; installing: (pct: number | undefined) => string; checkFailed: string; installFailed: string };
+  update: { version: (v: string) => string; check: string; checking: string; latest: string; available: (v: string) => string; install: string; installing: (pct: number | undefined) => string; checkFailed: string; installFailed: string;
+    /** The update screen at start (src/ui/views.ts updateView), and the check before it. */
+    title: string; atStart: string; retry: string; later: string };
   close: string;
   /** The game on screen, marked in the games list. */
   watching: string;
@@ -141,6 +143,7 @@ export const STRINGS: Record<Lang, Strings> = {
       available: (v) => `Version ${v} is out`, install: 'Update now',
       installing: (p) => (p === undefined ? 'Updating…' : `Updating… ${p}%`),
       checkFailed: 'Could not check. Are you online?', installFailed: 'Could not update. Try again later.',
+      title: 'A new version is out', atStart: 'Checking for updates…', retry: 'Try again', later: 'Use this version for now',
     },
     close: 'Close',
     watching: 'Watching',
@@ -206,6 +209,7 @@ export const STRINGS: Record<Lang, Strings> = {
       available: (v) => `有新版本 ${v}`, install: '立即更新',
       installing: (p) => (p === undefined ? '更新中…' : `更新中… ${p}%`),
       checkFailed: '無法檢查更新，請確認網路連線', installFailed: '更新失敗，請稍後再試',
+      title: '有新版本', atStart: '檢查更新中…', retry: '重試', later: '先用舊版',
     },
     close: '關閉',
     watching: '觀看中',

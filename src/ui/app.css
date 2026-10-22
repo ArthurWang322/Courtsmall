@@ -304,6 +304,12 @@ button { font: inherit; color: inherit; border: 0; background: transparent; padd
 .settings .notice-test { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 10px; }
 .settings .notice-test button { padding: 3px 9px; font-size: 12px; }
 .settings .notice-test button[disabled] { opacity: .5; cursor: default; }
+/* The update screen at start (src/ui/views.ts updateView): the changelog's look, the way on at the foot. */
+.changelog.update .intro { font-size: 13px; color: var(--muted); margin-top: -2px; }
+.changelog.update .update-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 8px; margin-top: auto; padding-top: 8px; border-top: 1px solid var(--border); font-size: 12px; color: var(--muted); }
+.changelog.update .update-actions button { display: inline-flex; padding: 5px 12px; border-radius: 8px; border: 1px solid var(--border); background: var(--panel); color: var(--text); font: 600 12px var(--font); cursor: pointer; }
+.changelog.update .update-actions button.on { border-color: var(--accent); box-shadow: 0 0 10px -3px var(--accent); }
+.changelog.update .update-actions .hint { width: 100%; }
 /* Check for updates in blue; installing a found one also glows (button.on). */
 .settings .update button[data-update] { border-color: color-mix(in srgb, var(--info) 70%, var(--border)); color: var(--info);
   background: color-mix(in srgb, var(--info) 10%, transparent); }
