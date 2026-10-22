@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { STRINGS } from '../src/i18n/index.ts';
 import { playLinesAt, TIER_PRESET, TOOLBAR_H } from '../src/render/tiers.ts';
 import { CHANGELOG } from '../src/changelog.ts';
-import { barView, boxView, changelogView, clockText, lineScoreView, teamView, controlsView, countdownParts, gamesView, JUMP_MS, leadersTable, noLogo, playLines, SLIDE_MS, pregameView, RUN_MIN, settingsView, whenText } from '../src/ui/views.ts';
+import { barView, boxView, stackView, changelogView, clockText, lineScoreView, teamView, controlsView, countdownParts, gamesView, JUMP_MS, leadersTable, noLogo, playLines, SLIDE_MS, pregameView, RUN_MIN, settingsView, whenText } from '../src/ui/views.ts';
 import type { BoxLine, GameCard, GameState, PlayLine, TeamStats } from '../src/model/types.ts';
 
 const en = STRINGS.en, zh = STRINGS['zh-TW'];
@@ -556,3 +556,30 @@ describe('a stopped clock', () => {
   });
 });
 
+
+describe('card stack', () => {
+  const card = (id: string, status: GameCard['status'], score: [number, number], start = 0): GameCard => ({
+    id, status, start, period: status === 'scheduled' ? 0 : 4, clock: 151, score: { away: score[0], home: score[1] },
+    teams: { away: { id: `${id}a`, abbr: `A${id}`, name: id }, home: { id: `${id}h`, abbr: `H${id}`, name: id } },
+  });
+  const cards = [card('1', 'live', [108, 104]), card('2', 'scheduled', [0, 0]), card('3', 'final', [99, 97])];
+  const html = stackView(cards, zh, () => '19:30');
+  const strips = [...html.matchAll(/<div class="scard([^"]*)" data-game="(\d)" data-how="(\w+)" style="--depth:(\d+)"><div class="strip">(.*?)<\/div><\/div>/g)]
+    .map((m) => ({ cls: m[1], id: m[2], how: m[3], depth: m[4], text: m[5]!.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim() }));
+
+  // A card behind shows only a strip above the one in front: enough to tell which game it is and how it stands.
+  it('labels each card behind with its teams, its score once started, and its time', () => {
+    expect(strips.map((s) => s.id)).toEqual(['1', '2', '3']);
+    expect(strips[0]!.text).toContain('A1');
+    expect(strips[0]!.text).toContain('H1');
+    expect(strips[0]!.text).toContain('108');
+    expect(strips[0]!.text).toContain('104');
+    expect(strips[0]!.cls).toContain('live');
+    expect(strips[1]!.text).toContain('19:30');
+    expect(strips[1]!.text).not.toMatch(/\d+ – \d+/);
+    // A finished game drawn out is its result, as from the list.
+    expect(strips.map((s) => s.how)).toEqual(['live', 'live', 'result']);
+    expect(strips.map((s) => s.depth)).toEqual(['1', '2', '3']);
+    expect(html.match(/class="edge"/g)).toHaveLength(1);
+  });
+});

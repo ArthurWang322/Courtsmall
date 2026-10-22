@@ -356,6 +356,24 @@ export function gamesView(day: string, games: readonly GameCard[], T: Strings, t
     </div>`;
 }
 
+/**
+ * The cards behind the main window (src/ui/stack.ts), nearest first: each a strip with the two teams
+ * in their colours, the score once started, and its time; the strip along the main window's top
+ * edge that brings them up comes last.
+ */
+export function stackView(cards: readonly GameCard[], T: Strings, tipOff: (g: GameCard) => string, favs: readonly string[] = []): string {
+  const card = (g: GameCard, i: number) => {
+    const c = gameColours(g.teams, favIn(g.teams, favs));
+    const started = g.status !== 'scheduled' && g.status !== 'postponed' && g.status !== 'cancelled';
+    const on = g.status === 'live' || g.status === 'break' || g.status === 'delayed';
+    const score = started ? `<b>${g.score.away}</b><span class="muted">–</span><b>${g.score.home}</b>` : '<span class="muted">–</span>';
+    return `<div class="scard${on ? ' live' : ''}" data-game="${esc(g.id)}" data-how="${g.status === 'final' ? 'result' : 'live'}" style="--depth:${i + 1}">`
+      + `<div class="strip">${colourDot(c.away)}<span>${esc(g.teams.away.abbr)}${star(g.teams.away, favs)}</span>${score}<span>${esc(g.teams.home.abbr)}${star(g.teams.home, favs)}</span>${colourDot(c.home)}`
+      + `<span class="when mono">${esc(cardWhen(g, T, tipOff))}</span></div></div>`;
+  };
+  return `<div class="stack">${cards.map(card).join('')}<div class="edge"></div></div>`;
+}
+
 /** The players' window's tabs: a side's players, or the two teams' stats side by side. */
 export type BoxTab = Side | 'team';
 
