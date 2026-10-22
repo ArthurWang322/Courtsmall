@@ -55,12 +55,13 @@ export async function bus(self: Side): Promise<Bus> {
     };
   }
   const channel = new BroadcastChannel('courtsmall-stack');
-  const handlers = new Map<string, (p: never) => void>();
+  // Every handler of a type hears it, as with Tauri's listen().
+  const handlers = new Map<string, ((p: never) => void)[]>();
   channel.onmessage = (e: MessageEvent<{ to: Side; type: string; payload: unknown }>) => {
-    if (e.data.to === self) handlers.get(e.data.type)?.(e.data.payload as never);
+    if (e.data.to === self) for (const h of handlers.get(e.data.type) ?? []) h(e.data.payload as never);
   };
   return {
     send: (to, type, payload) => channel.postMessage({ to, type, payload }),
-    on: (type, handler) => void handlers.set(type, handler as (p: never) => void),
+    on: (type, handler) => void handlers.set(type, [...(handlers.get(type) ?? []), handler as (p: never) => void]),
   };
 }

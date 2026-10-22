@@ -226,6 +226,12 @@ const stack = createStack({
   // The card coming down over the view: what the view shows fades out under it.
   landing: () => fadeView(0, LAND_MS),
 });
+/** The card stack down at once, before a panel, a size, the stats or the corner. A card cut off as it
+ *  came down (no game drawn out yet) leaves the view as it was, not faded out under it. */
+function closeStack(): void {
+  if (!drawnOut) viewFade?.cancel();
+  stack.closeNow();
+}
 
 /** Put `html` in the view; `tier`: the toolbar for that size, or none (a panel). */
 /** One turn of the clock cell's light, and one breath, ms (app.css `--phase`). */
@@ -334,7 +340,7 @@ async function glide(from: Rect, to: Rect, withStats: boolean, ms = GLIDE_MS): P
 
 /** Back to the corner (the toolbar's button, once dragged away), the stats with it, and stay there. */
 async function backToCorner(): Promise<void> {
-  stack.closeNow();
+  closeStack();
   anchored = true;
   render();
   const r = await mainRect();
@@ -370,7 +376,7 @@ if (shell) void (async () => {
 })();
 
 async function toggleStats(): Promise<void> {
-  stack.closeNow();
+  closeStack();
   if (!shell) {
     // In a browser under `npm run dev`: the stats in a tab.
     if (currentId) window.open(`/players.html?game=${currentId}${params.has('fixture') ? '&fixture' : ''}&lang=${langTag()}`, PLAYERS);
@@ -506,6 +512,8 @@ function fadeView(to: 0 | 1, ms: number): void {
 
 function render(): void {
   const tier = tierOf(app.clientHeight);
+  // The card stack's strip only when the stack can come up: switched on, no panel over the game.
+  document.documentElement.classList.toggle('stack-off', !settings.stack || !!panel);
   // A result in a court-sized window keeps the court's layout: the score where it always is, the
   // points per period and the leaders where the court would be.
   app.dataset.tier = panel ? 'panel' : tier;
@@ -720,7 +728,7 @@ async function loadDay(): Promise<void> {
 }
 
 async function openPanel(kind: Panel): Promise<void> {
-  stack.closeNow();
+  closeStack();
   const was = panel;
   panel = kind;
   if (shell) {
@@ -781,7 +789,7 @@ async function sendFeedback(): Promise<void> {
 
 async function setTier(t: Tier): Promise<void> {
   if (!shell) return;
-  stack.closeNow();
+  closeStack();
   await sizeMain(TIER_PRESET[t].w, TIER_PRESET[t].h);
 }
 
@@ -830,6 +838,7 @@ app.addEventListener('click', (e) => {
   if (el.dataset.stack !== undefined) {
     settings = { ...settings, stack: el.dataset.stack === 'on' };
     saveSettings(settings);
+    render();
     return;
   }
   if (el.dataset.shortcuts !== undefined) {

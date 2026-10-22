@@ -98,6 +98,8 @@ function bringUp(s: Show): void {
   T = STRINGS[langOf(s.lang)];
   root.style.setProperty('--card-h', `${s.cardH}px`);
   root.style.setProperty('--room', `${overlayRoom(s.cardH)}px`);
+  // Already up (the pointer back on the strip): nothing to bring up, no fan to wait through again.
+  if (up && els().length) return;
   // Back up while it was going down: the same cards come out from where they are.
   if (!els().length) { up = false; draw(); }
   up = true;
@@ -118,7 +120,7 @@ async function putDown(): Promise<void> {
   layer.innerHTML = '';
   hovered = 0;
   await setThrough(true);
-  bus.send('main', 'stack-state', { up: false });
+  if (mine === run) bus.send('main', 'stack-state', { up: false });
 }
 
 /** Where the pointer is in this window, px, or undefined if that cannot be told. */
@@ -127,18 +129,21 @@ let devPointer: { x: number; y: number } | undefined;
 if (shell) {
   const { cursorPosition, getCurrentWindow, primaryMonitor } = await import('@tauri-apps/api/window');
   const me = getCurrentWindow();
-  let place: { x: number; y: number; cursorScale: number } | undefined;
+  const mac = navigator.userAgent.includes('Mac');
+  let place: { x: number; y: number; scale: number; cursorScale: number } | undefined;
   pointerAt = async () => {
-    // This window's place in points, once each time the cards come up: it does not move while they are.
-    // The pointer's pixels are counted at the main screen's scale, this window's at its own screen's:
-    // with two screens of different scales (the maintainer's, 2026-10-22) they cannot simply be subtracted.
+    // This window's place, once each time the cards come up: it does not move while they are. On macOS
+    // the pointer's pixels are counted at the main screen's scale and this window's at its own, which
+    // differ with two screens (the maintainer's, 2026-10-22), so each is turned to points first; on
+    // Windows both are the screens' own pixels already, and only the difference is scaled.
     // Its own copy: a bring-up while this one waits clears `place`.
     const at = place ??= await (async () => {
-      const [p, scale, primary] = await Promise.all([me.outerPosition(), me.scaleFactor(), primaryMonitor()]);
-      return { x: p.x / scale, y: p.y / scale, cursorScale: primary?.scaleFactor ?? scale };
+      const [p, scale, primary] = await Promise.all([me.outerPosition(), me.scaleFactor(), mac ? primaryMonitor() : undefined]);
+      return { x: p.x, y: p.y, scale, cursorScale: primary?.scaleFactor ?? scale };
     })();
     const c = await cursorPosition();
-    return { x: c.x / at.cursorScale - at.x, y: c.y / at.cursorScale - at.y };
+    return mac ? { x: c.x / at.cursorScale - at.x / at.scale, y: c.y / at.cursorScale - at.y / at.scale }
+      : { x: (c.x - at.x) / at.scale, y: (c.y - at.y) / at.scale };
   };
   bus.on('stack-show', () => { place = undefined; });
 }
@@ -152,6 +157,7 @@ async function watch(): Promise<void> {
     // A look that fails (the system not answering) is skipped, not the end of the watching.
     const at = await pointerAt().catch(() => undefined);
     if (!up || mine !== run) break;
+    if (!at && !picking) closeTimer ??= setTimeout(() => { closeTimer = undefined; void putDown(); }, CLOSE_AFTER_MS);
     if (at && !picking) {
       // The main window's top edge here: this window's height less the main window's.
       const top = window.innerHeight - (show?.cardH ?? 0), w = window.innerWidth;
@@ -177,8 +183,10 @@ function hover(hovered: number): void {
 
 /** A card drawn out: up clear of the stack and down over the main window in one arc, the other cards
  *  going down at the same time; on the main window it fades into the game, which by then is there. */
+let landing: ReturnType<typeof setTimeout> | undefined;
 async function pick(el: HTMLElement): Promise<void> {
-  const card = cards.find((g) => g.id === el.dataset.game);
+  // The card as ESPN's newer list has it, if one came (refresh), else as first drawn.
+  const card = show?.games.find((g) => g.id === el.dataset.game) ?? cards.find((g) => g.id === el.dataset.game);
   if (!card || !show) return;
   picking = true;
   clearTimeout(closeTimer);
@@ -192,13 +200,15 @@ async function pick(el: HTMLElement): Promise<void> {
     // One arc: slowing to a stop at the top, then gathering speed down and settling, so it never turns
     // sharply at the top (two moves, the second starting at full speed, did).
     const top = `translateY(${pickRise(depthOf(el), show.cardH)}px) scale(1)`;
-    setTimeout(() => bus.send('main', 'stack-landing', null), RISE_MS);
+    landing = setTimeout(() => bus.send('main', 'stack-landing', null), RISE_MS);
     await el.animate([
       { transform: from, filter: lit, easing: 'cubic-bezier(.33, 1, .68, 1)' },
       { transform: top, filter: 'brightness(1.05)', offset: RISE_MS / (RISE_MS + LAND_MS), easing: 'cubic-bezier(.65, 0, .35, 1)' },
       { transform: 'translateY(0px) scale(1)', filter: 'brightness(1)' },
-    ], { duration: RISE_MS + LAND_MS, fill: 'forwards' }).finished;
+    ], { duration: RISE_MS + LAND_MS, fill: 'forwards' }).finished.catch(() => {});
   }
+  // Put away meanwhile (stack-close: a panel, a size, the stats): the pick is off, the game stays as it was.
+  if (!picking) return;
   bus.send('main', 'stack-picked', { card });
   show = { ...show, currentId: card.id };
   el.style.transition = 'opacity 300ms ease';
@@ -214,6 +224,7 @@ bus.on('stack-refresh', ({ games }) => { if (up && !picking) refresh(games); });
 bus.on('stack-close', () => {
   ++run;
   clearTimeout(closeTimer);
+  clearTimeout(landing);
   up = picking = false;
   hovered = 0;
   root.classList.remove('stack-up', 'stack-busy');

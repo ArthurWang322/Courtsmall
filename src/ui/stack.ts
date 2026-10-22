@@ -44,7 +44,8 @@ export function createStack(host: StackHost): Stack {
 
   let asking = false;
   async function bringUp(): Promise<void> {
-    if (asking || !host.allowed()) return;
+    // Already up (back on the strip from the cards): nothing to ask ESPN or the cards' window.
+    if (asking || !host.allowed() || root.classList.contains('stack-up')) return;
     asking = true;
     try {
       const fresh = host.games().catch(() => undefined);

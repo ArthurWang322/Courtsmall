@@ -564,7 +564,7 @@ html.stack-up .scard.lit .strip .when { color: var(--muted); }
 html.stack-up .scard.live.lit .strip .when { color: var(--live); }
 /* The strip along the main window's top edge that brings the cards up (src/ui/stack.ts). */
 .edge { position: fixed; left: 0; right: 0; top: 0; height: 16px; z-index: 2; }
-.edge.none { display: none; }
+.edge.none, html.stack-off .edge { display: none; }
 /* The hint: hanging from the window's top edge (square on top, rounded below), faint while the pointer
    is on the window, lit and wider once the stack is up. */
 .edge::after { content: ''; position: absolute; left: 50%; top: 0; width: 56px; height: 5px; border-radius: 0 0 5px 5px; transform: translateX(-50%);
