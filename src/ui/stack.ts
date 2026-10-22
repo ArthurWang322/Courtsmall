@@ -7,7 +7,7 @@
 import type { GameCard } from '../model/types.ts';
 import type { Strings } from '../i18n/index.ts';
 import { backCards } from './day-order.ts';
-import { cardPlace, CLOSE_AFTER_MS, FAN_MS, LAND_MS, pickRise, RISE_MS, STAGGER_MS, stackRoom } from './stack-layout.ts';
+import { cardPlace, CLOSE_AFTER_MS, FAN_MS, hoverPlace, LAND_MS, pickRise, RISE_MS, STAGGER_MS, stackRoom } from './stack-layout.ts';
 import { stackView } from './views.ts';
 
 /** What the stack asks of the main window. */
@@ -183,14 +183,23 @@ export function createStack(host: StackHost, T: Strings, tipOff: (g: GameCard) =
     else if (up || grown) later();
   });
   root.addEventListener('pointerleave', () => { pointerIn = false; if (up || grown) later(); });
-  // A card behind rises under the pointer.
+  // A card behind rises under the pointer, the cards behind it with it (stack-layout.ts hoverPlace).
+  const hover = (hovered: number) => {
+    for (const el of els()) {
+      const p = hoverPlace(depthOf(el), hovered);
+      el.style.setProperty('--y', `${p.y}`);
+      el.style.setProperty('--s', `${p.scale}`);
+      el.style.setProperty('--b', `${p.brightness}`);
+    }
+  };
   layer.addEventListener('pointerover', (e) => {
     const el = (e.target as Element).closest<HTMLElement>('.scard');
-    if (el && up) place(el, depthOf(el), true);
+    if (el && up && !picking) hover(depthOf(el));
   });
   layer.addEventListener('pointerout', (e) => {
     const el = (e.target as Element).closest<HTMLElement>('.scard');
-    if (el && up && !el.contains(e.relatedTarget as Node | null)) place(el, depthOf(el));
+    const to = (e.relatedTarget as Element | null)?.closest?.('.scard');
+    if (el && up && !picking && !to) hover(0);
   });
 
   /** A card drawn out: up clear of the stack, then down in front of the main window, which by then

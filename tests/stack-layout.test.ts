@@ -3,7 +3,7 @@
 // approved (2026-10-22); the window's growth is what makes the stack fit on the screen at all.
 
 import { describe, expect, it } from 'vitest';
-import { cardPlace, pickRise, stackRoom } from '../src/ui/stack-layout.ts';
+import { cardPlace, hoverPlace, pickRise, stackRoom } from '../src/ui/stack-layout.ts';
 
 describe('card stack layout', () => {
   it('places a card behind higher, smaller and dimmer the further back it is, and higher still under the pointer', () => {
@@ -16,6 +16,20 @@ describe('card stack layout', () => {
     // Under the pointer it is lit, however far back it is, so its strip can be read (the maintainer, 2026-10-22).
     expect(cardPlace(9, true).brightness).toBeGreaterThan(1);
     expect(cardPlace(9, true).scale).toBeCloseTo(cardPlace(9).scale);
+  });
+
+  // The maintainer found the furthest cards hard to reach (2026-10-22): a card lifted under the pointer
+  // covered the strips of the cards behind it. Now the cards behind it rise with it, so each strip
+  // stays where the pointer can reach it, one above the other.
+  it('moves the cards behind a lifted card up with it, so their strips stay uncovered', () => {
+    expect(hoverPlace(3, 3)).toEqual(cardPlace(3, true));
+    expect(hoverPlace(5, 3).y).toBe(cardPlace(5).y - 30);
+    expect(hoverPlace(5, 3).brightness).toBeCloseTo(cardPlace(5).brightness);
+    expect(hoverPlace(2, 3)).toEqual(cardPlace(2));
+    // Nothing lifted: each card where it is.
+    expect(hoverPlace(5, 0)).toEqual(cardPlace(5));
+    // The strip of the card behind the lifted one is still above the lifted one's strip.
+    expect(hoverPlace(4, 3).y).toBeLessThan(hoverPlace(3, 3).y);
   });
 
   it('grows the window by what the stack needs, or what the card drawn out needs, whichever is more', () => {

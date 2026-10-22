@@ -30,6 +30,15 @@ export function cardPlace(depth: number, lifted = false): { y: number; scale: nu
   return { y: 0 - depth * STEP - (lifted ? LIFT : 0), scale: 1 - depth * SCALE, brightness: lifted ? LIT : 1 - depth * DIM };
 }
 
+/** A card's place with the card at `hovered` lifted under the pointer (0: none): that one up and lit,
+ *  the cards behind it up as far, so its lift does not cover their strips; those in front stay. */
+export function hoverPlace(depth: number, hovered: number): { y: number; scale: number; brightness: number } {
+  if (!hovered || depth < hovered) return cardPlace(depth);
+  if (depth === hovered) return cardPlace(depth, true);
+  const p = cardPlace(depth);
+  return { ...p, y: p.y - LIFT };
+}
+
 /**
  * How much the window grows upward to show `cards` cards behind a `cardH` high main window, and how
  * many it shows: room for the stack and a card lifted, or for a card drawn out clear of the front one,
