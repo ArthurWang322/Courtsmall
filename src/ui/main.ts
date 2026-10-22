@@ -352,7 +352,9 @@ if (shell) void (async () => {
     await (await win()).show();
     const { WebviewWindow } = await import('@tauri-apps/api/webviewWindow');
     const at = stackRect(await mainRect());
-    new WebviewWindow(STACK, { url: 'stack.html', x: at.x, y: at.y, width: at.w, height: at.h, ...SIDE_WINDOW });
+    // A click on a card counts the first time, though the window is not the active one (macOS). Made
+    // once: under `npm run tauri dev` this page reloads, and the window is already there.
+    if (!(await WebviewWindow.getByLabel(STACK))) new WebviewWindow(STACK, { url: 'stack.html', x: at.x, y: at.y, width: at.w, height: at.h, ...SIDE_WINDOW, acceptFirstMouse: true });
   }
 })();
 

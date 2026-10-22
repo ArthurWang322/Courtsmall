@@ -1,8 +1,7 @@
 // The card stack, the main window's side: today's other games as cards behind it, brought up from the
 // strip along its top edge. The cards are drawn in their own window (src/ui/stack-window.ts), always
 // there above and over this one: this window never changes size for them. Here: the strip and its
-// hint, today's games, where the pointer is (so the cards' window knows when to take it), and the
-// game drawn out.
+// hint, today's games, and the game drawn out; the cards' window watches the pointer itself.
 
 import type { GameCard } from '../model/types.ts';
 import { backCards } from './day-order.ts';
@@ -64,17 +63,10 @@ export function createStack(host: StackHost): Stack {
     } finally { asking = false; }
   }
 
-  // Where the pointer is, told to the cards' window when it changes: on this window, gone up off its
-  // top edge (onto the cards), or gone elsewhere.
-  let where: 'main' | 'up' | 'out' | undefined;
-  const tell = (now: 'main' | 'up' | 'out') => { if (now !== where) { where = now; void bus.then((b) => b.send('stack', 'stack-pointer', now)); } };
-  const offMain = (y: number) => tell(y <= app.getBoundingClientRect().top + 1 ? 'up' : 'out');
-  document.addEventListener('pointerover', (e) => {
-    if ((e.target as Element).closest?.('#app, .edge')) tell('main');
-    else offMain(e.clientY);
-  });
-  root.addEventListener('pointerleave', (e) => offMain(e.clientY));
-  edge.addEventListener('pointerenter', () => { tell('main'); void bringUp(); });
+  // Under `npm run dev` in a browser, where the pointer is, for the cards' window to watch (in the
+  // app it asks the system).
+  if (!('__TAURI_INTERNALS__' in window)) document.addEventListener('pointermove', (e) => void bus.then((b) => b.send('stack', 'stack-cursor', { x: e.clientX, y: e.clientY })));
+  edge.addEventListener('pointerenter', () => void bringUp());
 
   // The hint along the top edge only when there is something behind (as far as the last list knows).
   app.addEventListener('pointerenter', () => {

@@ -2,8 +2,10 @@
 // above the main window and over it, and never resized for the stack: a resize makes the web view
 // paint its old frame out of place for a moment (the flash the maintainer saw, 2026-10-22). Clear
 // and letting the pointer through, it is not seen and takes no clicks; the main window brings the
-// cards up from its top edge (src/ui/stack.ts), and once the pointer goes up off the main window
-// onto them this window takes it, until it goes back down onto the main window or away.
+// cards up from the strip along its top edge (src/ui/stack.ts). While they are up this window looks
+// where the pointer is on the screen, every few frames, rather than waiting for the web view's pointer
+// events (a window the pointer passes through gets none): on the cards it takes the pointer, so a card
+// can be clicked; on the strip it lets it through to the main window; off both, the cards go down.
 //
 // Its bottom part is the main window's place: the cards behind sit in the part above it (clipped
 // there, so they never cover the main window), and a card drawn out comes down over it.
@@ -13,7 +15,7 @@ import type { GameCard } from '../model/types.ts';
 import { langOf, STRINGS, type Strings } from '../i18n/index.ts';
 import { backCards } from './day-order.ts';
 import { bus as makeBus, type Show } from './stack-bus.ts';
-import { cardPlace, CLOSE_AFTER_MS, FAN_MS, hoverPlace, LAND_MS, overlayRoom, pickRise, RISE_MS, STAGGER_MS } from './stack-layout.ts';
+import { cardPlace, CLOSE_AFTER_MS, FAN_MS, KEEP_H, hoverPlace, LAND_MS, overlayRoom, pickRise, RISE_MS, STAGGER_MS } from './stack-layout.ts';
 import { stackView } from './views.ts';
 
 const shell = '__TAURI_INTERNALS__' in window;
@@ -27,8 +29,8 @@ let show: Show | undefined;
 let T: Strings = STRINGS.en;
 let cards: GameCard[] = [];
 let up = false, picking = false;
-/** Where the pointer is: on the main window (as it says), or on a card here. */
-let onMain = false, onCard = false;
+/** The card under the pointer (its depth), 0 for none. */
+let hovered = 0;
 let closeTimer: ReturnType<typeof setTimeout> | undefined, settleTimer: ReturnType<typeof setTimeout> | undefined;
 /** Each bring-up or put-down: a later one makes an earlier one's waiting steps stop. */
 let run = 0;
@@ -103,8 +105,7 @@ function bringUp(s: Show): void {
   root.classList.add('stack-up');
   fan(true);
   bus.send('main', 'stack-state', { up: true });
-  // The pointer left before the cards came (a swipe across the edge): down again, as if it left now.
-  later();
+  void watch();
 }
 
 async function putDown(): Promise<void> {
@@ -116,21 +117,60 @@ async function putDown(): Promise<void> {
   if (!reducedMotion.matches) await wait(els().length * STAGGER_MS + FAN_MS);
   if (mine !== run) return;
   layer.innerHTML = '';
+  hovered = 0;
   await setThrough(true);
   bus.send('main', 'stack-state', { up: false });
 }
 
-/** Off the main window and the cards for a moment, the stack goes down; not while a card is being drawn out. */
-function later(): void {
-  if (picking) return;
-  clearTimeout(closeTimer);
-  if (onMain || onCard) return;
-  closeTimer = setTimeout(() => void putDown(), CLOSE_AFTER_MS);
+/** Where the pointer is in this window, px, or undefined if that cannot be told. */
+let pointerAt: () => Promise<{ x: number; y: number } | undefined> = async () => devPointer;
+let devPointer: { x: number; y: number } | undefined;
+if (shell) {
+  const { cursorPosition, getCurrentWindow, primaryMonitor } = await import('@tauri-apps/api/window');
+  const me = getCurrentWindow();
+  let place: { x: number; y: number; cursorScale: number } | undefined;
+  pointerAt = async () => {
+    // This window's place in points, once each time the cards come up: it does not move while they are.
+    // The pointer's pixels are counted at the main screen's scale, this window's at its own screen's:
+    // with two screens of different scales (the maintainer's, 2026-10-22) they cannot simply be subtracted.
+    place ??= await (async () => {
+      const [p, scale, primary] = await Promise.all([me.outerPosition(), me.scaleFactor(), primaryMonitor()]);
+      return { x: p.x / scale, y: p.y / scale, cursorScale: primary?.scaleFactor ?? scale };
+    })();
+    const c = await cursorPosition();
+    return { x: c.x / place.cursorScale - place.x, y: c.y / place.cursorScale - place.y };
+  };
+  bus.on('stack-show', () => { place = undefined; });
+}
+
+/** While the cards are up: where the pointer is, every few frames. On the cards, this window takes it
+ *  and the card under it lifts; on the main window's top strip it goes through to the main window;
+ *  off both for CLOSE_AFTER_MS, the cards go down. */
+async function watch(): Promise<void> {
+  const mine = run;
+  while (up && mine === run) {
+    const at = await pointerAt();
+    if (!up || mine !== run) break;
+    if (at && !picking) {
+      const top = behind.offsetHeight, w = window.innerWidth;
+      const across = at.x >= 0 && at.x < w;
+      const cardsTop = Math.min(top, ...els().map((el) => el.getBoundingClientRect().top));
+      const onCards = across && at.y >= cardsTop && at.y < top;
+      const onStrip = across && at.y >= top && at.y < top + KEEP_H;
+      void setThrough(!onCards);
+      const el = onCards ? document.elementFromPoint(at.x, at.y)?.closest<HTMLElement>('.behind .scard') : null;
+      const now = el ? depthOf(el) : 0;
+      if (now !== hovered) { hovered = now; hover(now); }
+      if (onCards || onStrip) { clearTimeout(closeTimer); closeTimer = undefined; }
+      else closeTimer ??= setTimeout(() => { closeTimer = undefined; void putDown(); }, CLOSE_AFTER_MS);
+    }
+    await wait(30);
+  }
 }
 
 /** A card behind rises under the pointer, the cards behind it with it (stack-layout.ts hoverPlace). */
 function hover(hovered: number): void {
-  for (const el of els()) set(el, hoverPlace(depthOf(el), hovered));
+  for (const el of els()) { set(el, hoverPlace(depthOf(el), hovered)); el.classList.toggle('lit', depthOf(el) === hovered); }
 }
 
 /** A card drawn out: up clear of the stack, then down over the main window, which by then shows its
@@ -161,23 +201,16 @@ async function pick(el: HTMLElement): Promise<void> {
   el.remove();
   root.classList.remove('stack-busy');
   picking = false;
-  onCard = false;
   await putDown();
 }
 
 bus.on('stack-show', (s) => bringUp(s));
 bus.on('stack-refresh', ({ today }) => { if (up && !picking) refresh(today); });
-bus.on('stack-pointer', (where) => {
-  onMain = where === 'main';
-  if (onMain) { clearTimeout(closeTimer); void setThrough(true); return; }
-  // Up off the main window's top edge, onto the cards: this window takes the pointer.
-  if (where === 'up' && up) void setThrough(false);
-  later();
-});
 bus.on('stack-close', () => {
   ++run;
   clearTimeout(closeTimer);
   up = picking = false;
+  hovered = 0;
   root.classList.remove('stack-up', 'stack-busy');
   layer.innerHTML = '';
   drawn.innerHTML = '';
@@ -185,16 +218,11 @@ bus.on('stack-close', () => {
   bus.send('main', 'stack-state', { up: false });
 });
 
-document.addEventListener('pointerover', (e) => {
-  const el = (e.target as Element).closest<HTMLElement>('.scard');
-  onCard = !!el && up;
-  if (onCard) { clearTimeout(closeTimer); if (!picking) hover(depthOf(el!)); return; }
-  if (up && !picking) hover(0);
-  // Down onto the main window's place: the pointer goes back through to it.
-  if (e.clientY >= behind.offsetHeight) void setThrough(true);
-  later();
-});
-root.addEventListener('pointerleave', () => { onCard = false; later(); });
+// Under `npm run dev` in a browser: where the pointer is, from this page and from the main page under it.
+if (!shell) {
+  document.addEventListener('pointermove', (e) => { devPointer = { x: e.clientX, y: e.clientY }; });
+  bus.on('stack-cursor', (p) => { devPointer = p; });
+}
 layer.addEventListener('click', (e) => {
   const el = (e.target as Element).closest<HTMLElement>('.scard');
   if (el && up && !picking) void pick(el);

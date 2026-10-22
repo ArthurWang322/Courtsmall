@@ -22,9 +22,8 @@ export interface Messages {
   'stack-show': Show;
   /** main → stack: ESPN's newer list, for the cards' strips. */
   'stack-refresh': { today: GameCard[] };
-  /** main → stack: where the pointer is as the main window sees it: on it, gone up off its top edge (to
-   *  the cards), or gone elsewhere. */
-  'stack-pointer': 'main' | 'up' | 'out';
+  /** main → stack, in a browser only: where the pointer is on the page (the cards' window watches it). */
+  'stack-cursor': { x: number; y: number };
   /** main → stack: down at once (a panel, a size, the stats, a drag). */
   'stack-close': null;
   /** stack → main: the cards are up, or down again. */

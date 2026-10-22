@@ -20,8 +20,11 @@ export const CLOSE_AFTER_MS = 300;
 /** A card drawn out: up and out of the stack, then down in front, ms. */
 export const RISE_MS = 380;
 export const LAND_MS = 520;
-/** The strip along the main window's top edge that brings the stack up, px. */
+/** The strip along the main window's top edge that brings the stack up, px; once it is up, the band
+ *  of the main window that still keeps it up, wider, so a hand that drifts a little down does not put
+ *  it away (the maintainer's first try, 2026-10-22, went 4 px below the strip). */
 export const EDGE_H = 16;
+export const KEEP_H = 40;
 /** How far above the front card's top a card drawn out clears it, px. */
 export const PICK_CLEAR = 12;
 
