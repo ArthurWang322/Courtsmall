@@ -119,6 +119,7 @@ let playersOpen = false;
 /** Today's games as last asked, for the card stack (src/ui/stack.ts); how much taller the window is for it, px. */
 let stackToday: GameCard[] | undefined;
 let stackGrown = 0;
+let lineAfterStack = false;
 /** A game drawn out of the card stack, shown from its card until its own feed arrives (src/ui/views.ts standInState). */
 let standIn: GameCard | undefined;
 
@@ -208,6 +209,7 @@ const stack = createStack({
     placingUntil = Date.now() + 400;
     await invoke('place', { rects });
     stackGrown = room;
+    if (!room && lineAfterStack) { lineAfterStack = false; void syncLine(); }
   },
   // Drawn out, the game is followed as one picked from the list is (pinned: following leaves it alone),
   // and shown from its card until its own feed arrives.
@@ -379,6 +381,9 @@ async function toggleStats(): Promise<void> {
 let syncingLine = false;
 async function syncLine(): Promise<void> {
   if (!shell || syncingLine) return;
+  // A game drawn out of the card stack while the window is tall for it: the windows beside it are placed
+  // from the main window's size, so they wait until it is its own size again (the stack's grow(0)).
+  if (stackGrown) { lineAfterStack = true; return; }
   syncingLine = true;
   try {
     const { WebviewWindow } = await import('@tauri-apps/api/webviewWindow');
@@ -713,7 +718,8 @@ async function openPanel(kind: Panel): Promise<void> {
   const was = panel;
   panel = kind;
   if (shell) {
-    if (!was) sizeBeforePanel = { w: window.innerWidth, h: window.innerHeight };
+    // From the window itself: the web view's own size can lag a resize just made (the card stack's).
+    if (!was) { const r = await mainRect(); sizeBeforePanel = { w: r.w, h: r.h }; }
     await sizeMain(PANEL_SIZE[kind].w, PANEL_SIZE[kind].h);
   }
   render();
@@ -840,11 +846,14 @@ app.addEventListener('click', (e) => {
 // The window has no title bar or border: press and drag moves it; the toolbar along the bottom
 // switches the size and opens the panels. Outside the desktop shell (npm run dev in a browser)
 // there is no window to move or resize.
-app.addEventListener('mousedown', async (e) => {
+const dragFrom = async (e: MouseEvent) => {
   // Anything to click or scroll keeps the press; everywhere else moves the window, panels included.
   if ((e.target as HTMLElement).closest('button, a, input, label, .fav-list, .list')) return;
   if (shell && e.button === 0 && e.detail === 1) await (await win()).startDragging();
-});
+};
+app.addEventListener('mousedown', dragFrom);
+// The card stack's strip along the top edge is over #app: the window moves from there too.
+document.querySelector('.edge')?.addEventListener('mousedown', (e) => void dragFrom(e as MouseEvent));
 // ---- Global shortcuts (src/ui/shortcuts.ts) ---------------------------------------------------------
 
 const isMac = navigator.userAgent.includes('Mac');

@@ -7,7 +7,7 @@
 import type { GameCard } from '../model/types.ts';
 import type { Strings } from '../i18n/index.ts';
 import { backCards } from './day-order.ts';
-import { cardPlace, CLOSE_AFTER_MS, LAND_MS, pickRise, RISE_MS, STAGGER_MS, stackRoom } from './stack-layout.ts';
+import { cardPlace, CLOSE_AFTER_MS, FAN_MS, LAND_MS, pickRise, RISE_MS, STAGGER_MS, stackRoom } from './stack-layout.ts';
 import { stackView } from './views.ts';
 
 /** What the stack asks of the main window. */
@@ -32,7 +32,6 @@ export interface StackHost {
 export interface Stack {
   /** Down at once, the window its own size again: before anything else moves or resizes the window. */
   closeNow(): Promise<void>;
-  isOpen(): boolean;
 }
 
 export function createStack(host: StackHost, T: Strings, tipOff: (g: GameCard) => string): Stack {
@@ -55,6 +54,8 @@ export function createStack(host: StackHost, T: Strings, tipOff: (g: GameCard) =
   let closeTimer: ReturnType<typeof setTimeout> | undefined, settleTimer: ReturnType<typeof setTimeout> | undefined;
   /** Each bring-up or put-down: a later one makes an earlier one's waiting steps stop. */
   let run = 0;
+  const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
+  const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
 
   const els = () => [...layer.querySelectorAll<HTMLElement>('.scard')];
   const place = (el: HTMLElement, depth: number, lifted = false) => {
@@ -67,6 +68,8 @@ export function createStack(host: StackHost, T: Strings, tipOff: (g: GameCard) =
   /** Each card to its place, out or in, in turn: out the nearest first, in the furthest first. */
   const fan = (out: boolean) => {
     const all = els();
+    // Out and back slowly; once there, a card lifts under the pointer quickly (app.css --move).
+    root.style.setProperty('--move', `${FAN_MS}ms`);
     for (const el of all) {
       const d = depthOf(el);
       el.style.transitionDelay = `${(out ? d - 1 : all.length - d) * STAGGER_MS}ms`;
@@ -74,7 +77,7 @@ export function createStack(host: StackHost, T: Strings, tipOff: (g: GameCard) =
     }
     clearTimeout(settleTimer);
     // Once the last is out, a card answers the pointer at once, not after its turn in the fan.
-    settleTimer = setTimeout(() => { for (const el of els()) el.style.transitionDelay = '0ms'; }, all.length * STAGGER_MS + 50);
+    settleTimer = setTimeout(() => { for (const el of els()) el.style.transitionDelay = '0ms'; root.style.removeProperty('--move'); }, all.length * STAGGER_MS + 50);
   };
   /** Draw `list`'s cards behind the window, as many as `shown`, already where `up` puts them. */
   const draw = (list: GameCard[], shown: number) => {
@@ -85,37 +88,58 @@ export function createStack(host: StackHost, T: Strings, tipOff: (g: GameCard) =
     for (const el of els()) el.style.transition = '';
   };
 
+  /** Each resize of the window waits for the one before: a put-down asked for while it grows shrinks it after. */
+  let resizing: Promise<void> = Promise.resolve();
+  const resize = (room: number) => (resizing = resizing.then(() => host.grow(room), () => host.grow(room)));
+  /** The pointer is on the main window, a card or the strip: off it, the stack goes down a moment later. */
+  let pointerIn = false;
+  /** The cards behind, ESPN's newer list in hand: the same cards, their strips as they now stand (not drawn
+   *  again, which would put them in place at once instead of letting them come up). */
+  const refresh = (list: GameCard[]) => {
+    for (const el of els()) {
+      const g = list.find((x) => x.id === el.dataset.game);
+      const strip = el.querySelector('.strip');
+      if (!g || !strip) continue;
+      const tmp = document.createElement('div');
+      tmp.innerHTML = stackView([g], T, tipOff, host.favourites());
+      strip.innerHTML = tmp.querySelector('.strip')?.innerHTML ?? strip.innerHTML;
+      el.classList.toggle('live', tmp.querySelector('.scard')?.classList.contains('live') ?? false);
+    }
+  };
+
   async function bringUp(): Promise<void> {
     clearTimeout(closeTimer);
-    if (up) return;
+    if (up || picking) return;
     if (!host.allowed()) return;
     const mine = ++run;
+    // Nothing comes up this time: if it was going down, it still goes down.
+    const none = async () => { if (mine === run && grown) await shrink(); };
     const fresh = host.today().catch(() => undefined);
     const list = host.lastToday() ?? (await fresh);
-    if (mine !== run || !list) return;
+    if (mine !== run) return;
+    if (!list) return none();
     const count = backCards(list, host.currentId(), host.favourites()).length;
     edge.classList.toggle('none', !count);
-    if (!count) return;
+    if (!count) return none();
     // Back up while it was still going down: the window is still tall, the cards come out from where they are.
     if (!grown) {
       const cardH = host.cardHeight();
       const { room, shown } = stackRoom(count, cardH, await host.roomAbove());
       if (mine !== run || !shown) return;
-      up = false;
       draw(list, shown);
       root.style.setProperty('--card-h', `${cardH}px`);
       root.classList.add('stacking');
-      await host.grow(room);
       grown = true;
-      fits = stackRoom(count, cardH, room).shown;
-      // Put down while the window grew: it shrinks again, nothing came up.
-      if (mine !== run) { if (!up) await shrink(); return; }
+      fits = shown;
+      await resize(room);
+      if (mine !== run) return;
     }
     up = true;
     root.classList.add('stack-up');
     fan(true);
-    // ESPN's newer list, when it comes: the same cards with their scores now, not brought up again.
-    void fresh.then((newer) => { if (newer && mine === run && up) draw(newer, fits); });
+    // The pointer left while the window grew: down again, as if it had left now.
+    if (!pointerIn) later();
+    void fresh.then((newer) => { if (newer && mine === run && up && !picking) refresh(newer); });
   }
 
   async function putDown(): Promise<void> {
@@ -125,14 +149,20 @@ export function createStack(host: StackHost, T: Strings, tipOff: (g: GameCard) =
     root.classList.remove('stack-up');
     fan(false);
     // The window shrinks once the furthest card is behind the main window again.
-    await new Promise((r) => setTimeout(r, els().length * STAGGER_MS + LAND_MS));
+    if (!reducedMotion.matches) await wait(els().length * STAGGER_MS + FAN_MS);
     if (mine !== run) return;
     await shrink();
   }
 
   async function shrink(): Promise<void> {
-    if (grown) await host.grow(0);
+    if (!grown) return;
     grown = false;
+    await resize(0);
+    // #app lets go of its height only once the web view is its own size again: before, it would fill
+    // the tall window for a frame, and the view would take it for the court's size.
+    const cardH = parseFloat(root.style.getPropertyValue('--card-h')) || 0;
+    for (let i = 0; i < 20 && window.innerHeight > cardH + 1; i++) await new Promise(requestAnimationFrame);
+    if (grown) return;
     root.classList.remove('stacking');
     layer.innerHTML = '';
   }
@@ -140,18 +170,19 @@ export function createStack(host: StackHost, T: Strings, tipOff: (g: GameCard) =
   // On the main window or a card, the stack stays; anywhere else, and off the window, it goes down a moment later.
   const onStack = (t: EventTarget | null) => t instanceof Element && !!t.closest('#app, .scard, .edge');
   // Not while a card is being drawn out: the stack goes down when it is in front.
-  const later = () => { if (picking) return; clearTimeout(closeTimer); closeTimer = setTimeout(() => void putDown(), CLOSE_AFTER_MS); };
-  edge.addEventListener('pointerenter', () => void bringUp());
+  function later(): void { if (picking) return; clearTimeout(closeTimer); closeTimer = setTimeout(() => void putDown(), CLOSE_AFTER_MS); }
+  edge.addEventListener('pointerenter', () => { pointerIn = true; void bringUp(); });
   // The hint along the top edge only when there is something behind (as far as the last list knows).
   document.getElementById('app')?.addEventListener('pointerenter', () => {
     const list = host.lastToday();
     edge.classList.toggle('none', !host.allowed() || (!!list && !backCards(list, host.currentId(), host.favourites()).length));
   });
   document.addEventListener('pointerover', (e) => {
-    if (onStack(e.target)) clearTimeout(closeTimer);
-    else if (up) later();
+    pointerIn = onStack(e.target);
+    if (pointerIn) clearTimeout(closeTimer);
+    else if (up || grown) later();
   });
-  root.addEventListener('pointerleave', () => { if (up || grown) later(); });
+  root.addEventListener('pointerleave', () => { pointerIn = false; if (up || grown) later(); });
   // A card behind rises under the pointer.
   layer.addEventListener('pointerover', (e) => {
     const el = (e.target as Element).closest<HTMLElement>('.scard');
@@ -162,8 +193,6 @@ export function createStack(host: StackHost, T: Strings, tipOff: (g: GameCard) =
     if (el && up && !el.contains(e.relatedTarget as Node | null)) place(el, depthOf(el));
   });
 
-  const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
-  const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
   /** A card drawn out: up clear of the stack, then down in front of the main window, which by then
    *  shows its game; it fades into it, the game watched before goes back to its place in the stack,
    *  and the stack goes down. */
@@ -175,6 +204,7 @@ export function createStack(host: StackHost, T: Strings, tipOff: (g: GameCard) =
     root.classList.add('stack-busy');
     if (!reducedMotion.matches) {
       el.style.transitionDelay = '0ms';
+      el.style.setProperty('--move', `${RISE_MS}ms`);
       el.style.zIndex = '200';
       el.style.setProperty('--y', `${pickRise(depthOf(el), host.cardHeight())}`);
       el.style.setProperty('--s', '1');
@@ -183,6 +213,7 @@ export function createStack(host: StackHost, T: Strings, tipOff: (g: GameCard) =
       // Clear of the stack and of the main window: over to the layer in front of it, then down.
       drawn.append(el);
       void el.offsetHeight;
+      el.style.setProperty('--move', `${LAND_MS}ms`);
       place(el, 0);
       await wait(LAND_MS);
     }
@@ -210,6 +241,5 @@ export function createStack(host: StackHost, T: Strings, tipOff: (g: GameCard) =
       root.classList.remove('stack-up');
       await shrink();
     },
-    isOpen: () => up || grown,
   };
 }

@@ -13,6 +13,9 @@ describe('card stack layout', () => {
     expect(third.scale).toBeCloseTo(0.958);
     expect(third.brightness).toBeCloseTo(0.85);
     expect(cardPlace(3, true).y).toBe(-69);
+    // Under the pointer it is lit, however far back it is, so its strip can be read (the maintainer, 2026-10-22).
+    expect(cardPlace(9, true).brightness).toBeGreaterThan(1);
+    expect(cardPlace(9, true).scale).toBeCloseTo(cardPlace(9).scale);
   });
 
   it('grows the window by what the stack needs, or what the card drawn out needs, whichever is more', () => {

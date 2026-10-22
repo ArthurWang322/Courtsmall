@@ -9,8 +9,12 @@ export const LIFT = 30;
 /** How much smaller, and dimmer, each card behind is than the one in front. */
 export const SCALE = 0.014;
 export const DIM = 0.05;
-/** The cards come up one after another, the nearest first, this far apart, ms. */
-export const STAGGER_MS = 28;
+/** A card under the pointer is lit this bright, however far back it is, so its strip can be read. */
+export const LIT = 1.12;
+/** The cards come up one after another, the nearest first, this far apart, each taking FAN_MS, ms
+ *  (slower than the prototype's 28 and 520: the maintainer wanted them smoother, 2026-10-22). */
+export const STAGGER_MS = 36;
+export const FAN_MS = 650;
 /** How long the pointer may be off the stack before it goes back down, ms. */
 export const CLOSE_AFTER_MS = 300;
 /** A card drawn out: up and out of the stack, then down in front, ms. */
@@ -23,7 +27,7 @@ export const PICK_CLEAR = 12;
 
 /** A card's place at `depth` (0: the front card, the main window), `lifted` under the pointer. */
 export function cardPlace(depth: number, lifted = false): { y: number; scale: number; brightness: number } {
-  return { y: 0 - depth * STEP - (lifted ? LIFT : 0), scale: 1 - depth * SCALE, brightness: 1 - depth * DIM };
+  return { y: 0 - depth * STEP - (lifted ? LIFT : 0), scale: 1 - depth * SCALE, brightness: lifted ? LIT : 1 - depth * DIM };
 }
 
 /**
