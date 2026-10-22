@@ -2,6 +2,9 @@
 // notifications, and a tray menu to show, hide, pick a game, choose a team and quit (the window has no title
 // bar to close it from).
 
+#[cfg(target_os = "macos")]
+mod notice;
+
 use tauri::menu::{Menu, MenuItem, PredefinedMenuItem};
 use tauri::tray::TrayIconBuilder;
 use tauri::{Emitter, LogicalPosition, LogicalSize, Manager};
@@ -14,6 +17,19 @@ struct Placed {
     y: f64,
     w: f64,
     h: f64,
+}
+
+/// Posts a notice (src/notify/notifier.ts): on macOS through UNUserNotificationCenter (src/notice.rs);
+/// elsewhere the notification plugin sends them, and this is not called.
+#[tauri::command]
+async fn notice(title: String, body: String) -> Result<(), String> {
+    #[cfg(target_os = "macos")]
+    return tauri::async_runtime::spawn_blocking(move || notice::send(&title, &body)).await.map_err(|e| e.to_string())?;
+    #[cfg(not(target_os = "macos"))]
+    {
+        let _ = (title, body);
+        Err("notices go through the notification plugin here".into())
+    }
 }
 
 /// Places windows together, size then position each, in one call: a glide to the screen's corner
@@ -78,7 +94,7 @@ pub fn run() {
                 .build(app)?;
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![place])
+        .invoke_handler(tauri::generate_handler![place, notice])
         .run(tauri::generate_context!())
         .expect("error while running Courtsmall");
 }

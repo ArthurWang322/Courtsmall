@@ -23,6 +23,14 @@ serde_json = "1"
 serde = { version = "1", features = ["derive"] }
 tauri-plugin-opener = "2"
 
+# Notices on macOS through UNUserNotificationCenter (src/notice.rs): the notification plugin's way is
+# dropped by macOS 26. The versions the lock file already had.
+[target.'cfg(target_os = "macos")'.dependencies]
+objc2 = "0.6.5"
+block2 = "0.6.2"
+objc2-foundation = { version = "0.3.2", default-features = false, features = ["std", "NSString", "NSError", "NSBundle"] }
+objc2-user-notifications = { version = "0.3.2", default-features = false, features = ["std", "block2", "UNUserNotificationCenter", "UNNotificationContent", "UNNotificationRequest", "UNNotificationTrigger", "UNNotificationSound"] }
+
 [profile.release]
 opt-level = "s"
 lto = true

@@ -1,7 +1,9 @@
-// Sends notices as system notifications: the Tauri notification plugin in the desktop shell, the
-// browser's Notification API under `npm run dev`. Each notice key is sent once per game.
-// Under `tauri dev` on macOS the plugin sends as Terminal (com.apple.Terminal), so notices show
-// only if Terminal may notify; the bundled app sends as itself.
+// Sends notices as system notifications, each notice key once per game. In the desktop shell on macOS
+// through the app's own `notice` command (src-tauri/src/notice.rs, UNUserNotificationCenter): the
+// Tauri notification plugin sends through NSUserNotificationCenter there, which macOS 26 drops while
+// reporting success, so no notice ever showed (2026-10-22). Elsewhere in the shell through the plugin;
+// under `npm run dev` in a browser through its Notification API. Under `tauri dev` the app is no app
+// bundle, and macOS shows nothing: notices are seen in the bundled app.
 
 import type { GameState } from '../model/types.ts';
 import type { Strings } from '../i18n/index.ts';
@@ -19,10 +21,20 @@ export function noticeText(n: Notice, T: Strings): { title: string; body: string
   }
 }
 
-const inShell = () => '__TAURI_INTERNALS__' in window;
+/** Which way a notice goes: the app's own command (the shell on macOS), the plugin (the shell
+ *  elsewhere), or the browser's API (no shell). */
+export function senderFor(shell: boolean, mac: boolean): 'app' | 'plugin' | 'browser' {
+  return !shell ? 'browser' : mac ? 'app' : 'plugin';
+}
 
 async function show(title: string, body: string): Promise<void> {
-  if (inShell()) {
+  const by = senderFor('__TAURI_INTERNALS__' in window, navigator.userAgent.includes('Mac'));
+  if (by === 'app') {
+    // macOS asks once whether Courtsmall may notify; a refusal or no app bundle comes back as an error.
+    await (await import('@tauri-apps/api/core')).invoke('notice', { title, body });
+    return;
+  }
+  if (by === 'plugin') {
     const n = await import('@tauri-apps/plugin-notification');
     if (!(await n.isPermissionGranted()) && (await n.requestPermission()) !== 'granted') return;
     n.sendNotification({ title, body });

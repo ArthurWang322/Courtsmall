@@ -2,6 +2,7 @@
 
 import { describe, expect, it } from 'vitest';
 import { assumedBefore, notices } from '../src/notify/rules.ts';
+import { senderFor } from '../src/notify/notifier.ts';
 import { DEFAULTS, normalize } from '../src/settings/store.ts';
 import type { GameState } from '../src/model/types.ts';
 
@@ -75,5 +76,17 @@ describe('settings', () => {
     expect(normalize({ team: 7, notify: { start: 'yes', final: false } })).toEqual({ favourites: [], notify: { start: true, clutch: true }, shortcuts: true, stack: true });
     // One favourite: the first valid one is kept.
     expect(normalize({ favourites: [7, '', '7', '9'] }).favourites).toEqual(['7']);
+  });
+});
+
+// On macOS the notification plugin (2.6, 2.7) sends through NSUserNotificationCenter, which macOS 26
+// drops while reporting success: no notice ever showed (2026-10-22). macOS goes through the app's own
+// `notice` command (UNUserNotificationCenter) instead; elsewhere the plugin, and a browser its own API.
+describe('where a notice goes', () => {
+  it("sends on macOS through the app's own command, never the plugin that macOS drops", () => {
+    expect(senderFor(true, true)).toBe('app');
+    expect(senderFor(true, false)).toBe('plugin');
+    expect(senderFor(false, true)).toBe('browser');
+    expect(senderFor(false, false)).toBe('browser');
   });
 });
