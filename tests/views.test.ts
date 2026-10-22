@@ -580,6 +580,7 @@ describe('card stack', () => {
     // A finished game drawn out is its result, as from the list.
     expect(strips.map((s) => s.how)).toEqual(['live', 'live', 'result']);
     expect(strips.map((s) => s.depth)).toEqual(['1', '2', '3']);
-    expect(html.match(/class="edge"/g)).toHaveLength(1);
+    // The strip that brings them up is not one of them: it is over the main window (src/ui/stack.ts).
+    expect(html).not.toContain('edge');
   });
 });

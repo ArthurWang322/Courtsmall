@@ -523,3 +523,38 @@ button { font: inherit; color: inherit; border: 0; background: transparent; padd
 .lrow .now { color: var(--accent); }
 .lhead { font-size: 11px; letter-spacing: .1em; color: var(--faint); }
 .lhead .ltotal { font: 600 11px var(--label); color: var(--faint); }
+
+/* The card stack (src/ui/stack.ts): today's other games as cards behind the main window. While it is
+   up the window is taller, and #app keeps its own height at the window's bottom, so the view does not
+   move on the screen; the cards sit under it (#app above them), each showing a strip above the one in
+   front, and the strip along #app's top edge that brings them up is over it. */
+#app { z-index: 1; }
+html.stacking #app { top: auto; height: var(--card-h); }
+.stack { position: fixed; inset: 0; z-index: 0; pointer-events: none; }
+html.stacking .stack { top: auto; height: var(--card-h); }
+/* The nearest in front: later cards in the markup are further back. */
+.scard { position: absolute; inset: 0; z-index: calc(100 - var(--depth)); border-radius: 14px; border: 1px solid var(--border); opacity: 0; cursor: pointer;
+  background: linear-gradient(180deg, var(--surface), var(--background));
+  box-shadow: 0 -2px 10px rgba(0, 0, 0, .35), inset 0 1px 0 var(--edge);
+  /* Smaller from the top edge down, so each strip keeps its whole 13 px whatever the window's height. */
+  transform: translateY(calc(var(--y, 0) * 1px)) scale(var(--s, 1)); transform-origin: 50% 0; filter: brightness(var(--b, 1));
+  transition: transform 520ms cubic-bezier(.22, 1, .36, 1), filter 400ms ease, opacity 300ms ease; }
+html.stack-up .scard { opacity: 1; pointer-events: auto; }
+.scard .strip { position: absolute; left: 14px; right: 14px; top: 3px; height: 14px; display: flex; align-items: center; gap: 5px;
+  font: 600 10.5px/1 var(--label); letter-spacing: .06em; color: var(--muted); white-space: nowrap; }
+.scard .strip .dot { width: 6px; height: 6px; flex: 0 0 6px; box-shadow: none; }
+.scard .strip b { color: var(--text); font-weight: 600; }
+.scard .strip .when { margin-left: auto; color: var(--faint); }
+.scard.live .strip .when { color: var(--live); }
+.edge { position: fixed; left: 0; right: 0; top: 0; height: 16px; z-index: 2; }
+html.stacking .edge { top: auto; bottom: calc(var(--card-h) - 16px); }
+.edge.none { display: none; }
+/* The hint: faint while the pointer is on the window, lit and wider once the stack is up. */
+.edge::after { content: ''; position: absolute; left: 50%; top: 5px; width: 44px; height: 4px; border-radius: 4px; transform: translateX(-50%);
+  background: transparent; transition: background .2s ease, width .2s ease; }
+#app:hover ~ .edge::after { background: rgba(255, 255, 255, .22); }
+.edge:hover::after, html.stack-up .edge::after { background: var(--accent); width: 64px; }
+@media (prefers-reduced-motion: reduce) { .scard, .edge::after { transition: none; } }
+/* Under `npm run dev` only (src/ui/main.ts &stackroom): a browser cannot grow, so the room is kept free above the view. */
+html.dev-room:not(.stacking) #app, html.dev-room:not(.stacking) .stack { top: var(--dev-room); }
+html.dev-room:not(.stacking) .edge { top: var(--dev-room); }

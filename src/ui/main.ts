@@ -4,7 +4,7 @@
 //
 // URL parameters, for development: ?game=<ESPN event id> (skip following), &replay (replay even
 // if live), &result (show it as it stands, no replay), &pace=real|compact|results, &speed=<n>, &lang=en|zh-TW, &settings or &games (open
-// that panel).
+// that panel), &stackroom=<px> (the card stack: room above the window, which a browser cannot grow).
 // In `npm run dev` only, &fixture replays fixtures/nba/game-<id>.json and reads the team list from
 // fixtures/nba/teams.json instead of asking ESPN (node scripts/probe/06-fixtures.mjs).
 
@@ -28,6 +28,7 @@ import { SHORTCUTS, type ShortcutAction } from './shortcuts.ts';
 import { checkForUpdate, installUpdate, type UpdateState } from './update.ts';
 import { between, cornerRect, ease, GLIDE_MS, LINE_H, PLAYERS_W, sideRects, SIDE_GAP, type Rect } from './placement.ts';
 import { LEAVE_MS } from './side-window.ts';
+import { createStack } from './stack.ts';
 import { Pacer } from './pacer.ts';
 import { playLinesAt, TIER_PRESET, tierOf, TOOLBAR_H, type Tier } from '../render/tiers.ts';
 import { drawFlights, flightSeconds, LANDED, shotSeconds, WINDUP_SECONDS } from '../render/court.ts';
@@ -115,6 +116,9 @@ let sizeBeforePanel: { w: number; h: number } | undefined;
 let pickerOpen = false;
 /** The stats windows are open (src/ui/players.ts, src/ui/linescore.ts). */
 let playersOpen = false;
+/** Today's games as last asked, for the card stack (src/ui/stack.ts); how much taller the window is for it, px. */
+let stackToday: GameCard[] | undefined;
+let stackGrown = 0;
 
 /** ESPN's day `offset` days from today, "YYYYMMDD": ESPN counts days in US Eastern time. */
 const espnDate = (offset: number) =>
@@ -171,6 +175,41 @@ const controlsEl = document.createElement('div');
 controlsEl.className = 'toolbar';
 app.replaceChildren(contentEl, controlsEl);
 let controlsFor = '';
+
+// The card stack behind the main window (src/ui/stack.ts). It grows the window upward by the room it
+// needs and shrinks it back, the stats windows left where they are; under `npm run dev` a browser
+// cannot grow, so &stackroom keeps that room free above the view instead (app.css `html.dev-room`).
+const devRoom = import.meta.env.DEV && !shell ? Number(params.get('stackroom') ?? 0) : 0;
+if (devRoom) { document.documentElement.classList.add('dev-room'); document.documentElement.style.setProperty('--dev-room', `${devRoom}px`); }
+const stack = createStack({
+  // Under `npm run dev` with &fixture, today is fixtures/nba/scoreboard.json, as in the games list.
+  today: async () => (stackToday = await dayGames(import.meta.env.DEV && params.has('fixture') ? () => fetch('/fixtures/nba/scoreboard.json').then((r) => r.json()) : fetchJson)),
+  lastToday: () => stackToday,
+  currentId: () => currentId,
+  favourites: () => settings.favourites,
+  allowed: () => settings.stack && !panel,
+  roomAbove: async () => {
+    if (!shell) return devRoom;
+    const area = await workArea(), r = await mainRect();
+    return area ? r.y - area.y : 0;
+  },
+  // Its border too (offsetHeight, not clientHeight): pinned any shorter, the view would drop by the border.
+  cardHeight: () => app.offsetHeight,
+  grow: async (room) => {
+    if (!shell) { stackGrown = room; return; }
+    const { invoke } = await import('@tauri-apps/api/core');
+    // The window's own place and size from where it is now, less what it grew by: it may have been dragged.
+    const now = await mainRect();
+    const own = { x: now.x, y: now.y + stackGrown, w: now.w, h: now.h - stackGrown };
+    const rects = [{ label: 'main', x: own.x, y: own.y - room, w: own.w, h: own.h + room }];
+    if (playersOpen) { const s = sideRects(own, withLine()); rects.push({ label: PLAYERS, ...s.players }, ...(withLine() ? [{ label: LINESCORE, ...s.linescore }] : [])); }
+    placingUntil = Date.now() + 400;
+    await invoke('place', { rects });
+    stackGrown = room;
+  },
+  // A card drawn out to the front: the next task.
+  picked: () => {},
+}, T, tipOff);
 
 /** Put `html` in the view; `tier`: the toolbar for that size, or none (a panel). */
 /** One turn of the clock cell's light, and one breath, ms (app.css `--phase`). */
@@ -277,6 +316,7 @@ async function glide(from: Rect, to: Rect, withStats: boolean, ms = GLIDE_MS): P
 
 /** Back to the corner (the toolbar's button, once dragged away), the stats with it, and stay there. */
 async function backToCorner(): Promise<void> {
+  await stack.closeNow();
   anchored = true;
   render();
   const r = await mainRect();
@@ -306,6 +346,7 @@ if (shell) void (async () => {
 })();
 
 async function toggleStats(): Promise<void> {
+  await stack.closeNow();
   if (!shell) {
     // In a browser under `npm run dev`: the stats in a tab.
     if (currentId) window.open(`/players.html?game=${currentId}${params.has('fixture') ? '&fixture' : ''}&lang=${langTag()}`, PLAYERS);
@@ -408,7 +449,7 @@ if (shell) void (async () => {
   let busy = false, again = false, againResize = false;
   const follow = async (resize: boolean) => {
     // A glide places them itself.
-    if (!playersOpen || Date.now() < placingUntil) return;
+    if (!playersOpen || Date.now() < placingUntil || stackGrown) return;
     if (busy) { again = true; againResize ||= resize; return; }
     busy = true;
     const at = await sideLayout();
@@ -615,6 +656,7 @@ async function decideNow(): Promise<void> {
   deciding = true;
   try {
     const today = await dayGames(fetchJson);
+    stackToday = today;
     const teamSchedule = settings.favourites.length ? await scheduleOf(settings.favourites) : undefined;
     for (const g of [...today, ...(teamSchedule ?? [])]) if (g.status === 'scheduled') knownScheduled.add(g.id); else knownScheduled.delete(g.id);
     const current = currentId && state ? { id: currentId, status: state.status, ...(finalAt !== undefined ? { finalAt } : {}) } : undefined;
@@ -636,6 +678,7 @@ async function loadDay(): Promise<void> {
 }
 
 async function openPanel(kind: Panel): Promise<void> {
+  await stack.closeNow();
   const was = panel;
   panel = kind;
   if (shell) {
@@ -696,6 +739,7 @@ async function sendFeedback(): Promise<void> {
 
 async function setTier(t: Tier): Promise<void> {
   if (!shell) return;
+  await stack.closeNow();
   await sizeMain(TIER_PRESET[t].w, TIER_PRESET[t].h);
 }
 
