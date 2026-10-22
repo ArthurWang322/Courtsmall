@@ -12,9 +12,9 @@ export const DIM = 0.05;
 /** A card under the pointer is lit this bright, however far back it is, so its strip can be read. */
 export const LIT = 1.12;
 /** The cards come up one after another, the nearest first, this far apart, each taking FAN_MS, ms
- *  (slower than the prototype's 28 and 520: the maintainer wanted them smoother, 2026-10-22). */
+ *  (the maintainer's numbers, 2026-10-22). */
 export const STAGGER_MS = 36;
-export const FAN_MS = 650;
+export const FAN_MS = 400;
 /** How long the pointer may be off the stack before it goes back down, ms. */
 export const CLOSE_AFTER_MS = 300;
 /** A card drawn out: up and out of the stack, then down in front, ms. */
