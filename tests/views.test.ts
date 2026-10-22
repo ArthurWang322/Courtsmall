@@ -328,7 +328,7 @@ describe('settings page', () => {
     const marked = (html: string) => [...html.matchAll(/data-stack="(on|off)"( checked)?/g)].map((m) => `${m[1]}${m[2] ? '*' : ''}`);
     expect(marked(settingsView(teams, settings, zh))).toEqual(['on*', 'off']);
     expect(marked(settingsView(teams, { ...settings, stack: false }, zh))).toEqual(['on', 'off*']);
-    expect(settingsView(teams, settings, zh)).toContain('比賽卡片疊');
+    expect(settingsView(teams, settings, zh)).toContain('快速切換比賽');
   });
 
   it('offers the shortcuts as on or off, the one in effect marked', () => {
