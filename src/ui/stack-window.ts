@@ -191,6 +191,7 @@ async function pick(el: HTMLElement): Promise<void> {
     el.style.setProperty('--move', `${RISE_MS}ms`);
     set(el, { y: pickRise(depthOf(el), show.cardH), scale: 1, brightness: 1.05 });
     await wait(RISE_MS);
+    bus.send('main', 'stack-landing', null);
     el.style.setProperty('--move', `${LAND_MS}ms`);
     set(el, cardPlace(0));
     await wait(LAND_MS);

@@ -22,7 +22,8 @@ export interface StackHost {
   /** How much of the screen there is above the window, and how high the window is, px. */
   roomAbove(): Promise<number>;
   cardHeight(): number;
-  /** A card drawn out to the front (src/ui/main.ts). */
+  /** A card drawn out is coming down over the window, then is in front of it (src/ui/main.ts). */
+  landing(): void;
   picked(card: GameCard): void;
 }
 
@@ -75,6 +76,7 @@ export function createStack(host: StackHost): Stack {
   });
   void bus.then((b) => {
     b.on('stack-state', ({ up }) => root.classList.toggle('stack-up', up));
+    b.on('stack-landing', () => host.landing());
     b.on('stack-picked', ({ card }) => host.picked(card));
   });
 

@@ -28,6 +28,8 @@ export interface Messages {
   'stack-close': null;
   /** stack → main: the cards are up, or down again. */
   'stack-state': { up: boolean };
+  /** stack → main: a card drawn out is coming down over the main window. */
+  'stack-landing': null;
   /** stack → main: a card drawn out to the front, now in front of the main window. */
   'stack-picked': { card: GameCard };
   /** stack → main, in a browser only: let the pointer through the iframe, or not. */
