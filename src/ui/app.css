@@ -300,6 +300,10 @@ button { font: inherit; color: inherit; border: 0; background: transparent; padd
 .settings .update .note { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--faint); }
 .settings .update .note.new { color: var(--accent); }
 .settings .update button { padding: 3px 9px; font-size: 12px; }
+/* The test notice: a button, and how the last one went beside it. */
+.settings .notice-test { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 10px; }
+.settings .notice-test button { padding: 3px 9px; font-size: 12px; }
+.settings .notice-test button[disabled] { opacity: .5; cursor: default; }
 /* Check for updates in blue; installing a found one also glows (button.on). */
 .settings .update button[data-update] { border-color: color-mix(in srgb, var(--info) 70%, var(--border)); color: var(--info);
   background: color-mix(in srgb, var(--info) 10%, transparent); }

@@ -22,7 +22,7 @@ import type { PaceMode } from '../data/replay/pacing.ts';
 import { decide, STAY_AFTER_FINAL_MS, type Decision } from '../follow/decide.ts';
 import { CHANGELOG } from '../changelog.ts';
 import { langOf, STRINGS } from '../i18n/index.ts';
-import { Notifier } from '../notify/notifier.ts';
+import { Notifier, showNotice, testNoticeFor, testOutcome, type NoticeTest } from '../notify/notifier.ts';
 import { assumedBefore, notices } from '../notify/rules.ts';
 import { SHORTCUTS, type ShortcutAction } from './shortcuts.ts';
 import { checkForUpdate, installUpdate, type UpdateState } from './update.ts';
@@ -118,6 +118,8 @@ let sizeBeforePanel: { w: number; h: number } | undefined;
 let pickerOpen = false;
 /** The stats windows are open (src/ui/players.ts, src/ui/linescore.ts). */
 let playersOpen = false;
+/** The settings page's test notice: how the last one went (src/notify/notifier.ts testNoticeFor). */
+let noticeTest: NoticeTest = { kind: 'idle' };
 /** Each day's games as last asked, for the card stack (src/ui/stack.ts), by ESPN day ("YYYYMMDD"). */
 const stackDays = new Map<string, GameCard[]>();
 /** A game drawn out of the card stack whose own feed has not come yet: the view stays empty until it has,
@@ -518,7 +520,7 @@ function render(): void {
   // points per period and the leaders where the court would be.
   app.dataset.tier = panel ? 'panel' : tier;
   if (panel === 'settings') {
-    show(settingsView(teams, settings, T, pickerOpen, isMac, shortcutsTaken, appVersion, updateState), undefined);
+    show(settingsView(teams, settings, T, pickerOpen, isMac, shortcutsTaken, appVersion, updateState, noticeTest), undefined);
     // The list opens on the current choice: scroll the list only (scrollIntoView would move the page too).
     const list = app.querySelector<HTMLElement>('.fav-list'), on = app.querySelector<HTMLElement>('.fav-item.on');
     if (list && on) list.scrollTop = on.offsetTop - (list.clientHeight - on.offsetHeight) / 2;
@@ -731,6 +733,7 @@ async function openPanel(kind: Panel): Promise<void> {
   closeStack();
   const was = panel;
   panel = kind;
+  if (kind === 'settings') noticeTest = { kind: 'idle' };
   if (shell) {
     if (!was) sizeBeforePanel = { w: window.innerWidth, h: window.innerHeight };
     await sizeMain(PANEL_SIZE[kind].w, PANEL_SIZE[kind].h);
@@ -796,7 +799,7 @@ async function setTier(t: Tier): Promise<void> {
 app.addEventListener('click', (e) => {
   // The size buttons only: #app carries data-tier too (the size it shows), so a click anywhere else
   // would ask for the size it already has, and snap the window back to that size's preset.
-  const el = (e.target as HTMLElement).closest<HTMLElement>('button[data-tier], [data-corner], [data-open], [data-day], [data-players], [data-game], [data-done], [data-notify], [data-shortcuts], [data-stack], [data-update], [data-fav-open], [data-fav-pick], [data-feedback]');
+  const el = (e.target as HTMLElement).closest<HTMLElement>('button[data-tier], [data-corner], [data-open], [data-day], [data-players], [data-game], [data-done], [data-notify], [data-shortcuts], [data-stack], [data-notice-test], [data-update], [data-fav-open], [data-fav-pick], [data-feedback]');
   // The favourite's list: its button opens and closes it, a team in it is picked, a click
   // anywhere else closes it.
   if (pickerOpen && !el?.closest('.favourite')) { pickerOpen = false; render(); }
@@ -830,6 +833,18 @@ app.addEventListener('click', (e) => {
     return;
   }
   if (panel !== 'settings') return;
+  if (el.dataset.noticeTest !== undefined) {
+    // The favourite's tip-off as the real notice would read: its next game, when the window knows it.
+    const fav = teams.find((t) => t.id === settings.favourites[0]);
+    const theirs = (g?: { teams: GameCard['teams'] }) => !!fav && !!g && (g.teams.away.id === fav.id || g.teams.home.id === fav.id);
+    const next = theirs(upcoming) ? upcoming : undefined;
+    noticeTest = { kind: 'sending' };
+    render();
+    showNotice(testNoticeFor(fav, teams, next), T)
+      .then(() => { noticeTest = { kind: 'sent' }; }, (e: unknown) => { noticeTest = testOutcome(e); })
+      .finally(() => { if (panel === 'settings') render(); });
+    return;
+  }
   if (el.dataset.update) {
     const set = (u: UpdateState) => { updateState = u; if (panel === 'settings') render(); };
     void (el.dataset.update === 'install' ? installUpdate(set) : checkForUpdate(set));

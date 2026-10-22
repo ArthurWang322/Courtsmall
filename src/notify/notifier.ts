@@ -5,7 +5,7 @@
 // under `npm run dev` in a browser through its Notification API. Under `tauri dev` the app is no app
 // bundle, and macOS shows nothing: notices are seen in the bundled app.
 
-import type { GameState } from '../model/types.ts';
+import type { GameCard, GameState, TeamRef } from '../model/types.ts';
 import type { Strings } from '../i18n/index.ts';
 import { whenText } from '../ui/views.ts';
 import type { Notice } from './rules.ts';
@@ -45,6 +45,34 @@ async function show(title: string, body: string): Promise<void> {
   if (Notification.permission === 'granted') new Notification(title, { body });
 }
 
+/** Sends one notice now; rejects when it was not sent (macOS: refused, or no app bundle). */
+export async function showNotice(n: Notice, T: Strings): Promise<void> {
+  const { title, body } = noticeText(n, T);
+  await show(title, body);
+}
+
+/**
+ * The settings page's test notice: the favourite's tip-off, as the real notice reads (rules.ts
+ * 'start'). Its next game when known, else the favourite with another team; with no favourite,
+ * two of the league's teams.
+ */
+export function testNoticeFor(fav: TeamRef | undefined, teams: readonly TeamRef[], next?: GameCard): Notice {
+  const others = teams.filter((t) => t.id !== fav?.id);
+  const sample = { id: '0', abbr: 'NBA', name: 'NBA' };
+  const pair = next ? next.teams : { away: others[0] ?? sample, home: fav ?? others[1] ?? sample };
+  const state: GameState = { gameId: 'test', status: 'scheduled', teams: pair, period: 0, clock: 0, score: { away: 0, home: 0 }, periodScores: { away: [], home: [] } };
+  return { kind: 'start', key: 'start', state };
+}
+
+export type NoticeTest = { kind: 'idle' } | { kind: 'sending' } | { kind: 'sent' } | { kind: 'off' } | { kind: 'failed'; why: string };
+
+/** What a test notice that failed says: notices off in the system (macOS refuses, and does not ask
+ *  again), or whatever else went wrong. */
+export function testOutcome(err: unknown): NoticeTest {
+  const why = err instanceof Error ? err.message : String(err);
+  return /not allowed|switched off/i.test(why) ? { kind: 'off' } : { kind: 'failed', why };
+}
+
 export class Notifier {
   private sent = new Set<string>();
   private readonly T: Strings;
@@ -56,8 +84,7 @@ export class Notifier {
       const key = `${n.state.gameId}:${n.key}`;
       if (this.sent.has(key)) continue;
       this.sent.add(key);
-      const { title, body } = noticeText(n, this.T);
-      show(title, body).catch((e: unknown) => console.warn('notice not shown', e));
+      showNotice(n, this.T).catch((e: unknown) => console.warn('notice not shown', e));
     }
   }
 }

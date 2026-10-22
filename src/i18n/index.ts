@@ -53,6 +53,11 @@ export interface Strings {
   shortcutsTaken: string;
   shortcutsOn: string;
   shortcutsOff: string;
+  /** The settings page's test notice (src/notify/notifier.ts testNoticeFor), and how it went. */
+  noticeTest: string;
+  noticeTestSent: string;
+  noticeTestOff: string;
+  noticeTestFailed: (why: string) => string;
   /** The card stack's switch (src/ui/stack.ts), and what it does, small under it. */
   stack: string;
   stackHint: string;
@@ -122,6 +127,10 @@ export const STRINGS: Record<Lang, Strings> = {
     shortcutsTaken: 'Some keys are taken by another app.',
     shortcutsOn: 'On',
     shortcutsOff: 'Off',
+    noticeTest: 'Send a test notice',
+    noticeTestSent: "Sent. If it did not show, check the system's notification settings",
+    noticeTestOff: 'Notices are off for Courtsmall: turn them on in System Settings → Notifications → Courtsmall',
+    noticeTestFailed: (why) => `Not sent: ${why}`,
     stack: 'Quick game switching',
     stackHint: "Touch the window's top edge for the day's other games",
     changelog: { title: 'Changelog', intro: "What is new in Courtsmall, version by version.", latest: 'Latest' },
@@ -183,6 +192,10 @@ export const STRINGS: Record<Lang, Strings> = {
     shortcutsTaken: '有些按鍵已被其他程式佔用。',
     shortcutsOn: '開啟',
     shortcutsOff: '關閉',
+    noticeTest: '傳送測試通知',
+    noticeTestSent: '已送出，沒看到的話請檢查系統的通知設定',
+    noticeTestOff: '通知被系統關閉：到系統設定 → 通知 → Courtsmall 打開',
+    noticeTestFailed: (why) => `送不出去：${why}`,
     stack: '快速切換比賽',
     stackHint: '摸視窗上緣，換同一天的其他比賽',
     changelog: { title: '更新日誌', intro: '查看 Courtsmall 每個版本的新功能與改進。', latest: '最新' },

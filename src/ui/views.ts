@@ -11,6 +11,7 @@ import type { Lang, Strings } from '../i18n/index.ts';
 import type { Release } from '../changelog.ts';
 import { keyLabel, SHORTCUTS, type ShortcutAction } from './shortcuts.ts';
 import type { UpdateState } from './update.ts';
+import type { NoticeTest } from '../notify/notifier.ts';
 import { dayOrder } from './day-order.ts';
 
 /** How long a score that just changed keeps its jump, ms (app.css `.jump`). */
@@ -223,7 +224,7 @@ export function pregameView(teams: GameCard['teams'], start: number, when: strin
 }
 
 /** Choosing a team and the notices. Buttons carry data-* attributes; src/ui/main.ts handles clicks. */
-export function settingsView(teams: readonly TeamRef[], s: Settings, T: Strings, pickerOpen = false, mac = true, shortcutsTaken = false, version?: string, update: UpdateState = { kind: 'idle' }): string {
+export function settingsView(teams: readonly TeamRef[], s: Settings, T: Strings, pickerOpen = false, mac = true, shortcutsTaken = false, version?: string, update: UpdateState = { kind: 'idle' }, noticeTest: NoticeTest = { kind: 'idle' }): string {
   // The favourite, from a drop-down of our own (a native one opens all 30 teams at once): a button
   // with the choice, and when `pickerOpen`, a short scrolling list under it, none first, then the
   // teams by full name.
@@ -257,6 +258,7 @@ export function settingsView(teams: readonly TeamRef[], s: Settings, T: Strings,
       <div class="head"><b>${esc(T.tip.settings)}</b><span class="grow"></span><button class="icon close" data-done aria-label="${esc(T.close)}">✕</button></div>
       <div class="fav-row"><span class="label">${esc(T.chooseTeam)}</span>${picker}</div>
       <div class="checks">${check('start', T.notifyStart)}${check('clutch', T.notifyClutch, T.notifyClutchHint)}</div>${hasFav ? '' : `<span class="hint">${esc(T.notifyNeedsFavourite)}</span>`}
+      ${noticeTestRow(noticeTest, T)}
       <div class="shortcuts-row"><span class="label">${esc(T.shortcuts)}</span>${radio(true, T.shortcutsOn)}${radio(false, T.shortcutsOff)}</div>
       <span class="keys">${(Object.keys(SHORTCUTS) as ShortcutAction[]).map((a) => `<kbd>${esc(keyLabel(SHORTCUTS[a], mac))}</kbd> ${esc(T.shortcut[a])}`).join('<i>·</i>')}</span>
       ${s.shortcuts && shortcutsTaken ? `<span class="hint warn">${esc(T.shortcutsTaken)}</span>` : ''}
@@ -364,6 +366,13 @@ export function gamesView(day: string, games: readonly GameCard[], T: Strings, t
       <div class="head"><button class="icon" data-day="-1" title="${esc(T.prevDay)}">‹</button><b>${esc(day)}</b><button class="icon" data-day="1" title="${esc(T.nextDay)}">›</button><span class="grow"></span><button class="icon close" data-done aria-label="${esc(T.close)}">✕</button></div>
       <div class="list">${sorted.length ? sorted.map(row).join('') : `<span class="muted">${esc(T.noGames)}</span>`}</div>
     </div>`;
+}
+
+/** The test notice's button, and how the last one went. */
+function noticeTestRow(t: NoticeTest, T: Strings): string {
+  const said = t.kind === 'sent' ? T.noticeTestSent : t.kind === 'off' ? T.noticeTestOff : t.kind === 'failed' ? T.noticeTestFailed(t.why) : '';
+  return `<div class="notice-test"><button data-notice-test${t.kind === 'sending' ? ' disabled' : ''}>${esc(T.noticeTest)}</button>`
+    + (said ? `<span class="hint${t.kind === 'sent' ? '' : ' warn'}">${esc(said)}</span>` : '') + '</div>';
 }
 
 /**

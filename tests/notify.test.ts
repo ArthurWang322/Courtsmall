@@ -2,7 +2,9 @@
 
 import { describe, expect, it } from 'vitest';
 import { assumedBefore, notices } from '../src/notify/rules.ts';
-import { senderFor } from '../src/notify/notifier.ts';
+import { noticeText, senderFor, testNoticeFor, testOutcome } from '../src/notify/notifier.ts';
+import { STRINGS } from '../src/i18n/index.ts';
+import type { GameCard, TeamRef } from '../src/model/types.ts';
 import { DEFAULTS, normalize } from '../src/settings/store.ts';
 import type { GameState } from '../src/model/types.ts';
 
@@ -88,5 +90,33 @@ describe('where a notice goes', () => {
     expect(senderFor(true, false)).toBe('plugin');
     expect(senderFor(false, true)).toBe('browser');
     expect(senderFor(false, false)).toBe('browser');
+  });
+});
+
+// The settings page's test notice (the maintainer, 2026-10-22): one press tells whether notices reach
+// the screen on this machine, so it reads exactly as the favourite's real tip-off notice would.
+describe('test notice', () => {
+  const team = (id: string, abbr: string): TeamRef => ({ id, abbr, name: abbr });
+  const fav = team('13', 'LAL'), gsw = team('9', 'GSW'), bos = team('2', 'BOS');
+  const zh = STRINGS['zh-TW'];
+
+  it("is the favourite's next game's tip-off, as the real notice reads", () => {
+    const next = { id: 'g', status: 'scheduled', start: 1, period: 0, clock: 0, score: { away: 0, home: 0 }, teams: { away: gsw, home: fav } } as GameCard;
+    const n = testNoticeFor(fav, [bos, gsw, fav], next);
+    expect(n.kind).toBe('start');
+    expect(noticeText(n, zh)).toEqual({ title: 'GSW @ LAL', body: zh.tipOff });
+  });
+
+  it('pairs the favourite with another team when its next game is not known, and shows a sample game without a favourite', () => {
+    expect(noticeText(testNoticeFor(fav, [fav, bos], undefined), zh).title).toBe('BOS @ LAL');
+    expect(noticeText(testNoticeFor(undefined, [bos, gsw], undefined), zh).title).toBe('BOS @ GSW');
+  });
+
+  // macOS refusing (turned off in System Settings, so it does not ask) is a thing the person can fix,
+  // and says so; anything else is reported as it came.
+  it('tells notices turned off in the system apart from other failures', () => {
+    expect(testOutcome(new Error('Notifications are not allowed for this application'))).toEqual({ kind: 'off' });
+    expect(testOutcome('notices are switched off for Courtsmall')).toEqual({ kind: 'off' });
+    expect(testOutcome('not an app bundle (npm run tauri dev): macOS shows no notices')).toEqual({ kind: 'failed', why: 'not an app bundle (npm run tauri dev): macOS shows no notices' });
   });
 });

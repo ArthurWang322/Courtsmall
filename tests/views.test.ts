@@ -323,6 +323,15 @@ describe('settings page', () => {
   });
 
   // On or off is one choice of two, so exactly one is ever marked, and it is the one in effect.
+  // A press shows whether a notice reached the system, and what to do when the system has them off.
+  it('offers a test notice and says how it went', () => {
+    expect(settingsView(teams, settings, zh)).toContain('data-notice-test>傳送測試通知</button>');
+    expect(settingsView(teams, settings, zh, false, true, false, undefined, undefined, { kind: 'sending' })).toContain('data-notice-test disabled>');
+    expect(settingsView(teams, settings, zh, false, true, false, undefined, undefined, { kind: 'sent' })).toContain('已送出');
+    expect(settingsView(teams, settings, zh, false, true, false, undefined, undefined, { kind: 'off' })).toContain('系統設定 → 通知 → Courtsmall');
+    expect(settingsView(teams, settings, zh, false, true, false, undefined, undefined, { kind: 'failed', why: 'boom' })).toContain('boom');
+  });
+
   // Every feature is a switch (docs/PLAN.md §0): the card stack too, on or off like the shortcuts.
   it('offers the card stack as on or off, the one in effect marked', () => {
     const marked = (html: string) => [...html.matchAll(/data-stack="(on|off)"( checked)?/g)].map((m) => `${m[1]}${m[2] ? '*' : ''}`);
