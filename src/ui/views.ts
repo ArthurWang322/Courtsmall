@@ -38,12 +38,19 @@ export function clockText(seconds: number): string {
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
 }
 
+/** "Final", or "Final/OT", "Final/2OT"… for a game that went to overtime. */
+const finalText = (period: number, T: Strings) => (period > 4 ? `${T.final}/${period === 5 ? 'OT' : `${period - 4}OT`}` : T.final);
+
+/** A game with a score to show: under way or over, not one to come, called off, or held up before tip-off. */
+const hasScore = (g: Pick<GameCard, 'status' | 'period'>) =>
+  g.status !== 'scheduled' && g.status !== 'postponed' && g.status !== 'cancelled' && !(g.status === 'delayed' && g.period === 0);
+
 /** Where the game is: "Q4 7:02", "Half", "End Q1", "Final", or the tip-off time. */
 export function whenText(s: GameState, T: Strings, tipOff?: string): string {
   switch (s.status) {
     case 'scheduled': return tipOff ?? '';
     // "Final/OT": a game that went to overtime says so.
-    case 'final': return s.period > 4 ? `${T.final}/${s.period === 5 ? 'OT' : `${s.period - 4}OT`}` : T.final;
+    case 'final': return finalText(s.period, T);
     case 'postponed': return T.postponed;
     case 'cancelled': return T.cancelled;
     case 'delayed': return T.delayed;
@@ -322,7 +329,9 @@ export function controlsView(tier: Tier, T: Strings, playersOpen = false, moved 
 function cardWhen(g: GameCard, T: Strings, tipOff: (g: GameCard) => string): string {
   switch (g.status) {
     case 'scheduled': return tipOff(g);
-    case 'final': return T.final;
+    // As the main window says it (whenText).
+    case 'final': return finalText(g.period, T);
+    case 'delayed': return T.delayed;
     case 'postponed': return T.postponed;
     case 'cancelled': return T.cancelled;
     case 'break': return g.period === 2 ? T.half : T.endOf(T.period(g.period));
@@ -339,7 +348,7 @@ export function gamesView(day: string, games: readonly GameCard[], T: Strings, t
   const sorted = dayOrder(games, favs);
   const row = (g: GameCard) => {
     const how = g.status === 'final' ? 'result' : 'live';
-    const showScore = g.status !== 'scheduled' && g.status !== 'postponed' && g.status !== 'cancelled';
+    const showScore = hasScore(g);
     // Two teams in one row: the same clash rule as on the score (src/render/colour.ts), for a logo's stand-in.
     const c = gameColours(g.teams, favIn(g.teams, favs));
     const abbr = (sd: Side) => `${logo(g.teams[sd], c[sd])}<span>${esc(g.teams[sd].abbr)}${star(g.teams[sd], favs)}</span>`;
@@ -364,7 +373,7 @@ export function gamesView(day: string, games: readonly GameCard[], T: Strings, t
 export function stackView(cards: readonly GameCard[], T: Strings, tipOff: (g: GameCard) => string, favs: readonly string[] = []): string {
   const card = (g: GameCard, i: number) => {
     const c = gameColours(g.teams, favIn(g.teams, favs));
-    const started = g.status !== 'scheduled' && g.status !== 'postponed' && g.status !== 'cancelled';
+    const started = hasScore(g);
     const on = g.status === 'live' || g.status === 'break' || g.status === 'delayed';
     const score = started ? `<b>${g.score.away}</b><span class="muted">–</span><b>${g.score.home}</b>` : '<span class="muted">–</span>';
     return `<div class="scard${on ? ' live' : ''}" data-game="${esc(g.id)}" data-how="${g.status === 'final' ? 'result' : 'live'}" style="--depth:${i + 1}">`

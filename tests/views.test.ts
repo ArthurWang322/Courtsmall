@@ -578,6 +578,26 @@ describe('card stack', () => {
     expect(rows[2]).toEqual(['H9', '–', '–', '–', '–', '–']);
   });
 
+  // Seen with a card for every state (the maintainer, 2026-10-22): a game delayed before tip-off looked
+  // started at 0–0 with nothing to say why, and one that went to overtime said less than the main window.
+  it("says a game is delayed, without a score before tip-off, and that a final went to overtime, as the main window does", () => {
+    const strip = (g: GameCard) => stackView([g], zh, () => '19:30').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+    const before = strip({ ...card('5', 'delayed', [0, 0]), period: 0 });
+    expect(before).toContain('暫停比賽');
+    expect(before).not.toContain('0 – 0');
+    // Delayed once under way: the score stands.
+    const during = strip({ ...card('6', 'delayed', [55, 60]), period: 3 });
+    expect(during).toContain('55');
+    expect(during).toContain('暫停比賽');
+    expect(strip({ ...card('7', 'final', [121, 118]), period: 5 })).toContain('終場/OT');
+    expect(strip({ ...card('8', 'final', [130, 128]), period: 6 })).toContain('終場/2OT');
+    // The games list says the same.
+    const list = gamesView('今天', [{ ...card('5', 'delayed', [0, 0]), period: 0 }, { ...card('7', 'final', [121, 118]), period: 5 }], zh, () => '19:30');
+    expect(list).toContain('暫停比賽');
+    expect(list).toContain('終場/OT');
+    expect(list).not.toMatch(/<b>0<\/b>/);
+  });
+
   // A card behind shows only a strip above the one in front: enough to tell which game it is and how it stands.
   it('labels each card behind with its teams, its score once started, and its time', () => {
     expect(strips.map((s) => s.id)).toEqual(['1', '2', '3']);
