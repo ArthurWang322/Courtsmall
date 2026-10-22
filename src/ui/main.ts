@@ -34,7 +34,7 @@ import { playLinesAt, TIER_PRESET, tierOf, TOOLBAR_H, type Tier } from '../rende
 import { drawFlights, flightSeconds, LANDED, shotSeconds, WINDUP_SECONDS } from '../render/court.ts';
 import { gameColours } from '../render/colour.ts';
 import { loadSettings, saveSettings, type Settings } from '../settings/store.ts';
-import { barView, changelogView, controlsView, courtView, favIn, gamesView, JUMP_MS, messageView, noLogo, playLines, SLIDE_MS, pregameView, settingsView, type ScoreAges } from './views.ts';
+import { barView, changelogView, standInState, controlsView, courtView, favIn, gamesView, JUMP_MS, messageView, noLogo, playLines, SLIDE_MS, pregameView, settingsView, type ScoreAges } from './views.ts';
 
 // In `npm run dev`, VITE_PARAMS fills in for the URL, which the desktop window does not have:
 // VITE_PARAMS='game=401898721&replay' npx tauri dev
@@ -119,6 +119,8 @@ let playersOpen = false;
 /** Today's games as last asked, for the card stack (src/ui/stack.ts); how much taller the window is for it, px. */
 let stackToday: GameCard[] | undefined;
 let stackGrown = 0;
+/** A game drawn out of the card stack, shown from its card until its own feed arrives (src/ui/views.ts standInState). */
+let standIn: GameCard | undefined;
 
 /** ESPN's day `offset` days from today, "YYYYMMDD": ESPN counts days in US Eastern time. */
 const espnDate = (offset: number) =>
@@ -207,8 +209,14 @@ const stack = createStack({
     await invoke('place', { rects });
     stackGrown = room;
   },
-  // A card drawn out to the front: the next task.
-  picked: () => {},
+  // Drawn out, the game is followed as one picked from the list is (pinned: following leaves it alone),
+  // and shown from its card until its own feed arrives.
+  picked: (card) => {
+    pinned = card.id;
+    follow(card.id, card.status === 'final' ? 'result' : 'live');
+    standIn = card;
+    render();
+  },
 }, T, tipOff);
 
 /** Put `html` in the view; `tier`: the toolbar for that size, or none (a panel). */
@@ -467,6 +475,19 @@ if (shell) void (async () => {
   await w.onResized(() => void follow(true));
 })();
 
+/**
+ * From a card's stand-in to the game's own view, without a jump: the stand-in stays on top, still, while
+ * the game's view fades in under it, so what both show stays where it is and only what is new comes in.
+ */
+function cardToGame(standInHtml: string): void {
+  const ghost = document.createElement('div');
+  ghost.className = 'content ghost';
+  ghost.innerHTML = standInHtml;
+  ghost.style.cssText = `position: absolute; left: ${contentEl.offsetLeft}px; top: ${contentEl.offsetTop}px; width: ${contentEl.offsetWidth}px; height: ${contentEl.offsetHeight}px; pointer-events: none;`;
+  app.append(ghost);
+  contentEl.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 400, easing: 'ease-out' }).finished.finally(() => ghost.remove());
+}
+
 function render(): void {
   const tier = tierOf(app.clientHeight);
   // A result in a court-sized window keeps the court's layout: the score where it always is, the
@@ -485,17 +506,25 @@ function render(): void {
   // The toolbar has a row of its own along the bottom.
   const contentHeight = app.clientHeight - TOOLBAR_H;
   let body: string;
+  // A game drawn out of the card stack shows from its card until its own feed arrives, whichever way
+  // that comes (live, replay or result).
+  const fromCard = !!(state && standIn) && contentEl.innerHTML;
+  if (fromCard) standIn = undefined;
+  const shown = state ?? (standIn ? standInState(standIn) : undefined);
   // A game not started yet: the tip-off and a countdown, whether it is followed or the team's next.
-  const pre = state?.status === 'scheduled' && state.start !== undefined ? { teams: state.teams, start: state.start }
-    : !state && upcoming ? { teams: upcoming.teams, start: upcoming.start } : undefined;
+  const pre = shown?.status === 'scheduled' && shown.start !== undefined ? { teams: shown.teams, start: shown.start }
+    : !shown && upcoming ? { teams: upcoming.teams, start: upcoming.start } : undefined;
   if (pre) body = pregameView(pre.teams, pre.start, whenOf({ start: pre.start }), Date.now(), T, tier, settings.favourites);
-  else if (state) {
+  else if (shown) {
     const now = Date.now();
     const ages: ScoreAges = {};
     for (const side of ['away', 'home'] as const) { const at = scoreChangedAt[side]; if (at !== undefined && now - at < JUMP_MS) ages[side] = now - at; }
-    const key = JSON.stringify(state.recentPlays?.at(-1) ?? null);
-    if (key !== playKey) { if (playKey !== undefined && state.recentPlays?.length) { playChangedAt = now; playBefore = playShown; } playKey = key; }
-    playShown = state;
+    // The plays' slide is the game's own: the card's stand-in has none to slide from.
+    if (state) {
+      const key = JSON.stringify(state.recentPlays?.at(-1) ?? null);
+      if (key !== playKey) { if (playKey !== undefined && state.recentPlays?.length) { playChangedAt = now; playBefore = playShown; } playKey = key; }
+      playShown = state;
+    }
     if (playChangedAt !== undefined && now - playChangedAt < SLIDE_MS) {
       ages.play = now - playChangedAt;
       const n = tier === 'court' && !resultOnly ? 2 : playLinesAt(contentHeight);
@@ -503,11 +532,12 @@ function render(): void {
       if (playBefore) ages.leaving = playLines(playBefore, T, n)[n - 1];
     }
     // A finished game picked from the list is its result: no court, whatever the size.
-    body = tier === 'court' && !resultOnly ? courtView(state, T, landed, tag, settings.favourites, ages)
-      : barView(state, T, playLinesAt(contentHeight), tag, settings.favourites, resultOnly, ages, tier === 'court');
+    body = tier === 'court' && !resultOnly ? courtView(shown, T, landed, tag, settings.favourites, ages)
+      : barView(shown, T, playLinesAt(contentHeight), tag, settings.favourites, resultOnly, ages, tier === 'court');
   }
   else body = messageView(message, tier === 'bar' ? messageSub : undefined);
   show(body, tier);
+  if (fromCard && !reducedMotion.matches) cardToGame(fromCard);
   void sendStats();
   if (state && tier === 'court' && !resultOnly && !frame) frame = requestAnimationFrame(animate);
 }
@@ -552,6 +582,7 @@ function leave(): void {
   playKey = playChangedAt = playBefore = playShown = undefined;
   currentId = undefined;
   finalAt = undefined;
+  standIn = undefined;
 }
 
 function follow(id: string, how: 'live' | 'replay' | 'result'): void {
@@ -600,7 +631,7 @@ function follow(id: string, how: 'live' | 'replay' | 'result'): void {
       arrived = s;
       pacer?.push(s);
     },
-    onError: (e: unknown) => { console.warn(e); if (!state) { message = T.offline; render(); } },
+    onError: (e: unknown) => { console.warn(e); if (!state) { standIn = undefined; message = T.offline; render(); } },
   };
   if (how === 'live') { unsubscribe = live.subscribe(id, handlers); return; }
   const fromFixture = import.meta.env.DEV && params.has('fixture');

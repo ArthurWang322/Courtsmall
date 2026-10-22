@@ -532,6 +532,10 @@ button { font: inherit; color: inherit; border: 0; background: transparent; padd
 html.stacking #app { top: auto; height: var(--card-h); }
 .stack { position: fixed; inset: 0; z-index: 0; pointer-events: none; }
 html.stacking .stack { top: auto; height: var(--card-h); }
+/* A card drawn out lands in front of #app; while it does, nothing else answers the pointer. */
+.stack.drawn { z-index: 3; }
+.stack.drawn .scard { opacity: 1; }
+html.stack-busy .scard, html.stack-busy .edge { pointer-events: none; }
 /* The nearest in front: later cards in the markup are further back. */
 .scard { position: absolute; inset: 0; z-index: calc(100 - var(--depth)); border-radius: 14px; border: 1px solid var(--border); opacity: 0; cursor: pointer;
   background: linear-gradient(180deg, var(--surface), var(--background));

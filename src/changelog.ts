@@ -13,6 +13,15 @@ export interface Release {
 
 export const CHANGELOG: readonly Release[] = [
   {
+    version: '0.5.0',
+    date: '2026-10-22',
+    title: { 'zh-TW': '比賽卡片疊', en: 'Card stack' },
+    items: {
+      'zh-TW': ['摸視窗上緣，叫出今天其他比賽', '點一張卡片就換場', '設定裡可以關掉'],
+      en: ["Touch the window's top edge for today's other games", 'Pick a card to switch to that game', 'Can be switched off in the settings'],
+    },
+  },
+  {
     version: '0.4.3',
     date: '2026-10-21',
     title: { 'zh-TW': '詳細數據', en: 'Full box score' },

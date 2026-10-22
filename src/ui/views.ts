@@ -153,9 +153,11 @@ export function barView(s: GameState, T: Strings, lines: number, tag?: string, f
 /** Points per period for a finished game: one row per team, overtimes included. */
 export function periodTable(s: GameState): string {
   // Over the points, which period they are: 1 to 4, then OT, 2OT…, as the line score labels them.
-  const n = Math.max(s.periodScores.away.length, s.periodScores.home.length);
+  // As many as the game went to, even with points not known yet (a card's stand-in, standInState):
+  // a dash for those, as in the line score, so the table is laid out as it will be.
+  const n = Math.max(s.periodScores.away.length, s.periodScores.home.length, s.period);
   const head = `<div class="row period head"><span class="abbr"></span>${Array.from({ length: n }, (_, i) => `<span class="mono">${periodLabel(i + 1)}</span>`).join('')}</div>`;
-  const row = (side: Side) => `<div class="row period"><span class="abbr">${esc(s.teams[side].abbr)}</span>${s.periodScores[side].map((n) => `<span class="mono">${n}</span>`).join('')}</div>`;
+  const row = (side: Side) => `<div class="row period"><span class="abbr">${esc(s.teams[side].abbr)}</span>${Array.from({ length: n }, (_, i) => `<span class="mono">${s.periodScores[side][i] ?? '–'}</span>`).join('')}</div>`;
   return `<div class="periods">${head}${row('away')}${row('home')}</div>`;
 }
 
@@ -354,6 +356,12 @@ export function gamesView(day: string, games: readonly GameCard[], T: Strings, t
       <div class="head"><button class="icon" data-day="-1" title="${esc(T.prevDay)}">‹</button><b>${esc(day)}</b><button class="icon" data-day="1" title="${esc(T.nextDay)}">›</button><span class="grow"></span><button class="icon close" data-done aria-label="${esc(T.close)}">✕</button></div>
       <div class="list">${sorted.length ? sorted.map(row).join('') : `<span class="muted">${esc(T.noGames)}</span>`}</div>
     </div>`;
+}
+
+/** A game drawn out of the card stack, as its card has it, shown until its own feed arrives
+ *  (src/ui/main.ts): the bar and the court draw it as they will, with no plays yet. */
+export function standInState(card: GameCard): GameState {
+  return { gameId: card.id, status: card.status, teams: card.teams, start: card.start, period: card.period, clock: card.clock, score: card.score, periodScores: { away: [], home: [] } };
 }
 
 /**

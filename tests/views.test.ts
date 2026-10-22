@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { STRINGS } from '../src/i18n/index.ts';
 import { playLinesAt, TIER_PRESET, TOOLBAR_H } from '../src/render/tiers.ts';
 import { CHANGELOG } from '../src/changelog.ts';
-import { barView, boxView, stackView, changelogView, clockText, lineScoreView, teamView, controlsView, countdownParts, gamesView, JUMP_MS, leadersTable, noLogo, playLines, SLIDE_MS, pregameView, RUN_MIN, settingsView, whenText } from '../src/ui/views.ts';
+import { barView, boxView, courtView, periodTable, stackView, standInState, changelogView, clockText, lineScoreView, teamView, controlsView, countdownParts, gamesView, JUMP_MS, leadersTable, noLogo, playLines, SLIDE_MS, pregameView, RUN_MIN, settingsView, whenText } from '../src/ui/views.ts';
 import type { BoxLine, GameCard, GameState, PlayLine, TeamStats } from '../src/model/types.ts';
 
 const en = STRINGS.en, zh = STRINGS['zh-TW'];
@@ -566,6 +566,40 @@ describe('card stack', () => {
   const html = stackView(cards, zh, () => '19:30');
   const strips = [...html.matchAll(/<div class="scard([^"]*)" data-game="(\d)" data-how="(\w+)" style="--depth:(\d+)"><div class="strip">(.*?)<\/div><\/div>/g)]
     .map((m) => ({ cls: m[1], id: m[2], how: m[3], depth: m[4], text: m[5]!.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim() }));
+
+  // Drawn out, a game shows at once from its card, in the same bar it will have, while its own
+  // feed loads (the maintainer's call, 2026-10-22): no "loading" in between, and no layout that jumps.
+  it('draws a game picked from the stack from its card until its own feed arrives: the same bar, no plays yet', () => {
+    const live = standInState(card('9', 'live', [88, 91]));
+    const bar = barView(live, zh, 4);
+    for (const text of ['A9', 'H9', '88', '91']) expect(bar).toContain(text);
+    expect(bar).toContain(zh.period(4));
+    // The play lines are there, as they will be, but empty: the bar's layout does not change when the feed comes.
+    const plays = [...bar.matchAll(/<div class="row play[^"]*">(.*?)<\/div>/g)].map((m) => m[1]);
+    expect(plays.length).toBeGreaterThan(0);
+    expect(plays.every((p) => p === '')).toBe(true);
+    expect(courtView(live, zh, () => true)).toContain('91');
+  });
+
+  // A finished game drawn out shows its result bar at once, laid out as it will be: one column per
+  // period it went to, a dash for points the card does not know yet, so nothing moves when they come.
+  it("lays out a finished game's periods from its card, the points to come shown as dashes", () => {
+    const html = periodTable(standInState({ ...card('9', 'final', [125, 129]), period: 5 }));
+    const rows = [...html.matchAll(/<div class="row period[^"]*">(.*?)<\/div>/g)].map((m) => m[1]!.replace(/<[^>]+>/g, ' ').trim().split(/\s+/));
+    expect(rows[0]).toEqual(['1', '2', '3', '4', 'OT']);
+    expect(rows[1]).toEqual(['A9', '–', '–', '–', '–', '–']);
+    expect(rows[2]).toEqual(['H9', '–', '–', '–', '–', '–']);
+  });
+
+  // Anything the card made up would have to be taken back when the feed comes: it keeps only what the card knows.
+  it('keeps nothing of the card that the feed would have to take back', () => {
+    const s = standInState(card('9', 'live', [88, 91]));
+    expect(s.recentPlays).toBeUndefined();
+    expect(s.recentShots).toBeUndefined();
+    expect(s.possession).toBeUndefined();
+    expect(s.run).toBeUndefined();
+    expect(s.periodScores).toEqual({ away: [], home: [] });
+  });
 
   // A card behind shows only a strip above the one in front: enough to tell which game it is and how it stands.
   it('labels each card behind with its teams, its score once started, and its time', () => {

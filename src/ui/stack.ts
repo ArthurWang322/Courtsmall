@@ -7,7 +7,7 @@
 import type { GameCard } from '../model/types.ts';
 import type { Strings } from '../i18n/index.ts';
 import { backCards } from './day-order.ts';
-import { cardPlace, CLOSE_AFTER_MS, LAND_MS, STAGGER_MS, stackRoom } from './stack-layout.ts';
+import { cardPlace, CLOSE_AFTER_MS, LAND_MS, pickRise, RISE_MS, STAGGER_MS, stackRoom } from './stack-layout.ts';
 import { stackView } from './views.ts';
 
 /** What the stack asks of the main window. */
@@ -42,11 +42,16 @@ export function createStack(host: StackHost, T: Strings, tipOff: (g: GameCard) =
   // The strip along the main window's top edge: over #app, where the stack under it cannot be.
   const edge = document.createElement('div');
   edge.className = 'edge';
-  document.body.append(layer, edge);
+  // A card drawn out comes down in front of #app: over it, on a layer of its own.
+  const drawn = document.createElement('div');
+  drawn.className = 'stack drawn';
+  document.body.append(layer, edge, drawn);
 
   let cards: GameCard[] = [];
   /** up: the cards are out or coming out; grown: the window is taller than its own size, with room for `fits` cards. */
   let up = false, grown = false, fits = 0;
+  /** A card is being drawn out: nothing else answers the pointer until it is in front. */
+  let picking = false;
   let closeTimer: ReturnType<typeof setTimeout> | undefined, settleTimer: ReturnType<typeof setTimeout> | undefined;
   /** Each bring-up or put-down: a later one makes an earlier one's waiting steps stop. */
   let run = 0;
@@ -134,7 +139,8 @@ export function createStack(host: StackHost, T: Strings, tipOff: (g: GameCard) =
 
   // On the main window or a card, the stack stays; anywhere else, and off the window, it goes down a moment later.
   const onStack = (t: EventTarget | null) => t instanceof Element && !!t.closest('#app, .scard, .edge');
-  const later = () => { clearTimeout(closeTimer); closeTimer = setTimeout(() => void putDown(), CLOSE_AFTER_MS); };
+  // Not while a card is being drawn out: the stack goes down when it is in front.
+  const later = () => { if (picking) return; clearTimeout(closeTimer); closeTimer = setTimeout(() => void putDown(), CLOSE_AFTER_MS); };
   edge.addEventListener('pointerenter', () => void bringUp());
   // The hint along the top edge only when there is something behind (as far as the last list knows).
   document.getElementById('app')?.addEventListener('pointerenter', () => {
@@ -154,6 +160,46 @@ export function createStack(host: StackHost, T: Strings, tipOff: (g: GameCard) =
   layer.addEventListener('pointerout', (e) => {
     const el = (e.target as Element).closest<HTMLElement>('.scard');
     if (el && up && !el.contains(e.relatedTarget as Node | null)) place(el, depthOf(el));
+  });
+
+  const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
+  const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+  /** A card drawn out: up clear of the stack, then down in front of the main window, which by then
+   *  shows its game; it fades into it, the game watched before goes back to its place in the stack,
+   *  and the stack goes down. */
+  async function pick(el: HTMLElement): Promise<void> {
+    const card = cards.find((g) => g.id === el.dataset.game);
+    if (!card) return;
+    picking = true;
+    clearTimeout(closeTimer);
+    root.classList.add('stack-busy');
+    if (!reducedMotion.matches) {
+      el.style.transitionDelay = '0ms';
+      el.style.zIndex = '200';
+      el.style.setProperty('--y', `${pickRise(depthOf(el), host.cardHeight())}`);
+      el.style.setProperty('--s', '1');
+      el.style.setProperty('--b', '1.05');
+      await wait(RISE_MS);
+      // Clear of the stack and of the main window: over to the layer in front of it, then down.
+      drawn.append(el);
+      void el.offsetHeight;
+      place(el, 0);
+      await wait(LAND_MS);
+    }
+    host.picked(card);
+    // The game watched before goes back to its place among the others, already out.
+    const list = host.lastToday();
+    if (list) draw(list, fits);
+    el.style.opacity = '0';
+    await wait(reducedMotion.matches ? 0 : 300);
+    el.remove();
+    root.classList.remove('stack-busy');
+    picking = false;
+    await putDown();
+  }
+  layer.addEventListener('click', (e) => {
+    const el = (e.target as Element).closest<HTMLElement>('.scard');
+    if (el && up && !picking) void pick(el);
   });
 
   return {
