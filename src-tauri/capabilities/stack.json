@@ -1,0 +1,10 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "stack",
+  "description": "The card stack's window: it draws the cards the main window sends, and lets the pointer through to what is under it except while the pointer is on the cards.",
+  "windows": ["stack"],
+  "permissions": [
+    "core:default",
+    "core:window:allow-set-ignore-cursor-events"
+  ]
+}

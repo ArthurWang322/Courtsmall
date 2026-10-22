@@ -29,6 +29,7 @@ import { checkForUpdate, installUpdate, type UpdateState } from './update.ts';
 import { between, cornerRect, ease, GLIDE_MS, LINE_H, PLAYERS_W, sideRects, SIDE_GAP, type Rect } from './placement.ts';
 import { LEAVE_MS } from './side-window.ts';
 import { createStack } from './stack.ts';
+import { overlayRoom } from './stack-layout.ts';
 import { Pacer } from './pacer.ts';
 import { playLinesAt, TIER_PRESET, tierOf, TOOLBAR_H, type Tier } from '../render/tiers.ts';
 import { drawFlights, flightSeconds, LANDED, shotSeconds, WINDUP_SECONDS } from '../render/court.ts';
@@ -118,8 +119,6 @@ let pickerOpen = false;
 let playersOpen = false;
 /** Today's games as last asked, for the card stack (src/ui/stack.ts); how much taller the window is for it, px. */
 let stackToday: GameCard[] | undefined;
-let stackGrown = 0;
-let lineAfterStack = false;
 /** A game drawn out of the card stack, shown from its card until its own feed arrives (src/ui/views.ts standInState). */
 let standIn: GameCard | undefined;
 
@@ -179,38 +178,34 @@ controlsEl.className = 'toolbar';
 app.replaceChildren(contentEl, controlsEl);
 let controlsFor = '';
 
-// The card stack behind the main window (src/ui/stack.ts). It grows the window upward by the room it
-// needs and shrinks it back, the stats windows left where they are; under `npm run dev` a browser
-// cannot grow, so &stackroom keeps that room free above the view instead (app.css `html.dev-room`).
+// The card stack behind the main window (src/ui/stack.ts): the cards are drawn in a window of their own
+// (STACK, src/ui/stack-window.ts), above and over this one, so this window never changes size for them.
+// Under `npm run dev` in a browser that window is an iframe over the page, &stackroom high above the view.
 const devRoom = import.meta.env.DEV && !shell ? Number(params.get('stackroom') ?? 0) : 0;
-if (devRoom) { document.documentElement.classList.add('dev-room'); document.documentElement.style.setProperty('--dev-room', `${devRoom}px`); }
+if (devRoom) {
+  document.documentElement.classList.add('dev-room');
+  document.documentElement.style.setProperty('--dev-room', `${devRoom}px`);
+  const frame = document.createElement('iframe');
+  frame.className = 'dev-stack';
+  frame.src = '/stack.html';
+  document.body.append(frame);
+  void import('./stack-bus.ts').then(async ({ bus }) => (await bus('main')).on('stack-through', (on) => { frame.style.pointerEvents = on ? 'none' : 'auto'; }));
+}
 const stack = createStack({
   // Under `npm run dev` with &fixture, today is fixtures/nba/scoreboard.json, as in the games list.
   today: async () => (stackToday = await dayGames(import.meta.env.DEV && params.has('fixture') ? () => fetch('/fixtures/nba/scoreboard.json').then((r) => r.json()) : fetchJson)),
   lastToday: () => stackToday,
   currentId: () => currentId,
   favourites: () => settings.favourites,
+  lang: () => langTag(),
   allowed: () => settings.stack && !panel,
   roomAbove: async () => {
     if (!shell) return devRoom;
     const area = await workArea(), r = await mainRect();
     return area ? r.y - area.y : 0;
   },
-  // Its border too (offsetHeight, not clientHeight): pinned any shorter, the view would drop by the border.
+  // Its border too (offsetHeight, not clientHeight): the card drawn out covers the whole window.
   cardHeight: () => app.offsetHeight,
-  grow: async (room) => {
-    if (!shell) { stackGrown = room; return; }
-    const { invoke } = await import('@tauri-apps/api/core');
-    // The window's own place and size from where it is now, less what it grew by: it may have been dragged.
-    const now = await mainRect();
-    const own = { x: now.x, y: now.y + stackGrown, w: now.w, h: now.h - stackGrown };
-    const rects = [{ label: 'main', x: own.x, y: own.y - room, w: own.w, h: own.h + room }];
-    if (playersOpen) { const s = sideRects(own, withLine()); rects.push({ label: PLAYERS, ...s.players }, ...(withLine() ? [{ label: LINESCORE, ...s.linescore }] : [])); }
-    placingUntil = Date.now() + 400;
-    await invoke('place', { rects });
-    stackGrown = room;
-    if (!room && lineAfterStack) { lineAfterStack = false; void syncLine(); }
-  },
   // Drawn out, the game is followed as one picked from the list is (pinned: following leaves it alone),
   // and shown from its card until its own feed arrives.
   picked: (card) => {
@@ -219,7 +214,7 @@ const stack = createStack({
     standIn = card;
     render();
   },
-}, T, tipOff);
+});
 
 /** Put `html` in the view; `tier`: the toolbar for that size, or none (a panel). */
 /** One turn of the clock cell's light, and one breath, ms (app.css `--phase`). */
@@ -265,7 +260,9 @@ function show(html: string, tier: Tier | undefined): void {
 // place as it moves or changes size, and sends them the game on every render. Each animates itself
 // in, and out on 'side-close' before it closes (src/ui/side-window.ts).
 
-const PLAYERS = 'players', LINESCORE = 'linescore';
+const PLAYERS = 'players', LINESCORE = 'linescore', STACK = 'stack';
+/** The card stack's window (src/ui/stack-window.ts): over the main window and the room above it. */
+const stackRect = (r: Rect): Rect => { const room = overlayRoom(r.h); return { x: r.x, y: r.y - room, w: r.w, h: r.h + room }; };
 const mainWindow = async () => (await import('@tauri-apps/api/window')).getCurrentWindow();
 const langTag = () => (T === STRINGS.en ? 'en' : 'zh-TW');
 
@@ -307,7 +304,7 @@ async function glide(from: Rect, to: Rect, withStats: boolean, ms = GLIDE_MS): P
   const run = ++glideRun;
   const placeAt = (r: Rect) => {
     placingUntil = Date.now() + 400;
-    const rects = [{ label: 'main', ...r }];
+    const rects = [{ label: 'main', ...r }, { label: STACK, ...stackRect(r) }];
     if (withStats) { const s = sideRects(r, withLine()); rects.push({ label: PLAYERS, ...s.players }, ...(withLine() ? [{ label: LINESCORE, ...s.linescore }] : [])); }
     return invoke('place', { rects });
   };
@@ -326,7 +323,7 @@ async function glide(from: Rect, to: Rect, withStats: boolean, ms = GLIDE_MS): P
 
 /** Back to the corner (the toolbar's button, once dragged away), the stats with it, and stay there. */
 async function backToCorner(): Promise<void> {
-  await stack.closeNow();
+  stack.closeNow();
   anchored = true;
   render();
   const r = await mainRect();
@@ -345,18 +342,22 @@ async function sizeMain(w: number, h: number, withStats = playersOpen): Promise<
   await glide(await mainRect(), cornerRect(area, { w, h }, withStats, withStats && withLine()), withStats);
 }
 
-// The window starts hidden (tauri.conf.json): placed in the corner first, then shown.
+// The window starts hidden (tauri.conf.json): placed in the corner first, then shown, the card stack's
+// window with it, clear and letting the pointer through until the stack comes up.
 if (shell) void (async () => {
   try {
     const area = await workArea(), r = await mainRect();
     if (area) await glide(r, cornerRect(area, r, false), false, 0);
   } finally {
     await (await win()).show();
+    const { WebviewWindow } = await import('@tauri-apps/api/webviewWindow');
+    const at = stackRect(await mainRect());
+    new WebviewWindow(STACK, { url: 'stack.html', x: at.x, y: at.y, width: at.w, height: at.h, ...SIDE_WINDOW });
   }
 })();
 
 async function toggleStats(): Promise<void> {
-  await stack.closeNow();
+  stack.closeNow();
   if (!shell) {
     // In a browser under `npm run dev`: the stats in a tab.
     if (currentId) window.open(`/players.html?game=${currentId}${params.has('fixture') ? '&fixture' : ''}&lang=${langTag()}`, PLAYERS);
@@ -381,9 +382,6 @@ async function toggleStats(): Promise<void> {
 let syncingLine = false;
 async function syncLine(): Promise<void> {
   if (!shell || syncingLine) return;
-  // A game drawn out of the card stack while the window is tall for it: the windows beside it are placed
-  // from the main window's size, so they wait until it is its own size again (the stack's grow(0)).
-  if (stackGrown) { lineAfterStack = true; return; }
   syncingLine = true;
   try {
     const { WebviewWindow } = await import('@tauri-apps/api/webviewWindow');
@@ -462,7 +460,7 @@ if (shell) void (async () => {
   let busy = false, again = false, againResize = false;
   const follow = async (resize: boolean) => {
     // A glide places them itself.
-    if (!playersOpen || Date.now() < placingUntil || stackGrown) return;
+    if (!playersOpen || Date.now() < placingUntil) return;
     if (busy) { again = true; againResize ||= resize; return; }
     busy = true;
     const at = await sideLayout();
@@ -478,6 +476,11 @@ if (shell) void (async () => {
   await w.onMoved(() => { if (anchored && Date.now() >= placingUntil) { anchored = false; render(); } });
   if (!childrenMove) await w.onMoved(() => void follow(false));
   await w.onResized(() => void follow(true));
+  // The card stack's window keeps over this one, whatever its size (and, where a child window does not
+  // move with its parent, its place).
+  const placeStack = async () => (await import('@tauri-apps/api/core')).invoke('place', { rects: [{ label: STACK, ...stackRect(await mainRect()) }] });
+  await w.onResized(() => void placeStack());
+  if (!childrenMove) await w.onMoved(() => void placeStack());
 })();
 
 /**
@@ -714,12 +717,11 @@ async function loadDay(): Promise<void> {
 }
 
 async function openPanel(kind: Panel): Promise<void> {
-  await stack.closeNow();
+  stack.closeNow();
   const was = panel;
   panel = kind;
   if (shell) {
-    // From the window itself: the web view's own size can lag a resize just made (the card stack's).
-    if (!was) { const r = await mainRect(); sizeBeforePanel = { w: r.w, h: r.h }; }
+    if (!was) sizeBeforePanel = { w: window.innerWidth, h: window.innerHeight };
     await sizeMain(PANEL_SIZE[kind].w, PANEL_SIZE[kind].h);
   }
   render();
@@ -776,7 +778,7 @@ async function sendFeedback(): Promise<void> {
 
 async function setTier(t: Tier): Promise<void> {
   if (!shell) return;
-  await stack.closeNow();
+  stack.closeNow();
   await sizeMain(TIER_PRESET[t].w, TIER_PRESET[t].h);
 }
 

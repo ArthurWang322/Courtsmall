@@ -524,25 +524,23 @@ button { font: inherit; color: inherit; border: 0; background: transparent; padd
 .lhead { font-size: 11px; letter-spacing: .1em; color: var(--faint); }
 .lhead .ltotal { font: 600 11px var(--label); color: var(--faint); }
 
-/* The card stack (src/ui/stack.ts): today's other games as cards behind the main window. While it is
-   up the window is taller, and #app keeps its own height at the window's bottom, so the view does not
-   move on the screen; the cards sit under it (#app above them), each showing a strip above the one in
-   front, and the strip along #app's top edge that brings them up is over it. */
-#app { z-index: 1; }
-html.stacking #app { top: auto; height: var(--card-h); }
-.stack { position: fixed; inset: 0; z-index: 0; pointer-events: none; }
-html.stacking .stack { top: auto; height: var(--card-h); }
-/* A card drawn out lands in front of #app; while it does, nothing else answers the pointer. */
-.stack.drawn { z-index: 3; }
+/* The card stack: today's other games as cards behind the main window, drawn in a window of their own
+   (src/ui/stack-window.ts, stack.html) above and over the main window, so the main window never changes
+   size for them. Its bottom part is the main window's place: the cards behind sit in the part above it
+   (.behind, clipped there so they never cover the main window); a card drawn out comes down over it. */
+.stack-page .behind { position: fixed; left: 0; right: 0; top: 0; bottom: var(--card-h); overflow: hidden; }
+.stack-page .behind .stack { position: absolute; left: 0; right: 0; top: 100%; height: var(--card-h); }
+.stack-page .stack.drawn { position: fixed; left: 0; right: 0; bottom: 0; height: var(--card-h); }
+/* A card drawn out lands in front of the main window; while it does, nothing else answers the pointer. */
 .stack.drawn .scard { opacity: 1; }
-html.stack-busy .scard, html.stack-busy .edge { pointer-events: none; }
+html.stack-busy .scard { pointer-events: none; }
 /* The nearest in front: later cards in the markup are further back. */
 .scard { position: absolute; inset: 0; z-index: calc(100 - var(--depth)); border-radius: 14px; border: 1px solid var(--border); opacity: 0; cursor: pointer;
   background: linear-gradient(180deg, var(--surface), var(--background));
   box-shadow: 0 -2px 10px rgba(0, 0, 0, .35), inset 0 1px 0 var(--edge);
   /* Smaller from the top edge down, so each strip keeps its whole 13 px whatever the window's height. */
   transform: translateY(calc(var(--y, 0) * 1px)) scale(var(--s, 1)); transform-origin: 50% 0; filter: brightness(var(--b, 1));
-  /* --move: how long a move takes (src/ui/stack.ts): coming out, going back, drawn out; quick otherwise (a lift). */
+  /* --move: how long a move takes (src/ui/stack-window.ts): coming out, going back, drawn out; quick otherwise (a lift). */
   transition: transform var(--move, 320ms) cubic-bezier(.33, 1, .68, 1), filter 300ms ease, opacity 400ms ease; }
 html.stack-up .scard { opacity: 1; pointer-events: auto; }
 .scard .strip { position: absolute; left: 14px; right: 14px; top: 3px; height: 14px; display: flex; align-items: center; gap: 5px;
@@ -555,8 +553,8 @@ html.stack-up .scard { opacity: 1; pointer-events: auto; }
 html.stack-up .scard:hover .strip { color: var(--text); }
 html.stack-up .scard:hover .strip .when { color: var(--muted); }
 html.stack-up .scard.live:hover .strip .when { color: var(--live); }
+/* The strip along the main window's top edge that brings the cards up (src/ui/stack.ts). */
 .edge { position: fixed; left: 0; right: 0; top: 0; height: 16px; z-index: 2; }
-html.stacking .edge { top: auto; bottom: calc(var(--card-h) - 16px); }
 .edge.none { display: none; }
 /* The hint: faint while the pointer is on the window, lit and wider once the stack is up. */
 .edge::after { content: ''; position: absolute; left: 50%; top: 5px; width: 44px; height: 4px; border-radius: 4px; transform: translateX(-50%);
@@ -564,6 +562,8 @@ html.stacking .edge { top: auto; bottom: calc(var(--card-h) - 16px); }
 #app:hover ~ .edge::after { background: rgba(255, 255, 255, .22); }
 .edge:hover::after, html.stack-up .edge::after { background: var(--accent); width: 64px; }
 @media (prefers-reduced-motion: reduce) { .scard, .edge::after { transition: none; } }
-/* Under `npm run dev` only (src/ui/main.ts &stackroom): a browser cannot grow, so the room is kept free above the view. */
-html.dev-room:not(.stacking) #app, html.dev-room:not(.stacking) .stack { top: var(--dev-room); }
-html.dev-room:not(.stacking) .edge { top: var(--dev-room); }
+/* Under `npm run dev` only (src/ui/main.ts &stackroom): the room above the view, and the cards' window
+   an iframe over the page, letting the pointer through as the window would. */
+html.dev-room #app { top: var(--dev-room); }
+html.dev-room .edge { top: var(--dev-room); }
+.dev-stack { position: fixed; inset: 0; width: 100%; height: 100%; border: 0; z-index: 5; pointer-events: none; background: transparent; color-scheme: normal; }

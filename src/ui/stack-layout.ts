@@ -50,6 +50,15 @@ export function stackRoom(cards: number, cardH: number, roomAbove: number): { ro
   return { room, shown: Math.min(cards, Math.max(0, Math.floor((room - LIFT) / STEP))) };
 }
 
+/** The most games one day can have: the cards' window has room for them all. */
+export const MOST_GAMES = 15;
+
+/** How far above the main window the cards' own window reaches (src/ui/stack-window.ts): room for a
+ *  full day's stack and a card lifted, or for a card drawn out of a `cardH` high main window. */
+export function overlayRoom(cardH: number): number {
+  return Math.max(MOST_GAMES * STEP + LIFT, cardH + PICK_CLEAR);
+}
+
 /** Where a card drawn out from `depth` rises to: its bottom clear of the front card's top, never lower than it was. */
 export function pickRise(depth: number, cardH: number): number {
   return Math.min(-(cardH + PICK_CLEAR), cardPlace(depth).y);

@@ -3,7 +3,7 @@
 // approved (2026-10-22); the window's growth is what makes the stack fit on the screen at all.
 
 import { describe, expect, it } from 'vitest';
-import { cardPlace, hoverPlace, pickRise, stackRoom } from '../src/ui/stack-layout.ts';
+import { cardPlace, hoverPlace, overlayRoom, pickRise, stackRoom } from '../src/ui/stack-layout.ts';
 
 describe('card stack layout', () => {
   it('places a card behind higher, smaller and dimmer the further back it is, and higher still under the pointer', () => {
@@ -37,6 +37,14 @@ describe('card stack layout', () => {
     expect(stackRoom(10, 176, 2000)).toEqual({ room: 188, shown: 10 });
     // Fourteen cards need more than that.
     expect(stackRoom(14, 176, 2000)).toEqual({ room: 212, shown: 14 });
+  });
+
+  // The cards' own window sits above the main window, always there, never resized for the stack (a
+  // resize makes the web view paint its old frame out of place: the flash the maintainer saw). So it
+  // has room for the most games a day can have, lifted, or for a card drawn out of a court-sized window.
+  it("makes the cards' window tall enough for a full day's stack, or for a card drawn out, whichever is more", () => {
+    expect(overlayRoom(176)).toBe(15 * 13 + 30);
+    expect(overlayRoom(300)).toBe(312);
   });
 
   it('shows only the cards there is room for above the window, and none when there is no room', () => {
