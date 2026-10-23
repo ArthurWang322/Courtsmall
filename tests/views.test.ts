@@ -637,6 +637,18 @@ describe('card stack', () => {
     expect(list).not.toMatch(/<b>0<\/b>/);
   });
 
+  // Seen live (DEN @ OKC, 2026-10-23): ESPN's scoreboard and summary said "0.0 - 2nd" while the plays were
+  // at 11:08 of the second. A game in progress at 0.0 is ESPN not caught up (the end of a period comes as
+  // a break): the period alone, rather than a time that is wrong.
+  it("shows only the period of a game in progress whose clock ESPN reports at 0.0", () => {
+    const strip = (g: GameCard) => stackView([g], zh, () => '19:30').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+    const stuck = strip({ ...card('9', 'live', [55, 60]), period: 2, clock: 0 });
+    expect(stuck).toContain(zh.period(2));
+    expect(stuck).not.toContain('0.0');
+    expect(strip({ ...card('9', 'live', [55, 60]), period: 2, clock: 680 })).toContain('11:20');
+    expect(gamesView('今天', [{ ...card('9', 'live', [55, 60]), period: 2, clock: 0 }], zh, () => '19:30')).not.toContain('0.0');
+  });
+
   // A card behind shows only a strip above the one in front: enough to tell which game it is and how it stands.
   it('labels each card behind with its teams, its score once started, and its time', () => {
     expect(strips.map((s) => s.id)).toEqual(['1', '2', '3']);

@@ -341,7 +341,9 @@ function cardWhen(g: GameCard, T: Strings, tipOff: (g: GameCard) => string): str
     case 'postponed': return T.postponed;
     case 'cancelled': return T.cancelled;
     case 'break': return g.period === 2 ? T.half : T.endOf(T.period(g.period));
-    default: return g.period > 0 ? `${T.period(g.period)} ${clockText(g.clock)}` : '';
+    // ESPN's scoreboard at 0.0 in a game still in progress is a clock it has not caught up with (seen
+    // live, "0.0 - 2nd" with the plays at 11:08): the period alone. The end of a period comes as a break.
+    default: return g.period > 0 ? (g.clock > 0 ? `${T.period(g.period)} ${clockText(g.clock)}` : T.period(g.period)) : '';
   }
 }
 
