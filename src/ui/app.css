@@ -568,14 +568,19 @@ html.stack-busy .scard { pointer-events: none; }
   transition: transform var(--move, 320ms) cubic-bezier(.33, 1, .68, 1), filter 300ms ease, opacity 400ms ease; }
 html.stack-up .scard { opacity: 1; pointer-events: auto; }
 .scard .strip { position: absolute; left: 14px; right: 14px; top: 1.5px; height: 11px; display: flex; align-items: center; gap: 5px;
-  font: 600 12px/1 var(--label); letter-spacing: .05em; color: var(--muted); white-space: nowrap; }
-.scard .strip .dot { width: 7px; height: 7px; flex: 0 0 7px; box-shadow: none; }
+  font: 600 12px/1 var(--label); letter-spacing: .05em; color: var(--muted); white-space: nowrap;
+  transition: font-size .32s cubic-bezier(.33, 1, .68, 1), top .32s cubic-bezier(.33, 1, .68, 1), height .32s cubic-bezier(.33, 1, .68, 1); }
+.scard .strip .dot { width: 7px; height: 7px; flex: 0 0 7px; box-shadow: none; transition: width .32s, height .32s, flex-basis .32s; }
 .scard .strip b { color: var(--text); font-weight: 600; }
 /* The teams and the score a little larger (the maintainer, 2026-10-22); the time as it was. */
-.scard .strip .when { margin-left: auto; color: var(--faint); font-size: 10.5px; }
+.scard .strip .when { margin-left: auto; color: var(--faint); font-size: 10.5px; transition: font-size .32s cubic-bezier(.33, 1, .68, 1); }
 .scard.live .strip .when { color: var(--live); }
 /* Under the pointer (src/ui/stack-window.ts hover), the strip's words as bright as the main window's. */
 html.stack-up .scard.lit .strip { color: var(--text); }
+/* Lifted (and the cards behind out of its way), it has room: its words grow with the lift (the maintainer, 2026-10-23). */
+html.stack-up .scard.lit .strip { font-size: 15px; top: 7px; height: 16px; }
+html.stack-up .scard.lit .strip .when { font-size: 12px; }
+html.stack-up .scard.lit .strip .dot { width: 8px; height: 8px; flex-basis: 8px; }
 html.stack-up .scard.lit .strip .when { color: var(--muted); }
 html.stack-up .scard.live.lit .strip .when { color: var(--live); }
 /* The strip along the main window's top edge that brings the cards up (src/ui/stack.ts). */
@@ -587,7 +592,7 @@ html.stack-up .scard.live.lit .strip .when { color: var(--live); }
   background: transparent; transition: background .4s ease, width .4s ease; }
 #app:hover ~ .edge::after { background: rgba(255, 255, 255, .22); }
 .edge:hover::after, html.stack-up .edge::after { background: var(--accent); width: 150px; }
-@media (prefers-reduced-motion: reduce) { .scard, .edge::after { transition: none; } }
+@media (prefers-reduced-motion: reduce) { .scard, .scard .strip, .scard .strip .dot, .scard .strip .when, .edge::after { transition: none; } }
 /* Under `npm run dev` only (src/ui/main.ts &stackroom): the room above the view, and the cards' window
    an iframe over the page, letting the pointer through as the window would. */
 html.dev-room #app { top: var(--dev-room); }
