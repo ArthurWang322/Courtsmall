@@ -12,16 +12,19 @@
 - **一眼看懂的比分**：每隊一格，附上隊徽，底色是球隊代表色由左往右漸淡；顯示節次與時間，持球的一方會加框。
 - **最近兩筆事件**，最新的在上面：得分、沒進、犯規、失誤、籃板、換人，暫停與重播檢視會標上時間，連續得分以括號標在行尾。
 - **3D 球場**：從三分線後方俯瞰半場，每次出手照實際位置飛向籃框，進球穿過籃網、沒進彈框而出，罰球從罰球線出手。球到籃框時文字和比分才更新，文字和畫面永遠對得上。
-- **數據視窗**：從主視窗旁展開並跟著移動。雙方球員本場數據（場上球員標 *，先發與替補以分隔線區隔），背景換成該隊顏色的漸層；團隊數據以長條圖比較，背景混合兩隊顏色。下方是每節得分；已終場的比賽主視窗已有各節比分，就只展開旁邊的數據。
+- **快速切換比賽**：滑鼠碰到主視窗上緣，同一天的其他比賽會像一疊卡片從後方浮出，每張露出比分與節次；滑過的卡片會浮起放大，點一下就換成那場比賽。可在設定裡關閉。
+- **數據視窗**：從主視窗旁展開並跟著移動。雙方球員本場數據（場上球員標 *，先發與替補以分隔線區隔），可切換簡易／詳細（詳細多了兩分、三分、罰球、犯規與 +/-，滑過投籃數字顯示命中率），背景換成該隊顏色的漸層；團隊數據以長條圖比較，背景混合兩隊顏色。下方是每節得分；已終場的比賽主視窗已有各節比分，就只展開旁邊的數據。
 - **最愛球隊**：自動跟它的比賽，並在隊名後標星號；設定頁以它的隊徽當浮水印。沒設定時跟最接近的比賽。
 - **比賽列表**：當天所有比賽，附上隊徽與比分。
 - **開賽前**倒數，**終場後**顯示各節比分（標上節次與延長賽）與雙方各項領先者。
-- **通知**：最愛球隊的比賽在開賽與關鍵時刻（最後 2 分鐘且差距 5 分內）通知，各自可以開關；沒選最愛球隊時不發通知。
+- **通知**：最愛球隊的比賽在開賽與關鍵時刻（最後 2 分鐘且差距 5 分內）通知，各自可以開關；沒選最愛球隊時不發通知。設定頁可以傳送測試通知，確認這台電腦收得到。
+- **自動提醒更新**：打開 App 時會先檢查新版本，有的話顯示這次更新了什麼，按一下就下載安裝並重新啟動。
 - **更新日誌與回饋**：設定頁最下方可以查看每個版本的更新重點，或直接寄信回報問題。
 - **全域快捷鍵**（在任何程式裡都能用）：Ctrl+Alt+M（⌃⌥M）切換簡易／球場模式、Ctrl+Alt+S 顯示數據、Ctrl+Alt+H 隱藏／顯示，可在設定裡開啟或關閉。
 - 支援繁體中文與英文介面。
 
 <p>
+  <img src="docs/media/stack.png" width="300" alt="快速切換比賽：同一天的其他比賽從主視窗後方浮出，滑過的卡片浮起放大">
   <img src="docs/media/games.png" width="300" alt="比賽列表：當天所有比賽與比分">
   <img src="docs/media/result.png" width="300" alt="終場畫面：各節比分與雙方領先者">
 </p>
@@ -36,9 +39,9 @@
 到 [Releases](https://github.com/ArthurWang322/Courtsmall/releases) 下載對應系統的安裝檔，不需要裝其他東西。
 
 - **Windows**：下載 `-setup.exe`，安裝在目前使用者底下，不需要系統管理員權限。安裝檔沒有程式碼簽章，第一次執行若出現 SmartScreen 警告，按「其他資訊 → 仍要執行」。
-- **macOS**：下載 `.dmg`（支援 Apple 晶片與 Intel），把 Courtsmall 拖進「應用程式」。App 沒有經過公證，第一次開啟時 macOS 會說無法驗證：按「完成」，再到「系統設定 → 隱私權與安全性」，往下捲到「安全性」，按 Courtsmall 旁的「強制打開」（或在終端機執行 `xattr -dr com.apple.quarantine /Applications/Courtsmall.app`）。之後就能正常開啟，新版本也能在設定裡直接更新。
+- **macOS**：下載 `.dmg`（支援 Apple 晶片與 Intel），把 Courtsmall 拖進「應用程式」。App 沒有經過公證，第一次開啟時 macOS 會說無法驗證：按「完成」，再到「系統設定 → 隱私權與安全性」，往下捲到「安全性」，按 Courtsmall 旁的「強制打開」（或在終端機執行 `xattr -dr com.apple.quarantine /Applications/Courtsmall.app`）。之後就能正常開啟。第一次要發通知時 macOS 會詢問是否允許；若曾經不允許，要到「系統設定 → 通知 → Courtsmall」打開，macOS 不會再問。
 
-主要在 macOS 上開發，Windows 版較新、測試較少。版本會持續更新，最新版都在 [Releases](https://github.com/ArthurWang322/Courtsmall/releases/latest)。
+主要在 macOS 上開發，Windows 版較新、測試較少。版本會持續更新，最新版都在 [Releases](https://github.com/ArthurWang322/Courtsmall/releases/latest)；0.5.0 起打開 App 時會提醒更新，之前的版本請到設定裡按「檢查更新」。
 
 ## 從原始碼建置
 
@@ -51,7 +54,7 @@ npx tauri dev          # 執行 App
 npx tauri build        # 建置 App 與安裝檔
 ```
 
-推送版本標籤（`git tag v0.1.0 && git push --tags`）會在 GitHub Actions 建置 Windows 與 macOS 安裝檔，放進草稿 Release，檢查後再發布。
+推送版本標籤（`git tag v0.1.0 && git push --tags`）會在 GitHub Actions 建置 Windows 與 macOS 安裝檔，放進草稿 Release，檢查後再發布。發布前要先在 `src/changelog.ts` 寫好這個版本的更新內容：建置完成後會把它寫進更新檔，App 的更新畫面就是顯示這份；沒寫的話建置會失敗。
 
 部分測試會拿 ESPN 的 box score 驗證資料轉換，需要先錄好的比賽資料（沒有放進版本控制）：
 
@@ -59,7 +62,7 @@ npx tauri build        # 建置 App 與安裝檔
 node scripts/probe/06-fixtures.mjs   # 存到 fixtures/nba/
 ```
 
-`npm run dev` 可以只在瀏覽器裡開頁面；加上 `?game=<ESPN 比賽 id>&replay&fixture` 可重播錄好的比賽。設計與資料實測的細節請見 `docs/PLAN.md` 與 `docs/PROBE_REPORT.md`。
+`npm run dev` 可以只在瀏覽器裡開頁面；加上 `?game=<ESPN 比賽 id>&replay&fixture` 可重播錄好的比賽，再加 `&stackroom=225` 可預覽快速切換比賽的卡片，`&fakeupdate=0.5.0&from=0.4.2`（可再加 `&fakefail`）可模擬更新畫面。設計與資料實測的細節請見 `docs/PLAN.md` 與 `docs/PROBE_REPORT.md`。
 
 ## 資料來源
 
@@ -67,7 +70,7 @@ node scripts/probe/06-fixtures.mjs   # 存到 fixtures/nba/
 
 ## 已知問題
 
-- 系統通知目前還無法顯示，正在查原因。
+- ESPN 的賽程資料偶爾會晚一點才更新比賽時間；這時後方卡片與比賽列表只顯示節次，主視窗的時間不受影響。
 - ESPN 有時會延遲發布或事後修正事件；比分一定正確，但偶爾某次得分可能只更新比分、沒有動畫。
 
 ## 致謝
