@@ -14,7 +14,7 @@ export interface Release {
 export const CHANGELOG: readonly Release[] = [
   {
     version: '0.5.0',
-    date: '2026-10-22',
+    date: '2026-10-23',
     title: { 'zh-TW': '快速切換比賽', en: 'Quick game switching' },
     items: {
       'zh-TW': ['快速切換比賽：摸視窗上緣，叫出同一天的其他比賽', '修正 macOS 通知不會跳出', '有新版本時，打開 app 會提醒更新'],
