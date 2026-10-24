@@ -13,6 +13,15 @@ export interface Release {
 
 export const CHANGELOG: readonly Release[] = [
   {
+    version: '0.5.1',
+    date: '2026-10-24',
+    title: { 'zh-TW': '換場動畫', en: 'Switching in motion' },
+    items: {
+      'zh-TW': ['切換比賽時，比分與數據逐行浮現'],
+      en: ['Switching games: the score and stats come in line by line'],
+    },
+  },
+  {
     version: '0.5.0',
     date: '2026-10-23',
     title: { 'zh-TW': '快速切換比賽', en: 'Quick game switching' },

@@ -17,6 +17,7 @@ import { langOf, STRINGS } from '../i18n/index.ts';
 import { gameColours } from '../render/colour.ts';
 import { boxView, favIn, type BoxTab } from './views.ts';
 import { closeOnRequest } from './side-window.ts';
+import { reveal } from './reveal.ts';
 
 /** What the main window sends (src/ui/main.ts). */
 export interface PlayersState {
@@ -60,6 +61,10 @@ const css = (v: string) => parseFloat(getComputedStyle(document.documentElement)
  *  and the switch's thumb jumps. */
 const SWITCH_MS = Math.max(css('--box-cols'), css('--box-in-delay') + css('--box-in'), css('--box-close-delay') + css('--box-cols'));
 let switchedAt = 0;
+/** Switched to another game: when its box score came, its lines coming in (src/ui/reveal.ts) until they
+ *  are in. Not the first game: this window opens with its own movement. */
+let revealedAt: number | undefined;
+let revealNext = false;
 
 function render(): void {
   const onCourt = new Set(game?.onCourt ? [...game.onCourt.away, ...game.onCourt.home] : []);
@@ -70,6 +75,7 @@ function render(): void {
   const nextList = app.querySelector('.list');
   if (nextList) nextList.scrollTop = top;
   for (const el of app.querySelectorAll('[data-box-cols]')) el.scrollLeft = left;
+  if (revealedAt !== undefined && !reveal(app, lines(), Date.now() - revealedAt)) revealedAt = undefined;
   // The window shaded in the colour of the side shown (app.css `.tinted`), or for the teams' stats
   // in both, the away side's on the left and the home side's on the right, as their bars grow.
   const c = game?.teams.away.id ? gameColours(game.teams, favIn(game.teams, game.favourites)) : undefined;
@@ -77,6 +83,14 @@ function render(): void {
   app.classList.toggle('tinted-both', !!c && side === 'team');
   if (c && side !== 'team') app.style.setProperty('--side', `#${c[side]}`);
   if (c) { app.style.setProperty('--away', `#${c.away}`); app.style.setProperty('--home', `#${c.home}`); }
+}
+
+/** The lines, top to bottom: the buttons, the header, then each player's (the name and the numbers
+ *  beside it, together) or each of the teams' stats. */
+function lines(): HTMLElement[][] {
+  const q = (sel: string) => [...app.querySelectorAll<HTMLElement>(sel)];
+  const names = q('.names > .row'), nums = q('.list > .cols > .row');
+  return [...q('.box > .head, .head-row, .trow').map((el) => [el]), ...names.map((el, i) => [el, ...(nums[i] ? [nums[i]] : [])])];
 }
 
 // Never from the cache, which answers with a previous response (src/ui/main.ts FRESH).
@@ -92,7 +106,12 @@ async function load(): Promise<void> {
       const { summary } = await get(`/fixtures/nba/game-${id}.json`) as GameFeed;
       data = { players: boxScore(summary), teams: teamStats(summary) };
     } else data = await loadBox(get, id);
-    if (game?.gameId === id) { box = data.players; stats = data.teams; render(); }
+    if (game?.gameId === id) {
+      box = data.players;
+      stats = data.teams;
+      if (revealNext) { revealNext = false; revealedAt = Date.now(); }
+      render();
+    }
   } catch (e) { console.warn(e); }
 }
 
@@ -101,9 +120,12 @@ function receive(next: PlayersState): void {
   // A new play on the main window: the box score follows it, not up to BOX_EVERY_MS later.
   if (!changed && next.live && JSON.stringify(next.lastPlay) !== JSON.stringify(game?.lastPlay)) loadSoon();
   T = STRINGS[langOf(next.lang)];
+  const first = !game;
   game = next;
   if (changed) {
-    // A new game: the favourite's side first if it is playing, and its box score now.
+    // A new game: the favourite's side first if it is playing, and its box score now, coming in.
+    revealNext = !first;
+    revealedAt = undefined;
     const fav = favIn(next.teams, next.favourites);
     side = fav && next.teams.home.id === fav ? 'home' : 'away';
     box = undefined;

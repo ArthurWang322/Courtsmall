@@ -36,6 +36,7 @@ import { playLinesAt, TIER_PRESET, tierOf, TOOLBAR_H, type Tier } from '../rende
 import { drawFlights, flightSeconds, LANDED, shotSeconds, WINDUP_SECONDS } from '../render/court.ts';
 import { gameColours } from '../render/colour.ts';
 import { loadSettings, saveSettings, type Settings } from '../settings/store.ts';
+import { reveal } from './reveal.ts';
 import { barView, changelogView, updateView, controlsView, courtView, favIn, gamesView, JUMP_MS, messageView, noLogo, playLines, SLIDE_MS, pregameView, settingsView, type ScoreAges } from './views.ts';
 
 // In `npm run dev`, VITE_PARAMS fills in for the URL, which the desktop window does not have:
@@ -257,6 +258,10 @@ let picking: string | undefined;
 let enteredAt = 0;
 /** The window is gliding back from a panel: the view is hidden until it is there. */
 let gliding = false;
+/** A game drawn out of the card stack: when its lines started coming in (src/ui/reveal.ts), until they are in. */
+let revealedAt: number | undefined;
+/** Those lines, top to bottom: the score, the plays; for a result the periods' and the leaders' rows; the court. */
+const REVEAL_LINES = '.bar > :not(.periods, .leaders), .periods > *, .leaders > *, .courtwrap > .court';
 
 function show(html: string, tier: Tier | undefined): void {
   // The clock cell's light is redrawn with the rest: started where the wall clock says it is, it
@@ -271,6 +276,11 @@ function show(html: string, tier: Tier | undefined): void {
   contentEl.classList.toggle('veiled', gliding && tier !== undefined);
   contentEl.classList.toggle('entering', !gliding && tier !== undefined && enterAge < ENTER_MS);
   contentEl.style.setProperty('--enter-age', `${-enterAge}ms`);
+  // A panel over it ends it: no lines then.
+  if (revealedAt !== undefined) {
+    const lines = tier ? [...contentEl.querySelectorAll<HTMLElement>(REVEAL_LINES)].map((el) => [el]) : [];
+    if (!reveal(contentEl, lines, Date.now() - revealedAt)) revealedAt = undefined;
+  }
   // Where the lines sit, for the next move (the layout only changes with the window's size).
   const rows = [...contentEl.querySelectorAll<HTMLElement>('.bar .row.play:not(.leaving)')];
   if (rows.length > 1) {
@@ -516,7 +526,7 @@ if (shell) void (async () => {
 })();
 
 /** The view fading while a game drawn out of the card stack takes the main window: out as its card comes
- *  down over it, in once the game's own feed is here. */
+ *  down over it; the game's lines then come in (`revealedAt`), or the message back if its feed fails. */
 let viewFade: Animation | undefined;
 function fadeView(to: 0 | 1, ms: number): void {
   viewFade?.cancel();
@@ -549,8 +559,8 @@ function render(): void {
   // The toolbar has a row of its own along the bottom.
   const contentHeight = app.clientHeight - TOOLBAR_H;
   let body: string;
-  // A game drawn out of the card stack: its own feed is here (live, replay or result), it fades in.
-  if (state && drawnOut) { drawnOut = undefined; fadeView(1, 400); }
+  // A game drawn out of the card stack: its own feed is here (live, replay or result), it comes in line by line.
+  if (state && drawnOut) { drawnOut = undefined; viewFade?.cancel(); revealedAt = Date.now(); }
   // A game not started yet: the tip-off and a countdown, whether it is followed or the team's next.
   const pre = state?.status === 'scheduled' && state.start !== undefined ? { teams: state.teams, start: state.start }
     : !state && upcoming ? { teams: upcoming.teams, start: upcoming.start } : undefined;
@@ -621,6 +631,7 @@ function leave(): void {
   finalAt = undefined;
   drawnOut = undefined;
   viewFade?.cancel();
+  revealedAt = undefined;
 }
 
 function follow(id: string, how: 'live' | 'replay' | 'result'): void {

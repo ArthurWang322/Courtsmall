@@ -216,6 +216,10 @@ button { font: inherit; color: inherit; border: 0; background: transparent; padd
 .content.veiled > * { opacity: 0; }
 .content.entering > * { animation: view-in 700ms cubic-bezier(.16, 1, .3, 1) var(--enter-age, 0ms) both; }
 @keyframes view-in { from { opacity: 0; transform: translateY(16px) scale(.96); filter: blur(6px); } }
+/* A game switched to from the card stack: line by line from the top, each rising out of a blur
+   (src/ui/reveal.ts, the same timing). */
+.reveal { animation: reveal-line 450ms cubic-bezier(.22, 1, .36, 1) calc(var(--i, 0) * 40ms + var(--reveal-age, 0ms)) both; }
+@keyframes reveal-line { from { opacity: 0; transform: translateY(8px); filter: blur(3px); } }
 .panel .game .who { display: inline-flex; align-items: center; gap: 6px; font: 600 14px var(--label); letter-spacing: .05em; }
 .panel .game .who b { font: 800 17px var(--display); letter-spacing: .02em; }
 .panel .game .who .logo { width: 18px; height: 18px; flex: 0 0 18px; object-fit: contain; }
@@ -249,7 +253,7 @@ button { font: inherit; color: inherit; border: 0; background: transparent; padd
 @keyframes line-down-3 { from { transform: translateY(calc(-1 * var(--shift, 21px))); opacity: .75; } }
 @keyframes line-out { to { transform: translateY(var(--shift, 21px)); opacity: 0; } }
 @media (prefers-reduced-motion: reduce) { .bar.moving .play { animation: none; } .bar.moving .play.leaving { display: none; } }
-@media (prefers-reduced-motion: reduce) { .jump { animation: none; } .controls, .panel .game { transition: none; } .panel .game:hover { transform: none; } .content.entering > *, .panel .game .watching i, .panel.games.picking .game.picked { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .jump { animation: none; } .controls, .panel .game { transition: none; } .panel .game:hover { transform: none; } .content.entering > *, .reveal, .panel .game .watching i, .panel.games.picking .game.picked { animation: none; } }
 
 
 /* A finished game's leaders (src/ui/views.ts leadersTable): stat in the middle, each side on its side. */
