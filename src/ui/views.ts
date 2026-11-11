@@ -86,17 +86,16 @@ const logoUrl = (t: TeamRef) => `https://a.espncdn.com/i/teamlogos/nba/500/${esc
 
 
 /**
- * The bar's score, laid out like a broadcast score bug: one cell per team (shaded in its colour, the
- * logo, the abbreviation, the score), then a cell with the period and clock.
+ * The bar's score, laid out like a broadcast score bug: the away team (logo, abbreviation, score), the
+ * period and clock in the middle, then the home team mirrored so both scores sit by the clock.
  */
 function scoreBug(s: GameState, T: Strings, tag?: string, favs: readonly string[] = [], ages: ScoreAges = {}): string {
   const c = gameColours(s.teams, favIn(s.teams, favs));
-  // The team with the ball: its whole cell is framed in its colour, with a triangle by the score.
-  // `--team` shades the cell (app.css); the possession frame uses it too.
+  // The team with the ball: a triangle by its score and its abbreviation lit (app.css).
   const cell = (side: Side) => hasBall(s, side)
-    ? `<div class="cell team ball" style="--team:#${esc(c[side])};border-color:#${esc(c[side])}">${logo(s.teams[side], c[side])}<span class="abbr">${esc(s.teams[side].abbr)}${star(s.teams[side], favs)}</span>${scoreNum(s.score[side], ages[side])}<span class="ball-mark">◀</span></div>`
-    : `<div class="cell team" style="--team:#${esc(c[side])}">${logo(s.teams[side], c[side])}<span class="abbr">${esc(s.teams[side].abbr)}${star(s.teams[side], favs)}</span>${scoreNum(s.score[side], ages[side])}<span class="ball-mark"></span></div>`;
-  return `<div class="bug">${cell('away')}${cell('home')}${tag ? `<span class="tag">${esc(tag)}</span>` : '<span class="grow"></span>'}${clockCell(s, T)}</div>`;
+    ? `<div class="cell team ${side} ball" style="--team:#${esc(c[side])}">${logo(s.teams[side], c[side])}<span class="abbr">${esc(s.teams[side].abbr)}${star(s.teams[side], favs)}</span>${scoreNum(s.score[side], ages[side])}<span class="ball-mark">◀</span></div>`
+    : `<div class="cell team ${side}" style="--team:#${esc(c[side])}">${logo(s.teams[side], c[side])}<span class="abbr">${esc(s.teams[side].abbr)}${star(s.teams[side], favs)}</span>${scoreNum(s.score[side], ages[side])}<span class="ball-mark"></span></div>`;
+  return `<div class="bug">${cell('away')}${clockCell(s, T)}${cell('home')}${tag ? `<span class="tag">${esc(tag)}</span>` : ''}</div>`;
 }
 
 /** The clock cell. Stopped for a timeout or a review, the reason goes small on a line of its own
@@ -212,8 +211,8 @@ export function countdownParts(ms: number): { d: number; h: number; m: number; s
  */
 export function pregameView(teams: GameCard['teams'], start: number, when: string, now: number, T: Strings, tier: Tier, favs: readonly string[] = []): string {
   const c = gameColours(teams, favIn(teams, favs));
-  const cell = (side: Side) => `<div class="cell team" style="--team:#${esc(c[side])}">${logo(teams[side], c[side])}<span class="abbr">${esc(teams[side].abbr)}${star(teams[side], favs)}</span><b class="muted">–</b><span class="ball-mark"></span></div>`;
-  const bug = `<div class="bug">${cell('away')}${cell('home')}<span class="grow"></span><div class="cell clock mono">${esc(when)}</div></div>`;
+  const cell = (side: Side) => `<div class="cell team ${side}" style="--team:#${esc(c[side])}">${logo(teams[side], c[side])}<span class="abbr">${esc(teams[side].abbr)}${star(teams[side], favs)}</span><span class="ball-mark"></span></div>`;
+  const bug = `<div class="bug">${cell('away')}<div class="cell clock mono">${esc(when)}</div>${cell('home')}</div>`;
   const left = start - now;
   const p = countdownParts(left);
   const unit = (n: number, label: string) => `<div class="unit"><b>${String(n).padStart(2, '0')}</b><span>${esc(label)}</span></div>`;

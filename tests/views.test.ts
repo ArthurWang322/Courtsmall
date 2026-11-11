@@ -130,14 +130,23 @@ describe('last line', () => {
 });
 
 describe('possession', () => {
-  // In the bar the team with the ball has its whole cell framed in its colour, and a triangle.
-  it("frames the cell of the team with the ball in the bar's score bug, and nobody's during a break", () => {
+  // In the bar the team with the ball is marked (a triangle by its score, app.css lights it), so a
+  // glance says who is attacking; during a break nobody has it.
+  it("marks the team with the ball in the bar's score bug, and nobody during a break", () => {
     const html = barView({ ...base, possession: 'home' }, en, 1);
     const cells = html.match(/<div class="cell team[^"]*"[^>]*>/g)!;
-    expect(cells[0]).toMatch(/^<div class="cell team" style="--team:#[0-9a-f]{6}">$/);
-    expect(cells[1]).toMatch(/^<div class="cell team ball" style="--team:#([0-9a-f]{6});border-color:#\1">$/);
+    expect(cells[0]).toMatch(/^<div class="cell team away" style="--team:#[0-9a-f]{6}">$/);
+    expect(cells[1]).toMatch(/^<div class="cell team home ball" style="--team:#[0-9a-f]{6}">$/);
     expect(html.match(/◀/g)).toHaveLength(1);
     expect(barView({ ...base, status: 'break', possession: 'home' }, en, 1)).not.toContain('team ball');
+  });
+
+  // The clock sits between the teams like a broadcast score bug: away, clock, home (the home side is
+  // mirrored in app.css by its class), so both scores sit next to the clock; the same before tip-off.
+  it('puts the clock between the away and home teams, live and before tip-off', () => {
+    const order = (html: string) => [...html.matchAll(/class="cell (team away|clock|team home)/g)].map((m) => m[1]);
+    expect(order(barView(base, en, 1))).toEqual(['team away', 'clock', 'team home']);
+    expect(order(pregameView(base.teams, 1e12, '09:30', 1e12 - 1000, en, 'bar'))).toEqual(['team away', 'clock', 'team home']);
   });
 
   it('escapes names from the feed', () => {
