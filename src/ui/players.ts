@@ -15,7 +15,7 @@ import { boxScore, teamStats } from '../data/espn/box.ts';
 import { loadBox } from '../data/espn/fetch.ts';
 import { langOf, STRINGS } from '../i18n/index.ts';
 import { gameColours } from '../render/colour.ts';
-import { boxView, favIn, type BoxTab } from './views.ts';
+import { boxView, favIn, onCourtNow, type BoxTab } from './views.ts';
 import { closeOnRequest } from './side-window.ts';
 import { reveal } from './reveal.ts';
 
@@ -67,7 +67,7 @@ let revealedAt: number | undefined;
 let revealNext = false;
 
 function render(): void {
-  const onCourt = new Set(game?.onCourt ? [...game.onCourt.away, ...game.onCourt.home] : []);
+  const onCourt = game ? onCourtNow(game) : new Set<string>();
   // The box score is drawn again with each new play: where the list was scrolled to stays.
   const list = app.querySelector('.list'), cols = app.querySelector('.list > [data-box-cols]');
   const top = list?.scrollTop ?? 0, left = cols?.scrollLeft ?? 0;

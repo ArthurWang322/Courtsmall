@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { STRINGS } from '../src/i18n/index.ts';
 import { playLinesAt, TIER_PRESET, TOOLBAR_H } from '../src/render/tiers.ts';
 import { CHANGELOG } from '../src/changelog.ts';
-import { barView, boxView, courtView, periodTable, stackView, updateView, changelogView, clockText, lineScoreView, teamView, controlsView, countdownParts, gamesView, JUMP_MS, leadersTable, noLogo, playLines, SLIDE_MS, pregameView, RUN_MIN, settingsView, whenText } from '../src/ui/views.ts';
+import { barView, boxView, onCourtNow, courtView, periodTable, stackView, updateView, changelogView, clockText, lineScoreView, teamView, controlsView, countdownParts, gamesView, JUMP_MS, leadersTable, noLogo, playLines, SLIDE_MS, pregameView, RUN_MIN, settingsView, whenText } from '../src/ui/views.ts';
 import type { BoxLine, GameCard, GameState, PlayLine, TeamStats } from '../src/model/types.ts';
 
 const en = STRINGS.en, zh = STRINGS['zh-TW'];
@@ -379,6 +379,16 @@ describe("players' window", () => {
     expect(html.indexOf('<hr class="bench">')).toBeLessThan(html.indexOf('K. Ellis'));
     expect(html.match(/class="on-court"/g)).toHaveLength(1);
     expect(html).toContain('<b class="on-court">*</b>K. Ellis');
+  });
+
+  // Fixed for 0.5.1: after the final the plays still hold the last five on each side, and the box
+  // score kept starring them as if they were still playing. Only a game that is on has anyone on the court.
+  it('stars who is on the court only while the game is on', () => {
+    const onCourt = { away: ['1', '2'], home: ['9'] };
+    expect([...onCourtNow({ live: true, onCourt })].sort()).toEqual(['1', '2', '9']);
+    expect(onCourtNow({ live: false, onCourt }).size).toBe(0);
+    expect(boxView(base.teams, box, 'away', zh, [], onCourtNow({ live: false, onCourt }))).not.toContain('on-court');
+    expect(onCourtNow({ live: true }).size).toBe(0);
   });
 
   // Asked for by a user (2026-10-21): the whole line, the field goals split into twos and threes.

@@ -454,6 +454,12 @@ export function teamView(teams: Record<Side, TeamRef>, stats: Partial<Record<Sid
   return `<div class="teamstats">${rows.map(row).join('')}</div>`;
 }
 
+/** Who is on the court, for the box score's "*": only while the game is on (`live`, a break too).
+ *  After the final the plays still hold the last five on each side, and no one is playing. */
+export function onCourtNow(g: { live: boolean; onCourt?: Record<Side, readonly string[]> }): ReadonlySet<string> {
+  return new Set(g.live && g.onCourt ? [...g.onCourt.away, ...g.onCourt.home] : []);
+}
+
 /**
  * The players' window: one side's box score, starters first, a line, then the bench, those who did
  * not play last and quieter. A "*" marks who is on the court now (`onCourt`, from the plays). The

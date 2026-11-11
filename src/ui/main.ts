@@ -477,7 +477,8 @@ async function sendStats(force = false): Promise<void> {
   const { emitTo } = await import('@tauri-apps/api/event');
   const players = JSON.stringify({
     gameId: currentId, teams: state.teams, onCourt: state.onCourt, favourites: settings.favourites, lastPlay: state.recentPlays?.at(-1),
-    live: state.status === 'live' || state.status === 'break', lang: langTag(),
+    // A delay is still the game on (the same five on the court; ESPN's box score still moves).
+    live: state.status === 'live' || state.status === 'break' || state.status === 'delayed', lang: langTag(),
   });
   if (force || players !== playersSent) { playersSent = players; await emitTo(PLAYERS, 'players-state', JSON.parse(players)); }
   const line = JSON.stringify({
