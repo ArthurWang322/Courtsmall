@@ -15,10 +15,10 @@ export const CHANGELOG: readonly Release[] = [
   {
     version: '0.5.1',
     date: '2026-10-24',
-    title: { 'zh-TW': '換場動畫', en: 'Switching in motion' },
+    title: { 'zh-TW': '新比分列', en: 'A new score line' },
     items: {
-      'zh-TW': ['切換比賽時，比分與數據逐行浮現'],
-      en: ['Switching games: the score and stats come in line by line'],
+      'zh-TW': ['比分列改版：時間置中，球權更醒目', '切換比賽時，比分與數據逐行浮現', '未開賽卡片與各節比分的字放大', '修正比賽結束後仍標示場上球員', '修正切換比賽後卡片堆疊位置偏移'],
+      en: ['A new score line: the clock centred, the ball easier to spot', 'Switching games: the score and stats come in line by line', 'Larger type before tip-off and in the line score', 'Fixed: on-court marks staying after the final', 'Fixed: the card stack out of line after switching games'],
     },
   },
   {
