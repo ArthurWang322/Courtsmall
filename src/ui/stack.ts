@@ -23,6 +23,8 @@ export interface StackHost {
   /** How much of the screen there is above the window, and how high the window is, px. */
   roomAbove(): Promise<number>;
   cardHeight(): number;
+  /** Put the cards' window over this one, where this one now is. */
+  place(): Promise<void>;
   /** A card drawn out is coming down over the window, then is in front of it (src/ui/main.ts). */
   landing(): void;
   picked(card: GameCard): void;
@@ -43,10 +45,13 @@ export function createStack(host: StackHost): Stack {
   document.body.append(edge);
 
   let asking = false;
+  /** How many times the stack was closed: closed while it was coming up, it does not come up after all. */
+  let closes = 0;
   async function bringUp(): Promise<void> {
     // Already up (back on the strip from the cards): nothing to ask ESPN or the cards' window.
     if (asking || !host.allowed() || root.classList.contains('stack-up')) return;
     asking = true;
+    const at = closes;
     try {
       const fresh = host.games().catch(() => undefined);
       const list = host.lastGames() ?? (await fresh);
@@ -59,6 +64,10 @@ export function createStack(host: StackHost): Stack {
       const { shown } = stackRoom(count, cardH, Math.min(overlayRoom(cardH), await host.roomAbove()));
       if (!shown) return;
       const b = await bus;
+      // Best effort: the cards come up even if the window could not be placed.
+      await host.place().catch((e: unknown) => console.warn('card stack: not placed', e));
+      // Closed meanwhile (a panel, a size, the stats, the corner): shown now, nothing would take it down.
+      if (closes !== at || !host.allowed()) return;
       const id = host.currentId();
       b.send('stack', 'stack-show', { games: list, ...(id ? { currentId: id } : {}), favourites: host.favourites(), lang: host.lang(), cardH, shown });
       // ESPN's newer list, when it comes: the cards' strips as they now stand.
@@ -82,5 +91,5 @@ export function createStack(host: StackHost): Stack {
     b.on('stack-picked', ({ card }) => host.picked(card));
   });
 
-  return { closeNow: () => void bus.then((b) => b.send('stack', 'stack-close', null)) };
+  return { closeNow: () => { closes++; void bus.then((b) => b.send('stack', 'stack-close', null)); } };
 }

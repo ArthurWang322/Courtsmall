@@ -229,6 +229,10 @@ const stack = createStack({
   },
   // Its border too (offsetHeight, not clientHeight): the card drawn out covers the whole window.
   cardHeight: () => app.offsetHeight,
+  // The cards' window put back over this one before the cards come up: left out of line (the maintainer,
+  // 2026-11-02, after a finished game drawn out with the stats open; most likely by a placing from where
+  // this window was a moment before, onResized below), the cards stayed so until the next glide.
+  place: async () => { if (shell && Date.now() >= placingUntil) await placeStack(); },
   // Drawn out, the game is followed as one picked from the list is (pinned: following leaves it alone);
   // the view stays empty until its own feed arrives (drawnOut).
   picked: (card) => {
@@ -303,6 +307,11 @@ function show(html: string, tier: Tier | undefined): void {
 const PLAYERS = 'players', LINESCORE = 'linescore', STACK = 'stack';
 /** The card stack's window (src/ui/stack-window.ts): over the main window and the room above it. */
 const stackRect = (r: Rect): Rect => { const room = overlayRoom(r.h); return { x: r.x, y: r.y - room, w: r.w, h: r.h + room }; };
+/** The card stack's window over this one, where this one now is. */
+async function placeStack(): Promise<void> {
+  const at = stackRect(await mainRect());
+  await (await import('@tauri-apps/api/core')).invoke('place', { rects: [{ label: STACK, ...at }] });
+}
 const mainWindow = async () => (await import('@tauri-apps/api/window')).getCurrentWindow();
 const langTag = () => (T === STRINGS.en ? 'en' : 'zh-TW');
 
@@ -521,9 +530,9 @@ if (shell) void (async () => {
   await w.onResized(() => void follow(true));
   // The card stack's window keeps over this one, whatever its size (and, where a child window does not
   // move with its parent, its place).
-  const placeStack = async () => (await import('@tauri-apps/api/core')).invoke('place', { rects: [{ label: STACK, ...stackRect(await mainRect()) }] });
-  await w.onResized(() => void placeStack());
-  if (!childrenMove) await w.onMoved(() => void placeStack());
+  // A glide places it itself, frame by frame: placed here too, from a place read mid-glide, it could land late.
+  await w.onResized(() => { if (Date.now() >= placingUntil) void placeStack(); });
+  if (!childrenMove) await w.onMoved(() => { if (Date.now() >= placingUntil) void placeStack(); });
 })();
 
 /** The view fading while a game drawn out of the card stack takes the main window: out as its card comes
