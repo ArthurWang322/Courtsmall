@@ -314,7 +314,8 @@ const ICON: Record<Tier | 'games' | 'standings' | 'box' | 'settings' | 'corner',
   box: '<rect x="2" y="2.5" width="10" height="9" rx="1.5"/><path d="M2 5.5h10M5.5 5.5v6"/>',
   // The screen, and a small window in its bottom-right corner.
   corner: '<rect x="1.5" y="2" width="11" height="10" rx="1.5"/><rect x="7" y="7" width="3.5" height="3" rx=".5" fill="currentColor" stroke="none"/>',
-  settings: '<circle cx="7" cy="7" r="2"/><path d="M7 1.5v2M7 10.5v2M1.5 7h2M10.5 7h2M3.1 3.1l1.4 1.4M9.5 9.5l1.4 1.4M3.1 10.9l1.4-1.4M9.5 4.5l1.4-1.4"/>',
+  // A gear (eight teeth round a hole): rays round a circle read as a sun.
+  settings: '<path d="M11.16 5.57L12.55 5.72L12.55 8.28L11.16 8.43L10.95 8.93L11.83 10.02L10.02 11.83L8.93 10.95L8.43 11.16L8.28 12.55L5.72 12.55L5.57 11.16L5.07 10.95L3.98 11.83L2.17 10.02L3.05 8.93L2.84 8.43L1.45 8.28L1.45 5.72L2.84 5.57L3.05 5.07L2.17 3.98L3.98 2.17L5.07 3.05L5.57 2.84L5.72 1.45L8.28 1.45L8.43 2.84L8.93 3.05L10.02 2.17L11.83 3.98L10.95 5.07Z"/><circle cx="7" cy="7" r="1.9"/>',
 };
 const icon = (k: keyof typeof ICON) => `<svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true">${ICON[k]}</svg>`;
 
