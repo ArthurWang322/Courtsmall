@@ -43,7 +43,6 @@ button { font: inherit; color: inherit; border: 0; background: transparent; padd
 .muted { color: var(--muted); }
 .mono { font-family: var(--label); font-variant-numeric: tabular-nums; letter-spacing: .03em; }
 .grow { flex: 1; }
-.dot { width: 9px; height: 9px; border-radius: 50%; flex: 0 0 9px; box-shadow: 0 0 0 1.5px rgba(0, 0, 0, .45), 0 0 6px -1px currentColor; }
 .tag { font: 600 11px var(--label); letter-spacing: .12em; text-transform: uppercase; color: var(--accent); margin: 0 8px; }
 
 /* A score that just went up jumps (src/ui/views.ts JUMP_MS). */
@@ -78,6 +77,9 @@ button { font: inherit; color: inherit; border: 0; background: transparent; padd
 .bug .team.ball .ball-mark { width: 14px; font-size: 14px; color: #ef7d33; }
 .bug .team.home .ball-mark { transform: scaleX(-1); }
 .bug .team.ball .abbr { color: var(--text); }
+/* The favourite: its abbreviation in the accent colour, the star's colour elsewhere, taking no more room.
+   It stays gold with the ball too: the triangle says who has it. */
+.bug .team .abbr.fav { color: var(--accent); }
 /* The clock says how the game stands (src/ui/views.ts clockLook) through a thin bar of light under it:
    green light flowing along it while the clock runs, red breathing while it is stopped (gold at half
    time), grey once it is over. One pass or breath is CLOCK_LIGHT_MS (src/ui/main.ts), resumed across
@@ -108,10 +110,12 @@ button { font: inherit; color: inherit; border: 0; background: transparent; padd
 
 /* The latest plays: the newest reads first; the ones before it, under the divider, stay back, the
    oldest faintest. */
-.bar .play { font-size: 12.5px; min-height: 16px; text-overflow: ellipsis; padding-left: 2px; }
+.bar .play { font-size: 12.5px; min-height: 16px; padding-left: 2px; gap: 8px; }
+.bar .play .txt { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .bar .play.new { color: var(--text); font-weight: 500; }
-/* A run ends the newest line, at its right end, in the accent colour. */
-.bar .play .run { margin-left: auto; padding-left: 8px; color: var(--accent); font-weight: 600; flex: none; }
+/* A run ends the newest line: a small tag at its right end, always whole; the play's words give way. */
+.bar .play .run { margin-left: auto; flex: none; padding: 0 5px; border-radius: 4px; font-size: 11px; line-height: 15px;
+  color: var(--accent); background: color-mix(in srgb, var(--accent) 16%, transparent); font-weight: 600; }
 .bar .play.old { color: var(--faint); }
 .bar .play.old-2 { opacity: .75; }
 .bar .play.old-3 { opacity: .5; }
@@ -235,7 +239,7 @@ button { font: inherit; color: inherit; border: 0; background: transparent; padd
 .panel .game.live .when { color: var(--accent); }
 
 /* The standings (src/ui/views.ts standingsView): a conference's teams, a row each; numbers in fixed columns. */
-.panel.standings .confs { display: flex; gap: 6px; }
+.panel.standings .confs { display: flex; gap: 2px; }
 .panel.standings .st-msg { margin: 4px 0; }
 .panel.standings .srow { display: grid; grid-template-columns: 18px minmax(0, 1fr) 46px 44px 40px 42px;
   column-gap: 4px; align-items: center; height: 20px; padding: 0 4px; flex: none; white-space: nowrap;
@@ -404,12 +408,26 @@ button { font: inherit; color: inherit; border: 0; background: transparent; padd
 
 
 /* The players' panel (src/ui/views.ts boxView): a side's box score, starters brighter. */
-.panel.box .side, .panel.standings .side { display: inline-flex; align-items: center; gap: 5px; padding: 4px 10px; border-radius: 8px; border: 1px solid var(--border);
-  background: var(--panel); color: var(--muted); font: 600 13px var(--label); letter-spacing: .06em; }
-.panel.box .side.on, .panel.standings .side.on { color: var(--text); border-color: var(--accent); }
+/* Tabs (the sides here, the conferences in the standings): words on a hairline, the chosen one lit and
+   underlined in the accent colour. */
+.panel.box > .head, .panel.standings .confs { border-bottom: 1px solid var(--border); }
+.panel.box .side, .panel.standings .side { position: relative; display: inline-flex; align-items: center; gap: 5px; padding: 4px 10px 6px;
+  border: 0; background: transparent; color: var(--muted); font: 600 13px var(--label); letter-spacing: .06em; cursor: pointer; transition: color .12s; }
+.panel.box .side:hover, .panel.box .side.on, .panel.standings .side:hover, .panel.standings .side.on { color: var(--text); }
+.panel.box .side.on::after, .panel.standings .side.on::after { content: ''; position: absolute; left: 6px; right: 6px; bottom: -1px; height: 2px;
+  border-radius: 1px; background: var(--accent); }
+/* A tab picked (src/ui/tab-slide.ts): the underline glides over from the tab left, and what is under the
+   tabs slides in from that side. */
+.side.on.tab-moved::after { transform-origin: 0 50%; animation: tab-glide 280ms cubic-bezier(.22, 1, .36, 1) both; }
+@keyframes tab-glide { from { transform: translateX(var(--tab-dx, 0)) scaleX(var(--tab-scale, 1)); } }
+.tab-in-right { animation: tab-in-right 280ms cubic-bezier(.22, 1, .36, 1) both; }
+.tab-in-left { animation: tab-in-left 280ms cubic-bezier(.22, 1, .36, 1) both; }
+@keyframes tab-in-right { from { opacity: 0; transform: translateX(18px); } }
+@keyframes tab-in-left { from { opacity: 0; transform: translateX(-18px); } }
+@media (prefers-reduced-motion: reduce) { .side.on.tab-moved::after, .tab-in-right, .tab-in-left { animation: none; } }
 /* Room for the switch beside them in a narrow window: the tabs stay on one line each, a little tighter. */
 .panel.box .side, .panel.standings .side { white-space: nowrap; }
-@media (max-width: 330px) { .panel.box .side, .panel.standings .side { padding: 4px 7px; } }
+@media (max-width: 330px) { .panel.box .side, .panel.standings .side { padding: 4px 7px 6px; } }
 .panel.box .table { display: flex; flex-direction: column; min-height: 0; flex: 1; }
 .panel.box .row { display: flex; align-items: center; height: 23px; padding: 0 4px;
   font: 600 13px var(--label); font-variant-numeric: tabular-nums; color: var(--muted); }
@@ -605,10 +623,20 @@ html.stack-busy .scard { pointer-events: none; }
   /* --move: how long a move takes (src/ui/stack-window.ts): coming out, going back, drawn out; quick otherwise (a lift). */
   transition: transform var(--move, 320ms) cubic-bezier(.33, 1, .68, 1), filter 300ms ease, opacity 400ms ease; }
 html.stack-up .scard { opacity: 1; pointer-events: auto; }
+/* The two teams' colours in the top-left corner behind their names, in equal shares: the visitors' at
+   the edge, a soft blend on a slant (top left to bottom right, 10 px across over the 13 px strip: atan(13/10) ≈ 52deg) into the home side's, which fades out at the right end. As tall as the strip the card in front leaves showing
+   (src/ui/stack-layout.ts STEP), so that card's edge never cuts it; lifted, as tall as the lift shows
+   (STEP + LIFT), fading down. */
+.scard::before { content: ''; position: absolute; left: 0; top: 0; width: 120px; height: 13px; border-top-left-radius: 13px; pointer-events: none;
+  background: linear-gradient(52deg, var(--away) 0, var(--away) 34%, var(--home) 56%);
+  /* Faded down, and out to the right straight across: a fade on the slant left the box's right edge as a hard line. */
+  -webkit-mask: linear-gradient(180deg, #000 60%, transparent), linear-gradient(90deg, #000 68%, transparent); -webkit-mask-composite: source-in;
+  mask: linear-gradient(180deg, #000 60%, transparent), linear-gradient(90deg, #000 68%, transparent); mask-composite: intersect; opacity: .5;
+  transition: height .32s cubic-bezier(.33, 1, .68, 1); }
+html.stack-up .scard.lit::before { height: 43px; }
 .scard .strip { position: absolute; left: 14px; right: 14px; top: 1.5px; height: 11px; display: flex; align-items: center; gap: 5px;
   font: 600 12px/1 var(--label); letter-spacing: .05em; color: var(--muted); white-space: nowrap;
   transition: font-size .32s cubic-bezier(.33, 1, .68, 1), top .32s cubic-bezier(.33, 1, .68, 1), height .32s cubic-bezier(.33, 1, .68, 1); }
-.scard .strip .dot { width: 7px; height: 7px; flex: 0 0 7px; box-shadow: none; transition: width .32s, height .32s, flex-basis .32s; }
 .scard .strip b { color: var(--text); font-weight: 600; }
 /* The teams and the score a little larger (the maintainer, 2026-10-22); the time as it was. */
 .scard .strip .when { margin-left: auto; color: var(--faint); font-size: 10.5px; transition: font-size .32s cubic-bezier(.33, 1, .68, 1); }
@@ -618,7 +646,6 @@ html.stack-up .scard.lit .strip { color: var(--text); }
 /* Lifted (and the cards behind out of its way), it has room: its words grow with the lift (the maintainer, 2026-10-23). */
 html.stack-up .scard.lit .strip { font-size: 15px; top: 7px; height: 16px; }
 html.stack-up .scard.lit .strip .when { font-size: 12px; }
-html.stack-up .scard.lit .strip .dot { width: 8px; height: 8px; flex-basis: 8px; }
 html.stack-up .scard.lit .strip .when { color: var(--muted); }
 html.stack-up .scard.live.lit .strip .when { color: var(--live); }
 /* The strip along the main window's top edge that brings the cards up (src/ui/stack.ts). */
@@ -630,7 +657,7 @@ html.stack-up .scard.live.lit .strip .when { color: var(--live); }
   background: transparent; transition: background .4s ease, width .4s ease; }
 #app:hover ~ .edge::after { background: rgba(255, 255, 255, .22); }
 .edge:hover::after, html.stack-up .edge::after { background: var(--accent); width: 150px; }
-@media (prefers-reduced-motion: reduce) { .scard, .scard .strip, .scard .strip .dot, .scard .strip .when, .edge::after { transition: none; } }
+@media (prefers-reduced-motion: reduce) { .scard, .scard::before, .scard .strip, .scard .strip .when, .edge::after { transition: none; } }
 /* Under `npm run dev` only (src/ui/main.ts &stackroom): the room above the view, and the cards' window
    an iframe over the page, letting the pointer through as the window would. */
 html.dev-room #app { top: var(--dev-room); }

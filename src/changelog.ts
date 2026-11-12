@@ -13,6 +13,15 @@ export interface Release {
 
 export const CHANGELOG: readonly Release[] = [
   {
+    version: '0.6.1',
+    date: '2026-11-12',
+    title: { 'zh-TW': '介面微調', en: 'Small touches' },
+    items: {
+      'zh-TW': ['連得分改成小標籤', '頁籤切換會滑動', '最愛球隊改金色縮寫', '隊伍優先用主色', '卡片角落加上隊色'],
+      en: ['Runs as a small tag', 'Sliding tabs', 'The favourite in gold', 'Teams in their main colours', 'Team colours on each card'],
+    },
+  },
+  {
     version: '0.6.0',
     date: '2026-11-12',
     title: { 'zh-TW': '球員資訊卡與戰績', en: 'Player cards and standings' },

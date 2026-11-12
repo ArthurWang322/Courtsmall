@@ -3,6 +3,7 @@
 import { describe, expect, it } from 'vitest';
 import { STRINGS } from '../src/i18n/index.ts';
 import { playLinesAt, TIER_PRESET, TOOLBAR_H } from '../src/render/tiers.ts';
+import { gameColours } from '../src/render/colour.ts';
 import { CHANGELOG } from '../src/changelog.ts';
 import { barView, boxView, onCourtNow, courtView, periodTable, stackView, updateView, changelogView, clockText, lineScoreView, teamView, controlsView, countdownParts, gamesView, JUMP_MS, leadersTable, noLogo, playLines, SLIDE_MS, pregameView, playerCardHead, playerCardBody, initials, RUN_MIN, settingsView, standingsView, defaultConference, whenText } from '../src/ui/views.ts';
 import type { BoxLine, GameCard, GameState, PlayerCard, PlayLine, StandingRow, Standings, TeamStats } from '../src/model/types.ts';
@@ -10,7 +11,7 @@ import type { CardWho } from '../src/ui/player-card.ts';
 
 const en = STRINGS.en, zh = STRINGS['zh-TW'];
 /** The newest play line alone, as a one-line bar shows it. */
-const lastLine = (s: GameState, T: typeof en) => (playLines(s, T, 1)[0] ?? '').replace(/<span class="run">(.*?)<\/span>/, ' $1');
+const lastLine = (s: GameState, T: typeof en) => (playLines(s, T, 1)[0] ?? '').replace(/<span class="txt">(.*?)<\/span>/, '$1').replace(/<span class="run">(.*?)<\/span>/, ' $1');
 const base: GameState = {
   gameId: '1', status: 'live', period: 4, clock: 422,
   teams: { away: { id: 'a', abbr: 'SA', name: 'Spurs', color: 'c4ced4' }, home: { id: 'h', abbr: 'UTAH', name: 'Jazz', color: '4e008e' } },
@@ -88,14 +89,14 @@ describe('last line', () => {
     const miss = { type: 'miss' as const, points: 3 as const, side: 'away' as const, player: embiid };
     const reb = { type: 'rebound' as const, offensive: false, side: 'home' as const, player: collier };
     const s = { ...base, recentPlays: [miss, reb], run: { side: 'home' as const, points: 8 } };
-    expect(playLines(s, zh, 2)).toEqual(['[UTAH] I. Collier 防守籃板<span class="run">（[UTAH] 連得 8 分）</span>', '[SA] J. Embiid 三分不進']);
+    expect(playLines(s, zh, 2)).toEqual(['<span class="txt">[UTAH] I. Collier 防守籃板</span><span class="run">UTAH 8-0</span>', '<span class="txt">[SA] J. Embiid 三分不進</span>']);
     const html = barView(s, zh, 2);
     expect(html.indexOf('play new')).toBeLessThan(html.indexOf('divider'));
     expect(html.indexOf('divider')).toBeLessThan(html.indexOf('play old'));
     expect(html.slice(html.indexOf('play new'), html.indexOf('divider'))).toContain('防守籃板');
     expect(html.slice(html.indexOf('play old'))).toContain('三分不進');
     // A window too short for two lines keeps the newest and drops the divider.
-    expect(playLines(s, zh, 1)).toEqual(['[UTAH] I. Collier 防守籃板<span class="run">（[UTAH] 連得 8 分）</span>']);
+    expect(playLines(s, zh, 1)).toEqual(['<span class="txt">[UTAH] I. Collier 防守籃板</span><span class="run">UTAH 8-0</span>']);
     expect(barView(s, zh, 1)).not.toContain('divider');
   });
 
@@ -105,7 +106,7 @@ describe('last line', () => {
     const p = (n: number) => ({ type: 'rebound' as const, offensive: false, side: 'home' as const, player: { ...collier, short: `P${n}` } });
     const s = { ...base, recentPlays: [p(1), p(2), p(3), p(4)] };
     const html = barView(s, zh, 4);
-    expect([...html.matchAll(/class="row play (?:new|old old-\d)">\[UTAH\] (P\d)/g)].map((m) => m[1])).toEqual(['P4', 'P3', 'P2', 'P1']);
+    expect([...html.matchAll(/class="row play (?:new|old old-\d)"><span class="txt">\[UTAH\] (P\d)/g)].map((m) => m[1])).toEqual(['P4', 'P3', 'P2', 'P1']);
     expect(barView({ ...base, recentPlays: [p(1)] }, zh, 4).match(/play old/g)).toHaveLength(3);
     expect(playLinesAt(150)).toBe(4);
     expect(playLinesAt(TIER_PRESET.bar.h - TOOLBAR_H)).toBe(4);
@@ -115,8 +116,8 @@ describe('last line', () => {
   // A 2-0 "run" is every basket; the line only calls out a run once it means momentum.
   it(`mentions a run from ${RUN_MIN} unanswered points, not before`, () => {
     expect(lastLine({ ...base, recentPlays: [basket], run: { side: 'home', points: RUN_MIN - 1 } }, en)).toBe('[UTAH] I. Collier +2');
-    expect(lastLine({ ...base, recentPlays: [basket], run: { side: 'home', points: 8 } }, en)).toBe('[UTAH] I. Collier +2 ([UTAH] 8-0 run)');
-    expect(lastLine({ ...base, recentPlays: [basket], run: { side: 'home', points: 8 } }, zh)).toBe('[UTAH] I. Collier +2 （[UTAH] 連得 8 分）');
+    expect(lastLine({ ...base, recentPlays: [basket], run: { side: 'home', points: 8 } }, en)).toBe('[UTAH] I. Collier +2 UTAH 8-0');
+    expect(lastLine({ ...base, recentPlays: [basket], run: { side: 'home', points: 8 } }, zh)).toBe('[UTAH] I. Collier +2 UTAH 8-0');
   });
 
   it('drops the run once the game is over', () => {
@@ -260,10 +261,17 @@ describe('favourite team', () => {
     expect(html.match(/★/g)).toHaveLength(1);
   });
 
-  it("stars the favourite in the score bug", () => {
+  // The accent colour, not a star: a star beside the name made that side wider and the score line lean.
+  it("marks the favourite in the score bug by colour, taking no room", () => {
     const html = barView(base, en, 1, undefined, [base.teams.home.id]);
-    expect(html).toMatch(/<span class="abbr">UTAH<span class="star">★<\/span><\/span>/);
+    expect(html).toContain('<span class="abbr fav">UTAH</span>');
+    expect(html).toContain('<span class="abbr">SA</span>');
+    expect(html).not.toContain('★');
     expect(barView(base, en, 1)).not.toContain('★');
+    // Before tip-off too: the same line, the same mark.
+    const pre = pregameView(base.teams, 1e12, '09:30', 1e12 - 1000, en, 'bar', [base.teams.home.id]);
+    expect(pre).toContain('<span class="abbr fav">UTAH</span>');
+    expect(pre).not.toContain('★');
   });
 });
 
@@ -383,6 +391,9 @@ describe("players' window", () => {
     expect(html).toContain('<div class="row dnp"><span class="name" data-player="3">X. Tillman</span></div>');
     expect(html).not.toContain('Markkanen');
     expect(html).toContain('class="side on" data-box-side="away"');
+    // The tabs are words under an underline: no colour dots (the maintainer asked, 2026-11-12).
+    expect(html).toContain('<button class="side on" data-box-side="away">SA</button>');
+    expect(html).not.toContain('class="dot"');
   });
 
   // The maintainer asked for these (2026-10-14): a line under the starters, a star on who is playing.
@@ -626,8 +637,23 @@ describe('card stack', () => {
   });
   const cards = [card('1', 'live', [108, 104]), card('2', 'scheduled', [0, 0]), card('3', 'final', [99, 97])];
   const html = stackView(cards, zh, () => '19:30');
-  const strips = [...html.matchAll(/<div class="scard([^"]*)" data-game="(\d)" data-how="(\w+)" style="--depth:(\d+)"><div class="strip">(.*?)<\/div><\/div>/g)]
+  const strips = [...html.matchAll(/<div class="scard([^"]*)" data-game="(\d)" data-how="(\w+)" style="--depth:(\d+);--away:#\w{6};--home:#\w{6}"><div class="strip">(.*?)<\/div><\/div>/g)]
     .map((m) => ({ cls: m[1], id: m[2], how: m[3], depth: m[4], text: m[5]!.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim() }));
+
+  // The teams by name only: no colour dots on the strips (the maintainer asked, 2026-11-12).
+  it('names the teams on a strip without colour dots', () => expect(html).not.toContain('class="dot"'));
+  // Their colours wash the card's corner instead (app.css .scard::before), the same pair as everywhere else.
+  it("gives each card its game's two colours, the favourite's kept", () => {
+    const g = cards[0]!;
+    const c = gameColours(g.teams);
+    expect(html).toContain(`--away:#${c.away};--home:#${c.home}`);
+    // Two reds: the visitors would change, but not when they are the favourite.
+    const ATL = { id: '1', abbr: 'ATL', name: 'Hawks', color: 'c8102e', alternateColor: 'fdb927' };
+    const CHI = { id: '4', abbr: 'CHI', name: 'Bulls', color: 'ce1141', alternateColor: '000000' };
+    const reds = { ...g, teams: { away: ATL, home: CHI } };
+    expect(stackView([reds], zh, () => '19:30')).toContain('--away:#fdb927');
+    expect(stackView([reds], zh, () => '19:30', ['1'])).toContain('--away:#c8102e');
+  });
 
   // A finished game's table has a column for each period it went to, a dash for points not known, as the
   // line score does: the table is laid out as it will be, whatever the feed has so far.

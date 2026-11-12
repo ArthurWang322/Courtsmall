@@ -65,23 +65,22 @@ export function visibleColour(t: Pick<TeamRef, 'color' | 'alternateColor'>, back
 const shown = (hex: string, background: string) => (contrast(hex, background) >= MIN_CONTRAST ? hex : separate(hex, background));
 
 /**
- * Both sides' colours for one game, as teams dress: the home side in its first colour, the visitors
- * in their second (each lightened, keeping its hue, where it would vanish on the background). When
- * those still clash, one side changes to its other colour: the visitors first, then the home side;
- * the favourite never. Only if that clashes too, a spare colour (checked over all 870 pairings of
- * ESPN's 30 teams: none needs it).
+ * Both sides' colours for one game: each team in its first colour, the one people know it by (lightened,
+ * keeping its hue, where it would vanish on the background). When those clash, one side changes to its
+ * second colour: the visitors first, then the home side; the favourite never. Only if that clashes too, a spare colour: over all 870 pairings of ESPN's
+ * 30 teams none needs it without a favourite, but with one a few do (a navy favourite against MEM or SAC).
  */
 export function gameColours(teams: Record<Side, TeamRef>, favourite?: string, background = BACKGROUND): Record<Side, string> {
   const pick = (side: Side, which: 'color' | 'alternateColor') => {
     const c = teams[side][which] ?? teams[side].color;
     return c ? shown(c, background) : fallback(side, background);
   };
-  const own = { home: pick('home', 'color'), away: pick('away', 'alternateColor') };
+  const own = { home: pick('home', 'color'), away: pick('away', 'color') };
   if (oklabDistance(own.away, own.home) >= CLASH_DISTANCE) return own;
   const order: Side[] = favourite === teams.away.id ? ['home'] : favourite === teams.home.id ? ['away'] : ['away', 'home'];
   for (const side of order) {
     const keeps: Side = side === 'away' ? 'home' : 'away';
-    const other = pick(side, side === 'home' ? 'alternateColor' : 'color');
+    const other = pick(side, 'alternateColor');
     if (oklabDistance(other, own[keeps]) >= CLASH_DISTANCE) return { ...own, [side]: other };
   }
   const changes = order[0]!, keeps: Side = changes === 'away' ? 'home' : 'away';

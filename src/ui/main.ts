@@ -41,6 +41,7 @@ import { loadSettings, saveSettings, type Settings } from '../settings/store.ts'
 import { reveal } from './reveal.ts';
 import { fetchWithin } from './fetch-within.ts';
 import { createStandingsLoader } from './standings-load.ts';
+import { switchTab } from './tab-slide.ts';
 import { barView, changelogView, updateView, controlsView, courtView, defaultConference, favIn, gamesView, JUMP_MS, messageView, noLogo, playLines, SLIDE_MS, pregameView, settingsView, standingsView, type ScoreAges } from './views.ts';
 
 // In `npm run dev`, VITE_PARAMS fills in for the URL, which the desktop window does not have:
@@ -896,7 +897,7 @@ app.addEventListener('click', (e) => {
   if (el.dataset.players !== undefined) { void toggleStats(); return; }
   if (el.dataset.done !== undefined) { void closePanel(); return; }
   if (el.dataset.day) { gamesDay += Number(el.dataset.day); dayList = []; render(); void loadDay(); return; }
-  if (el.dataset.conf) { standingsConf = el.dataset.conf as Conference; render(); return; }
+  if (el.dataset.conf) { standingsConf = el.dataset.conf as Conference; switchTab(contentEl, render, '.confs ~ *'); return; }
   if (el.dataset.standingsRetry !== undefined) { void standings.load(); render(); return; }
   if (el.dataset.game) {
     if (picking) return;

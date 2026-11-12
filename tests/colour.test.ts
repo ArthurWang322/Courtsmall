@@ -31,9 +31,10 @@ describe('gameColours', () => {
   const LAL = { id: '13', abbr: 'LAL', name: 'Los Angeles Lakers', color: '552583', alternateColor: 'fdb927' };
   const DET = { id: '8', abbr: 'DET', name: 'Detroit Pistons', color: '1d428a', alternateColor: 'c8102e' };
 
-  // Teams dress home and away: the home side in its first colour, the visitors in their second.
-  it('dresses the home side in its first colour and the visitors in their second', () => {
-    expect(gameColours({ away: ATL, home: BOS })).toEqual({ away: 'fdb927', home: '008348' });
+  // Each team in the colour people know it by (the maintainer, 2026-11-12: Boston green, not its white).
+  it('gives both sides their first colour when those can be told apart', () => {
+    expect(gameColours({ away: BOS, home: ATL })).toEqual({ away: '008348', home: 'c8102e' });
+    expect(gameColours({ away: ATL, home: BOS })).toEqual({ away: 'c8102e', home: '008348' });
   });
 
   // A colour too dark for the background is lightened, keeping its hue: the Lakers stay purple.
@@ -41,19 +42,23 @@ describe('gameColours', () => {
     const c = gameColours({ away: GS, home: LAL });
     expect(contrast(c.home, BACKGROUND)).toBeGreaterThanOrEqual(MIN_CONTRAST);
     expect(oklabDistance(c.home, '552583')).toBeLessThan(0.2);
-    // Warriors blue and that purple are too close: the visitors go back to their gold, not to grey.
+    // The Warriors keep their gold: far enough from that purple.
     expect(c.away).toBe('fdb927');
   });
 
-  // Two reds: the visitors change to their first colour, unless they are the favourite.
-  it('changes one side of a clash, and never the favourite', () => {
+  // Two reds: the visitors change to their second colour, unless they are the favourite.
+  it('changes one side of a clash to its second colour, and never the favourite', () => {
     expect(oklabDistance('c8102e', 'ce1141')).toBeLessThan(CLASH_DISTANCE);
-    const c = gameColours({ away: DET, home: CHI });
-    expect(c.home).toBe('ce1141');
-    expect(oklabDistance(c.away, c.home)).toBeGreaterThanOrEqual(CLASH_DISTANCE);
-    const fav = gameColours({ away: DET, home: CHI }, '8');
+    expect(gameColours({ away: ATL, home: CHI })).toEqual({ away: 'fdb927', home: 'ce1141' });
+    const fav = gameColours({ away: ATL, home: CHI }, '1');
     expect(fav.away).toBe('c8102e');
     expect(oklabDistance(fav.away, fav.home)).toBeGreaterThanOrEqual(CLASH_DISTANCE);
+    // A navy favourite against Memphis: Memphis's second colour (navy too) clashes as well, so it takes the spare.
+    const MEM = { id: '29', abbr: 'MEM', name: 'Memphis Grizzlies', color: '5d76a9', alternateColor: '12173f' };
+    const DEN = { id: '7', abbr: 'DEN', name: 'Denver Nuggets', color: '0e2240', alternateColor: 'fec524' };
+    expect(gameColours({ away: MEM, home: DEN }, '7').away).toBe('9aa3b2');
+    // Blue and red: no clash, so Detroit keeps its blue (lightened to show), not its red.
+    expect(oklabDistance(gameColours({ away: DET, home: CHI }).away, '1d428a')).toBeLessThan(0.2);
   });
 });
 

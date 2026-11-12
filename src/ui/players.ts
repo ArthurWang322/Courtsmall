@@ -21,6 +21,7 @@ import { CARD_LEAVE_MS, CARD_TIMEOUT_MS, createCardController, type CardState } 
 import { fetchWithin } from './fetch-within.ts';
 import { closeOnRequest } from './side-window.ts';
 import { reveal } from './reveal.ts';
+import { switchTab } from './tab-slide.ts';
 
 /** What the main window sends (src/ui/main.ts). */
 export interface PlayersState {
@@ -148,7 +149,8 @@ app.addEventListener('click', (e) => {
   const player = (e.target as HTMLElement).closest<HTMLElement>('[data-player]')?.dataset.player;
   if (player) openCard(player);
   const el = (e.target as HTMLElement).closest<HTMLElement>('[data-box-side]');
-  if (el?.dataset.boxSide) { side = el.dataset.boxSide as BoxTab; render(); }
+  // A side picked: the underline glides to it and its table slides in from that side (src/ui/tab-slide.ts).
+  if (el?.dataset.boxSide) { side = el.dataset.boxSide as BoxTab; switchTab(app, render, '.panel.box > :not(.head)'); }
   if ((e.target as HTMLElement).closest('[data-box-full]') && Date.now() - switchedAt >= SWITCH_MS) {
     switchedAt = Date.now();
     full = !full;
