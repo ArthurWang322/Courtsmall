@@ -30,6 +30,7 @@ export function boxScore(summary: Summary): Record<Side, BoxLine[]> {
         pf: at(a.stats, COLUMNS.pf), pm: at(a.stats, COLUMNS.pm),
       };
       if (line.dnp && a.reason) line.reason = a.reason;
+      if (a.athlete.headshot?.href) line.headshot = a.athlete.headshot.href;
       out[side].push(line);
     }
     // Starters, then the others who played, then those who did not; ESPN's order within each.

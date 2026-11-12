@@ -200,7 +200,8 @@ App 是在 webview 裡用 `fetch` 抓資料，回應沒有 `access-control-allow
 | site `groups` | ✓ | 30 隊的列表（沒有隊色） |
 | site `teams` | ✗ | 不用 |
 | site `teams/{id}` | ✗ | 不用 |
-| site `apis/v2/.../standings` | ✓ | 目前不用 |
+| site `apis/v2/.../standings` | ✓ | 戰績表（`?seasontype=2`，只要例行賽） |
+| common `athletes/{id}/overview` | ✓ | 球員資訊卡（本季場均、最近比賽） |
 | core `.../plays`、`.../status` | ✓ | 直播 |
 
 新增端點時，要先用 `curl -H "Origin: tauri://localhost"` 確認有這個標頭。

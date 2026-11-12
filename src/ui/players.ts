@@ -15,7 +15,10 @@ import { boxScore, teamStats } from '../data/espn/box.ts';
 import { loadBox } from '../data/espn/fetch.ts';
 import { langOf, STRINGS } from '../i18n/index.ts';
 import { gameColours } from '../render/colour.ts';
-import { boxView, favIn, onCourtNow, type BoxTab } from './views.ts';
+import { boxView, favIn, initials, logo, noLogo, onCourtNow, playerCardBody, playerCardHead, type BoxTab } from './views.ts';
+import { loadPlayerCard } from '../data/espn/athlete.ts';
+import { CARD_LEAVE_MS, CARD_TIMEOUT_MS, createCardController, type CardState } from './player-card.ts';
+import { fetchWithin } from './fetch-within.ts';
 import { closeOnRequest } from './side-window.ts';
 import { reveal } from './reveal.ts';
 
@@ -117,6 +120,7 @@ async function load(): Promise<void> {
 
 function receive(next: PlayersState): void {
   const changed = next.gameId !== game?.gameId;
+  const relang = !!layer && STRINGS[langOf(next.lang)] !== T;
   // A new play on the main window: the box score follows it, not up to BOX_EVERY_MS later.
   if (!changed && next.live && JSON.stringify(next.lastPlay) !== JSON.stringify(game?.lastPlay)) loadSoon();
   T = STRINGS[langOf(next.lang)];
@@ -133,11 +137,16 @@ function receive(next: PlayersState): void {
     void load();
   }
   render();
+  // The card open stays (it is about the player, not this game); only a new language redraws it.
+  const open = cards.state();
+  if (relang && open) paintCard(open, true);
 }
 
 setInterval(() => { if (game?.live) void load(); }, BOX_EVERY_MS);
 
 app.addEventListener('click', (e) => {
+  const player = (e.target as HTMLElement).closest<HTMLElement>('[data-player]')?.dataset.player;
+  if (player) openCard(player);
   const el = (e.target as HTMLElement).closest<HTMLElement>('[data-box-side]');
   if (el?.dataset.boxSide) { side = el.dataset.boxSide as BoxTab; render(); }
   if ((e.target as HTMLElement).closest('[data-box-full]') && Date.now() - switchedAt >= SWITCH_MS) {
@@ -157,6 +166,104 @@ app.addEventListener('click', (e) => {
     if (!full && cols?.scrollLeft) scrollBack(cols);
   }
 });
+
+// ---- The player card ----------------------------------------------------------------------------------
+// A name in the box score opens the player's card over this window (src/ui/player-card.ts holds its state). It
+// lives outside #app, which is drawn again with every box score, and makes #app inert while it is open: only its ✕
+// closes it.
+
+/** A card's request, given up after CARD_TIMEOUT_MS: a stalled one becomes a failure the user can ask again. */
+const getCard = fetchWithin(CARD_TIMEOUT_MS);
+
+const cards = createCardController({
+  fetch: (id) => loadPlayerCard(getCard, id, Date.now()),
+  now: () => Date.now(),
+  changed: (state) => (state ? paintCard(state, false) : unmountCard()),
+});
+/** The card on screen, if any; one leaving is not counted. */
+let layer: HTMLElement | undefined;
+
+function openCard(id: string): void {
+  const s = side === 'team' ? undefined : side;
+  const line = s ? box?.[s].find((l) => l.player.id === id) : undefined;
+  if (!game || !s || !line) return;
+  cards.open({
+    id, name: line.player.name, ...(line.headshot ? { headshot: line.headshot } : {}),
+    team: game.teams[s], colour: gameColours(game.teams, favIn(game.teams, game.favourites))[s],
+  });
+}
+
+/** Draws the card: the whole of it when it opens or the language changes (`head`), else only its body, keeping
+ *  where it was scrolled to and ✕ focused. */
+function paintCard(state: CardState, head: boolean): void {
+  if (!layer) {
+    layer = document.createElement('div');
+    layer.className = 'pcard-layer';
+    layer.dataset.cardLayer = '';
+    const card = document.createElement('div');
+    card.className = 'pcard';
+    card.setAttribute('role', 'dialog');
+    card.setAttribute('aria-modal', 'true');
+    card.setAttribute('aria-label', state.who.name);
+    card.style.setProperty('--team', `#${state.who.colour}`);
+    card.innerHTML = `<header class="pcard-head">${playerCardHead(state.who, T)}</header><div class="pcard-body">${playerCardBody(state.load, T)}</div>`;
+    layer.append(card);
+    document.body.append(layer);
+    app.inert = true;
+    layer.querySelector<HTMLElement>('[data-card-close]')?.focus();
+    return;
+  }
+  const card = layer.querySelector<HTMLElement>('.pcard')!;
+  const cols = () => layer?.querySelector<HTMLElement>('[data-card-cols]');
+  const top = card.scrollTop, left = cols()?.scrollLeft ?? 0;
+  if (head) layer.querySelector('.pcard-head')!.innerHTML = playerCardHead(state.who, T);
+  layer.querySelector('.pcard-body')!.innerHTML = playerCardBody(state.load, T);
+  card.scrollTop = top;
+  const c = cols();
+  if (c) c.scrollLeft = left;
+  // The retry button had focus and is gone: back to ✕, inside the card.
+  if (!card.contains(document.activeElement)) layer.querySelector<HTMLElement>('[data-card-close]')?.focus();
+}
+
+function unmountCard(): void {
+  const leaving = layer;
+  layer = undefined;
+  if (!leaving) return;
+  leaving.classList.add('leaving');
+  setTimeout(() => {
+    leaving.remove();
+    // A card opened meanwhile keeps the box score inert and its ✕ focused.
+    if (layer) return;
+    app.inert = false;
+    (document.activeElement as HTMLElement | null)?.blur();
+  }, CARD_LEAVE_MS);
+}
+
+// The card is outside #app (inert while it is open), so its buttons are heard here.
+document.addEventListener('click', (e) => {
+  const t = e.target as HTMLElement;
+  if (!t.closest?.('[data-card-layer]')) return;
+  if (t.closest('[data-card-close]')) cards.close();
+  else if (t.closest('[data-card-retry]')) cards.retry();
+});
+// A headshot that does not load (none at ESPN, offline): the initials take its place. Image errors do not bubble.
+document.addEventListener('error', (e) => {
+  const img = e.target;
+  if (!(img instanceof HTMLImageElement)) return;
+  // The team's logo on the card: its badge instead, as the main window does (src/ui/main.ts).
+  const who = cards.state()?.who;
+  if (img.matches('[data-card-layer] img.logo') && who) {
+    noLogo.add(who.team.abbr);
+    img.outerHTML = logo(who.team, who.colour);
+    return;
+  }
+  if (!img.matches('[data-card-layer] img[data-face]')) return;
+  const name = img.closest('.pcard-head')?.querySelector('.pcard-name')?.textContent ?? '';
+  const disc = document.createElement('i');
+  disc.className = 'pcard-face initials';
+  disc.textContent = initials(name);
+  img.replaceWith(disc);
+}, true);
 
 /**
  * Scrolls the full box score's numbers back to the left as its columns close, keeping to the share of

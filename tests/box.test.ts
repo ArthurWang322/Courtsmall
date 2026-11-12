@@ -3,6 +3,7 @@
 
 import { describe, expect, it } from 'vitest';
 import { boxScore, teamStats } from '../src/data/espn/box.ts';
+import type { Summary } from '../src/data/espn/feed-types.ts';
 import { FIXTURES, hasFixture, loadFixture } from './fixtures.ts';
 
 for (const fx of FIXTURES) {
@@ -51,3 +52,18 @@ for (const fx of FIXTURES) {
     });
   });
 }
+
+// The player card shows the headshot the box score gives; a player without one gets initials, not a broken image.
+describe('headshot', () => {
+  const summary = (headshot?: { href?: string }) => ({
+    header: { competitions: [{ competitors: [{ homeAway: 'away', team: { id: 'a' } }, { homeAway: 'home', team: { id: 'h' } }] }] },
+    boxscore: { players: [{ team: { id: 'a' }, statistics: [{ names: ['MIN', 'PTS'], athletes: [{ athlete: { id: '7', displayName: 'A Player', shortName: 'A. Player', ...(headshot ? { headshot } : {}) }, stats: ['20', '10'], starter: true }] }] }] },
+  }) as unknown as Summary;
+
+  it("keeps the box score's headshot, and none when ESPN has none", () => {
+    const href = 'https://a.espncdn.com/i/headshots/nba/players/full/7.png';
+    expect(boxScore(summary({ href })).away[0]!.headshot).toBe(href);
+    expect(boxScore(summary()).away[0]!.headshot).toBeUndefined();
+    expect(boxScore(summary({})).away[0]!.headshot).toBeUndefined();
+  });
+});

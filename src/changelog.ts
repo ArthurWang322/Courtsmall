@@ -13,6 +13,15 @@ export interface Release {
 
 export const CHANGELOG: readonly Release[] = [
   {
+    version: '0.6.0',
+    date: '2026-11-11',
+    title: { 'zh-TW': '球員資訊卡與戰績', en: 'Player cards and standings' },
+    items: {
+      'zh-TW': ['點球員名字，看本季場均與最近比賽', '看東西區戰績與排名'],
+      en: ["Click a player's name for season averages and recent games", 'Standings by conference'],
+    },
+  },
+  {
     version: '0.5.1',
     date: '2026-10-24',
     title: { 'zh-TW': '新比分列', en: 'A new score line' },

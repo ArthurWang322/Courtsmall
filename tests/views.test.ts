@@ -4,8 +4,9 @@ import { describe, expect, it } from 'vitest';
 import { STRINGS } from '../src/i18n/index.ts';
 import { playLinesAt, TIER_PRESET, TOOLBAR_H } from '../src/render/tiers.ts';
 import { CHANGELOG } from '../src/changelog.ts';
-import { barView, boxView, onCourtNow, courtView, periodTable, stackView, updateView, changelogView, clockText, lineScoreView, teamView, controlsView, countdownParts, gamesView, JUMP_MS, leadersTable, noLogo, playLines, SLIDE_MS, pregameView, RUN_MIN, settingsView, whenText } from '../src/ui/views.ts';
-import type { BoxLine, GameCard, GameState, PlayLine, TeamStats } from '../src/model/types.ts';
+import { barView, boxView, onCourtNow, courtView, periodTable, stackView, updateView, changelogView, clockText, lineScoreView, teamView, controlsView, countdownParts, gamesView, JUMP_MS, leadersTable, noLogo, playLines, SLIDE_MS, pregameView, playerCardHead, playerCardBody, initials, RUN_MIN, settingsView, standingsView, defaultConference, whenText } from '../src/ui/views.ts';
+import type { BoxLine, GameCard, GameState, PlayerCard, PlayLine, StandingRow, Standings, TeamStats } from '../src/model/types.ts';
+import type { CardWho } from '../src/ui/player-card.ts';
 
 const en = STRINGS.en, zh = STRINGS['zh-TW'];
 /** The newest play line alone, as a one-line bar shows it. */
@@ -162,9 +163,12 @@ describe('toolbar and games list', () => {
     expect(html.match(/class="icon on" data-tier="(\w+)"/)![1]).toBe('bar');
     expect([...html.matchAll(/data-tier="(\w+)"/g)].map((m) => m[1])).toEqual(['bar', 'court']);
     // Every button says what it does on hover, in the maintainer's words.
-    expect([...html.matchAll(/data-tip="([^"]+)"/g)].map((m) => m[1])).toEqual(['簡易模式', '球場模式', '比賽列表', '數據', '設定']);
+    expect([...html.matchAll(/data-tip="([^"]+)"/g)].map((m) => m[1])).toEqual(['簡易模式', '球場模式', '戰績', '比賽列表', '數據', '設定']);
     expect(html).toContain('data-open="games"');
     expect(html).toContain('data-open="settings"');
+    // The standings just left of the games list, where the maintainer asked for them.
+    expect(html.indexOf('data-open="standings"')).toBeGreaterThan(html.indexOf('class="sep"'));
+    expect(html.indexOf('data-open="standings"')).toBeLessThan(html.indexOf('data-open="games"'));
   });
 
   // The way back to the corner only matters once the window has left it; then it comes first, so
@@ -172,7 +176,7 @@ describe('toolbar and games list', () => {
   it('offers the way back to the corner only once the window was dragged away', () => {
     expect(controlsView('bar', zh)).not.toContain('data-corner');
     const moved = controlsView('bar', zh, false, true);
-    expect([...moved.matchAll(/data-tip="([^"]+)"/g)].map((m) => m[1])).toEqual(['回到右下角', '簡易模式', '球場模式', '比賽列表', '數據', '設定']);
+    expect([...moved.matchAll(/data-tip="([^"]+)"/g)].map((m) => m[1])).toEqual(['回到右下角', '簡易模式', '球場模式', '戰績', '比賽列表', '數據', '設定']);
   });
 
   // The list answers "what can I watch now": games on first; a finished game can only be replayed.
@@ -365,7 +369,7 @@ describe("players' window", () => {
 
   /** What a view shows: the names, then the header's numbers and each player's, the full view's own columns only when open. */
   const shown = (html: string, open: boolean) => ({
-    names: [...html.matchAll(/<span class="name">(.*?)<\/span>/g)].map((m) => m[1]!.replace(/<[^>]+>/g, '')),
+    names: [...html.matchAll(/<span class="name"[^>]*>(.*?)<\/span>/g)].map((m) => m[1]!.replace(/<[^>]+>/g, '')),
     nums: [...html.matchAll(/<div class="nums">(.*?)<\/div>/g)]
       .map((m) => (open ? m[1]! : m[1]!.replace(/<span class="x[^"]*"[^>]*>.*?<\/span>/g, '')).replace(/<[^>]+>/g, ' ').trim().split(/\s+/)),
   });
@@ -376,7 +380,7 @@ describe("players' window", () => {
     expect(shown(html, false).names).toEqual(['球員', 'D. Fox', 'K. Ellis', 'X. Tillman']);
     expect(shown(html, false).nums.slice(0, 2)).toEqual([['時間', '得分', '籃板', '助攻', '抄截', '火鍋', '失誤'], ['20', '31', '5', '3', '1', '0', '2']]);
     expect(shown(html, false).nums[3]).toEqual(['未上場']);
-    expect(html).toContain('<div class="row dnp"><span class="name">X. Tillman</span></div>');
+    expect(html).toContain('<div class="row dnp"><span class="name" data-player="3">X. Tillman</span></div>');
     expect(html).not.toContain('Markkanen');
     expect(html).toContain('class="side on" data-box-side="away"');
   });
@@ -683,5 +687,165 @@ describe('card stack', () => {
     expect(strips.map((s) => s.depth)).toEqual(['1', '2', '3']);
     // The strip that brings them up is not one of them: it is over the main window (src/ui/stack.ts).
     expect(html).not.toContain('edge');
+  });
+});
+
+describe('player card', () => {
+  // Names in the box score open the card: each carries its player's id; the header is not a player.
+  it("marks each name in the box score with its player's id", () => {
+    const line = (id: string, short: string): BoxLine => ({ player: { id, name: short, short }, starter: true, dnp: false, min: 1, pts: 0, reb: 0, ast: 0, stl: 0, blk: 0, to: 0, fg: { made: 0, att: 0 }, three: { made: 0, att: 0 }, ft: { made: 0, att: 0 }, pf: 0, pm: 0 });
+    const html = boxView(base.teams, { away: [line('41', 'N. Jokic')], home: [] }, 'away', en);
+    expect(html).toContain('<span class="name" data-player="41">N. Jokic</span>');
+    expect(html.match(/data-player=/g)).toHaveLength(1);
+  });
+
+  const who = (over: Partial<CardWho> = {}): CardWho => ({ id: '3112335', name: 'Nikola Jokic', headshot: 'https://a.espncdn.com/i/headshots/nba/players/full/3112335.png', team: { id: '7', abbr: 'DEN', name: 'Nuggets' }, colour: '0e2240', ...over });
+
+  it('heads the card with the headshot, or the initials without one, the name and the team', () => {
+    const head = playerCardHead(who(), zh);
+    expect(head).toContain('<img class="pcard-face" src="https://a.espncdn.com/i/headshots/nba/players/full/3112335.png" alt="" data-face>');
+    expect(head).toContain('<b class="pcard-name">Nikola Jokic</b>');
+    // The team by its logo, not a colour dot.
+    expect(head).toContain('<img class="logo" data-abbr="DEN" src="https://a.espncdn.com/i/teamlogos/nba/500/den.png" alt="">DEN</span>');
+    expect(head).not.toContain('class="dot"');
+    expect(head).toContain(`data-card-close aria-label="${zh.close}"`);
+    const none = playerCardHead(who({ headshot: undefined, name: 'Shai <Gilgeous-Alexander>' }), en);
+    expect(none).not.toContain('<img class="pcard-face"');
+    expect(none).toContain('<i class="pcard-face initials">S&lt;</i>');
+    expect(none).toContain('Shai &lt;Gilgeous-Alexander&gt;');
+  });
+
+  it('takes initials from the first and last names, a suffix left out', () => {
+    expect(['Shai Gilgeous-Alexander', 'Jaren Jackson Jr.', 'DaRon Holmes II', 'Nenê'].map(initials)).toEqual(['SG', 'JJ', 'DH', 'N']);
+  });
+
+  const game = (date: Date, over: Partial<PlayerCard['games'][number]> = {}): PlayerCard['games'][number] => ({
+    id: String(date.getTime()), date: date.getTime(), at: '@', opp: 'HOU', result: 'L', own: 100, oppScore: 110,
+    min: 37, pts: 18, reb: 7, ast: 10, stl: 3, blk: 0, to: 5, fgPct: 61.5, threePct: 0, ftPct: 100, ...over,
+  });
+  const ready = (card: PlayerCard) => playerCardBody({ kind: 'ready', card }, zh);
+  const season = { gp: 9, min: 36.2, pts: 23.1, reb: 10.8, ast: 9.1, stl: 1.9, blk: 1.2, to: 3.2, fgPct: 48.8, threePct: 22.5, ftPct: 100 };
+
+  it('says it is loading, or that it failed with a way to ask again', () => {
+    expect(playerCardBody({ kind: 'loading' }, zh)).toContain(zh.loading);
+    const failed = playerCardBody({ kind: 'error' }, en);
+    expect(failed).toContain(en.card.failed);
+    expect(failed).toContain(`data-card-retry>${en.card.retry}</button>`);
+  });
+
+  // The tiles in a set order: the counts first, points leading, then time and the percentages; one decimal each.
+  it("shows the season's averages in order, one decimal each", () => {
+    const html = ready({ season, games: [], stale: false });
+    expect(html).toContain(`${zh.card.season} · ${zh.card.games(9)}`);
+    const tiles = [...html.matchAll(/<div class="tile"><b>(.*?)<\/b><span>(.*?)<\/span>/g)].map((m) => `${m[2]} ${m[1]}`);
+    expect(tiles).toEqual(['得分 23.1', '籃板 10.8', '助攻 9.1', '抄截 1.9', '火鍋 1.2', '失誤 3.2', '時間 36.2', '投籃% 48.8', '三分% 22.5', '罰球% 100.0']);
+    expect(playerCardBody({ kind: 'ready', card: { season, games: [], stale: false } }, en)).toContain('Season averages · 9 games');
+  });
+
+  it("lists recent games newest first: date where you are, where, result and the player's score first", () => {
+    const d1 = new Date(Date.parse('2026-11-10T01:30:00Z')), d2 = new Date(Date.parse('2026-11-07T22:00:00Z'));
+    const html = ready({ season, games: [game(d1), game(d2, { at: 'vs', opp: 'IND', result: 'W', own: 114, oppScore: 102 })], stale: false });
+    const cells = [...html.matchAll(/<span class="g">(.*?)<\/span>/g)].map((m) => m[1]);
+    const md = (d: Date) => `${d.getMonth() + 1}/${d.getDate()}`;
+    expect(cells).toEqual([zh.card.game, `${md(d1)} @ HOU <i class="l">L</i> 100-110`, `${md(d2)} vs IND <i class="w">W</i> 114-102`]);
+    // A game's counts whole, its percentages to one decimal.
+    const row = html.match(/<div class="pr"><span class="g">[^]*?<\/span>(.*?)<\/div>/)![1]!.match(/<span>(.*?)<\/span>/g)!.map((x) => x.replace(/<\/?span>/g, ''));
+    expect(row).toEqual(['18', '7', '10', '3', '0', '5', '37', '61.5', '0.0', '100.0']);
+  });
+
+  it('marks what ESPN left out, and shows the year for an earlier season', () => {
+    const d = new Date(2026, 4, 12, 20);
+    const html = ready({ games: [game(d, { result: undefined, opp: '', own: undefined, pts: undefined })], stale: true });
+    expect(html).toContain(`<span class="g">2026/5/12 @ – <i>–</i></span><span>–</span>`);
+    expect(html).toContain(zh.card.noSeason);
+    expect(html).not.toContain('class="tile"');
+  });
+
+  // Games this season but no averages yet must not say there were no games.
+  it("says the averages are not there yet, not that there were no games, when games this season are listed", () => {
+    const g = game(new Date(2026, 10, 5, 20));
+    expect(ready({ games: [g], stale: false })).toContain(zh.card.noAverages);
+    expect(ready({ games: [g], stale: false })).not.toContain(zh.card.noSeason);
+    expect(ready({ games: [], stale: false })).toContain(zh.card.noSeason);
+    expect(playerCardBody({ kind: 'ready', card: { games: [g], stale: false } }, en)).toContain('Season averages not available yet');
+  });
+
+  it('says so when there are no recent games', () => {
+    const html = ready({ season, games: [], stale: false });
+    expect(html).toContain(zh.card.noGames);
+    expect(html).not.toContain('pcard-table');
+  });
+});
+
+
+describe('standings panel', () => {
+  const row = (rank: number, id: string, abbr: string, o: Partial<StandingRow> = {}): StandingRow =>
+    ({ team: { id, abbr, name: abbr }, rank, wins: 9, losses: 2, pct: '.818', gb: '0.5', streak: 'W4', ...o });
+  const table: Standings = {
+    season: '2026-27',
+    east: [row(1, '2', 'BOS', { gb: '-' }), row(2, '20', 'PHI', { wins: undefined, streak: undefined }), row(3, '9', '<X>')],
+    west: [row(1, '13', 'LAL', { gb: '-' }), row(2, '24', 'SA')],
+  };
+  const ready = (conf: 'east' | 'west', favs: string[] = []) => standingsView({ kind: 'ready', standings: table }, conf, zh, favs);
+  const cells = (html: string) => [...html.matchAll(/<div class="srow[^"]*"><span class="rk">(\d+)<\/span><span class="tm">.*?<span>(.*?)<\/span><\/span>(.*?)<\/div>/g)]
+    .map((m) => [m[1], m[2], ...[...m[3]!.matchAll(/<span>(.*?)<\/span>/g)].map((c) => c[1])].join(' '));
+
+  it("lists the chosen conference's teams in rank order, each value in its column", () => {
+    const html = ready('east');
+    expect(html).toContain(`${zh.standings.title} · 2026-27`);
+    expect(cells(html)).toEqual([
+      '1 BOS 9-2 .818 – W4',
+      // A missing value is a dash, not a gap that shifts the columns.
+      '2 PHI – .818 0.5 –',
+      '3 &lt;X&gt; 9-2 .818 0.5 W4',
+    ]);
+    const header = [...html.match(/<div class="srow head-row">(.*?)<\/div>/)![1]!.matchAll(/<span[^>]*>(.*?)<\/span>/g)].map((m) => m[1]);
+    expect(header).toEqual(['#', '球隊', '勝-敗', '勝率', '勝差', '連勝敗']);
+    expect(cells(ready('west')).map((c) => c.split(' ')[1])).toEqual(['LAL', 'SA']);
+  });
+
+  // The maintainer: a dashed line under the 6th (straight into the playoffs), a solid one under the 10th (play-in).
+  it('draws a line under the 6th and the 10th only', () => {
+    const many = Array.from({ length: 12 }, (_, i) => row(i + 1, String(i), `T${i + 1}`));
+    const html = standingsView({ kind: 'ready', standings: { east: many, west: [] } }, 'east', zh);
+    const classes = [...html.matchAll(/<div class="srow([^"]*)"><span class="rk">(\d+)/g)].map((m) => `${m[2]}${m[1]}`);
+    expect(classes.filter((c) => c.includes('cut'))).toEqual(['6 cut-playoff', '10 cut-playin']);
+  });
+
+  it('lights the conference shown, and marks the favourite', () => {
+    const html = ready('west', ['24']);
+    expect(html).toContain('<button class="side on" data-conf="west">西區</button>');
+    expect(html).toContain('<button class="side" data-conf="east">東區</button>');
+    expect(html).toContain('<div class="srow fav">');
+    expect(html).toContain('<span>SA<span class="star">★</span></span>');
+    expect(standingsView({ kind: 'ready', standings: table }, 'east', en)).toContain('data-conf="east">East</button>');
+  });
+
+  // The switch waits for the table, so the lit side cannot jump from the East to the favourite's; ✕ is always there.
+  it('has no switch while loading or after a failure, and a way to ask again after one', () => {
+    const loading = standingsView({ kind: 'loading' }, 'east', zh);
+    const failed = standingsView({ kind: 'error' }, 'east', en);
+    for (const html of [loading, failed]) {
+      expect(html).not.toContain('data-conf');
+      expect(html).toContain('data-done');
+    }
+    expect(loading).toContain(zh.loading);
+    expect(failed).toContain(en.standings.failed);
+    expect(failed).toContain(`data-standings-retry>${en.standings.retry}</button>`);
+    expect(ready('east')).toContain('data-done');
+  });
+
+  it('says so when a conference has no teams', () => {
+    const html = standingsView({ kind: 'ready', standings: { east: [], west: table.west } }, 'east', zh);
+    expect(html).toContain(zh.standings.none);
+    expect(html).not.toContain('head-row');
+    expect(html).toContain('data-conf="west"');
+  });
+
+  it("opens on the first favourite's conference, else the East", () => {
+    expect(defaultConference(table, ['24'])).toBe('west');
+    expect(defaultConference(table, ['2', '24'])).toBe('east');
+    expect(defaultConference(table, ['999', '13'])).toBe('west');
+    expect(defaultConference(table, [])).toBe('east');
   });
 });

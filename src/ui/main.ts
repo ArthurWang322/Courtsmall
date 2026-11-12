@@ -3,19 +3,21 @@
 // notices) and the games list open from the toolbar that shows on hover, or from the tray menu.
 //
 // URL parameters, for development: ?game=<ESPN event id> (skip following), &replay (replay even
-// if live), &result (show it as it stands, no replay), &pace=real|compact|results, &speed=<n>, &lang=en|zh-TW, &settings or &games (open
-// that panel), &stackroom=<px> (the card stack: room above the window, which a browser cannot grow).
+// if live), &result (show it as it stands, no replay), &pace=real|compact|results, &speed=<n>, &lang=en|zh-TW, &settings, &games or &standings
+// (open that panel), &stackroom=<px> (the card stack: room above the window, which a browser cannot grow).
 // In `npm run dev` only, &fixture replays fixtures/nba/game-<id>.json and reads the team list from
-// fixtures/nba/teams.json instead of asking ESPN (node scripts/probe/06-fixtures.mjs).
+// fixtures/nba/teams.json and the standings from fixtures/nba/standings.json instead of asking ESPN
+// (node scripts/probe/06-fixtures.mjs).
 
 // Fonts, bundled (SIL OFL 1.1): Big Shoulders Display for the scores, Barlow Condensed for labels.
 import '@fontsource/big-shoulders-display/latin-800';
 import '@fontsource/barlow-condensed/latin-500';
 import '@fontsource/barlow-condensed/latin-600';
-import type { GameCard, GameState, Shot, Side, TeamRef, Unsubscribe } from '../model/types.ts';
+import type { Conference, GameCard, GameState, Shot, Side, TeamRef, Unsubscribe } from '../model/types.ts';
 import type { GameFeed } from '../data/espn/feed-types.ts';
 import { allTeams, dayGames, loadFeed, teamColour, teamGames, type FetchJson } from '../data/espn/fetch.ts';
 import { EspnLiveSource } from '../data/espn/live-source.ts';
+import { loadStandings } from '../data/espn/standings.ts';
 import { buildTimeline, initialState } from '../data/espn/timeline.ts';
 import { EspnReplaySource } from '../data/replay/espn-replay-source.ts';
 import type { PaceMode } from '../data/replay/pacing.ts';
@@ -37,7 +39,9 @@ import { drawFlights, flightSeconds, LANDED, shotSeconds, WINDUP_SECONDS } from 
 import { gameColours } from '../render/colour.ts';
 import { loadSettings, saveSettings, type Settings } from '../settings/store.ts';
 import { reveal } from './reveal.ts';
-import { barView, changelogView, updateView, controlsView, courtView, favIn, gamesView, JUMP_MS, messageView, noLogo, playLines, SLIDE_MS, pregameView, settingsView, type ScoreAges } from './views.ts';
+import { fetchWithin } from './fetch-within.ts';
+import { createStandingsLoader } from './standings-load.ts';
+import { barView, changelogView, updateView, controlsView, courtView, defaultConference, favIn, gamesView, JUMP_MS, messageView, noLogo, playLines, SLIDE_MS, pregameView, settingsView, standingsView, type ScoreAges } from './views.ts';
 
 // In `npm run dev`, VITE_PARAMS fills in for the URL, which the desktop window does not have:
 // VITE_PARAMS='game=401898721&replay' npx tauri dev
@@ -51,12 +55,14 @@ const win = async () => (await import('@tauri-apps/api/window')).getCurrentWindo
 const DECIDE_EVERY_MS = 60_000;
 /** How long a team's schedule is reused, ms. */
 const TEAM_SCHEDULE_TTL_MS = 5 * 60_000;
-/** The window's size while a panel is open: the games list is long, the settings are short. */
-const PANEL_SIZE = { games: { w: 360, h: 330 }, settings: { w: 360, h: 300 }, changelog: { w: 360, h: 330 }, update: { w: 360, h: 330 } } as const;
+/** The window's size while a panel is open: the games list is long, the settings are short, the standings fit a
+ *  conference's 15 teams. */
+const PANEL_SIZE = { games: { w: 360, h: 330 }, standings: { w: 360, h: 450 }, settings: { w: 360, h: 300 }, changelog: { w: 360, h: 330 }, update: { w: 360, h: 330 } } as const;
 /** Where feedback and bug reports go, by mail from the settings. */
 const FEEDBACK_MAIL = 'arthur800322@hotmail.com';
 
-// One request in flight at a time across the whole app.
+// One request in flight at a time across the whole app, but for the standings (fetchWithin below), which the user
+// waits on and must not queue behind a poll.
 let chain: Promise<unknown> = Promise.resolve();
 /** Never from the web view's cache: ESPN sends `stale-while-revalidate=7200`, so the cache answered
  *  with the previous response (a poll behind, or a game as it was hours ago, at half time, when it
@@ -90,9 +96,25 @@ let upcoming: GameCard | undefined;
 const knownScheduled = new Set<string>();
 let message = T.loading;
 let messageSub: string | undefined;
-/** A panel over the game: the games list or the settings. */
-type Panel = 'games' | 'settings' | 'changelog' | 'update';
+/** A panel over the game: the games list, the standings or the settings. */
+type Panel = 'games' | 'standings' | 'settings' | 'changelog' | 'update';
 let panel: Panel | undefined;
+/** A standings request that has not answered in this long has failed. */
+const STANDINGS_TIMEOUT_MS = 10_000;
+// Under `npm run dev` with &fixture, the standings are fixtures/nba/standings.json.
+const getStandings: FetchJson = import.meta.env.DEV && params.has('fixture')
+  ? () => fetch('/fixtures/nba/standings.json').then((r) => r.json())
+  : fetchWithin(STANDINGS_TIMEOUT_MS);
+/** Resizes into a panel under way (openPanel; more than one if a panel is picked mid-glide): an answer that comes
+ *  meanwhile waits for the draw after them. */
+let sizingPanel = 0;
+/** The standings panel's table: asked again at every open. An answer while another panel is open is kept, not drawn. */
+const standings = createStandingsLoader({
+  fetch: () => loadStandings(getStandings),
+  changed: () => { if (panel === 'standings' && sizingPanel === 0) render(); },
+});
+/** The conference the user switched to, for the rest of the session. */
+let standingsConf: Conference | undefined;
 /** The games list: which day (0 = ESPN's today), and its games. */
 let gamesDay = 0;
 let dayList: GameCard[] = [];
@@ -565,6 +587,12 @@ function render(): void {
   }
   if (checkingAtStart) { show(messageView(T.update.atStart), undefined); return; }
   if (panel === 'games') { show(gamesView(dayLabel(gamesDay), dayList, T, tipOff, currentId, settings.favourites, picking), undefined); return; }
+  if (panel === 'standings') {
+    const load = standings.state();
+    const conf = standingsConf ?? (load.kind === 'ready' ? defaultConference(load.standings, settings.favourites) : 'east');
+    show(standingsView(load, conf, T, settings.favourites), undefined);
+    return;
+  }
   const tag = replaying ? T.replay : undefined;
   // The toolbar has a row of its own along the bottom.
   const contentHeight = app.clientHeight - TOOLBAR_H;
@@ -770,16 +798,22 @@ async function loadDay(): Promise<void> {
 async function openPanel(kind: Panel): Promise<void> {
   // The update screen is the only way on (src/ui/views.ts updateView): no other panel over it.
   if (panel === 'update' && kind !== 'update') return;
+  // Clicked again while the window grows into it (the toolbar is still there): no second request.
+  if (kind === 'standings' && panel === 'standings') return;
   closeStack();
   const was = panel;
   panel = kind;
+  // Asked while the window grows, not after; an answer that comes before it is there is drawn by the render() below.
+  const asked = kind === 'standings' ? standings.load() : undefined;
   if (kind === 'settings') noticeTest = { kind: 'idle' };
   if (shell) {
     if (!was) sizeBeforePanel = { w: window.innerWidth, h: window.innerHeight };
-    await sizeMain(PANEL_SIZE[kind].w, PANEL_SIZE[kind].h);
+    sizingPanel++;
+    try { await sizeMain(PANEL_SIZE[kind].w, PANEL_SIZE[kind].h); } finally { sizingPanel--; }
   }
   render();
   if (kind === 'games') { gamesDay = 0; await loadDay(); }
+  await asked;
   if (kind === 'settings') { await loadTeams(); void colourFavourite(); }
 }
 
@@ -839,7 +873,7 @@ async function setTier(t: Tier): Promise<void> {
 app.addEventListener('click', (e) => {
   // The size buttons only: #app carries data-tier too (the size it shows), so a click anywhere else
   // would ask for the size it already has, and snap the window back to that size's preset.
-  const el = (e.target as HTMLElement).closest<HTMLElement>('button[data-tier], [data-corner], [data-open], [data-day], [data-players], [data-game], [data-done], [data-notify], [data-shortcuts], [data-stack], [data-notice-test], [data-update-now], [data-update-later], [data-update], [data-fav-open], [data-fav-pick], [data-feedback]');
+  const el = (e.target as HTMLElement).closest<HTMLElement>('button[data-tier], [data-corner], [data-open], [data-day], [data-players], [data-game], [data-done], [data-notify], [data-shortcuts], [data-stack], [data-notice-test], [data-update-now], [data-update-later], [data-update], [data-fav-open], [data-fav-pick], [data-feedback], [data-conf], [data-standings-retry]');
   // The favourite's list: its button opens and closes it, a team in it is picked, a click
   // anywhere else closes it.
   if (pickerOpen && !el?.closest('.favourite')) { pickerOpen = false; render(); }
@@ -862,6 +896,8 @@ app.addEventListener('click', (e) => {
   if (el.dataset.players !== undefined) { void toggleStats(); return; }
   if (el.dataset.done !== undefined) { void closePanel(); return; }
   if (el.dataset.day) { gamesDay += Number(el.dataset.day); dayList = []; render(); void loadDay(); return; }
+  if (el.dataset.conf) { standingsConf = el.dataset.conf as Conference; render(); return; }
+  if (el.dataset.standingsRetry !== undefined) { void standings.load(); render(); return; }
   if (el.dataset.game) {
     if (picking) return;
     // Picked from the list: a game on or to come is followed live, a finished one shows its result.
@@ -1011,3 +1047,4 @@ else {
 if (settings.favourites.length) void loadTeams();
 if (params.has('settings')) void openPanel('settings');
 if (params.has('games')) void openPanel('games');
+if (params.has('standings')) void openPanel('standings');

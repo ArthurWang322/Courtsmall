@@ -233,6 +233,29 @@ button { font: inherit; color: inherit; border: 0; background: transparent; padd
 .panel .game .who .logo.badge { font-size: 10px; }
 .panel .game .when { margin-left: auto; font-size: 12px; color: var(--muted); }
 .panel .game.live .when { color: var(--accent); }
+
+/* The standings (src/ui/views.ts standingsView): a conference's teams, a row each; numbers in fixed columns. */
+.panel.standings .confs { display: flex; gap: 6px; }
+.panel.standings .st-msg { margin: 4px 0; }
+.panel.standings .srow { display: grid; grid-template-columns: 18px minmax(0, 1fr) 46px 44px 40px 42px;
+  column-gap: 4px; align-items: center; height: 20px; padding: 0 4px; flex: none; white-space: nowrap;
+  font: 600 13px var(--label); font-variant-numeric: tabular-nums; text-align: right; }
+.panel.standings .srow .tm { display: inline-flex; align-items: center; gap: 5px; text-align: left; min-width: 0;
+  letter-spacing: .05em; white-space: nowrap; overflow: hidden; }
+.panel.standings .srow .rk { color: var(--muted); }
+.panel.standings .srow .logo { width: 16px; height: 16px; flex: 0 0 16px; object-fit: contain; }
+.panel.standings .srow .logo.badge { font-size: 9px; }
+.panel.standings .head-row { font: 600 11px var(--label); letter-spacing: .06em; color: var(--muted);
+  border-bottom: 1px solid var(--border); }
+.panel.standings .list { gap: 0; }
+/* Under the 6th, the last straight into the playoffs (dashed), and under the 10th, the last in the play-in. */
+.panel.standings .srow.cut-playoff { border-bottom: 1px dashed var(--muted); }
+.panel.standings .srow.cut-playin { border-bottom: 1px solid var(--muted); }
+.panel.standings .srow.fav { background: color-mix(in srgb, var(--accent) 12%, transparent); border-radius: 4px; }
+/* A favourite on a cut keeps its line straight. */
+.panel.standings .srow.fav.cut-playoff, .panel.standings .srow.fav.cut-playin { border-bottom-left-radius: 0; border-bottom-right-radius: 0; }
+.panel.standings .retry { align-self: flex-start; padding: 4px 10px; border-radius: 8px; border: 1px solid var(--border);
+  background: var(--panel); color: var(--text); font: 600 12px var(--label); }
 .settings button { display: inline-flex; align-items: center; gap: 5px; padding: 5px 6px; border-radius: 8px; border: 1px solid var(--border);
   background: linear-gradient(180deg, var(--panel), var(--surface)); color: var(--text); font: 600 13px var(--label); letter-spacing: .05em; }
 .settings button:hover { border-color: var(--muted); }
@@ -381,12 +404,12 @@ button { font: inherit; color: inherit; border: 0; background: transparent; padd
 
 
 /* The players' panel (src/ui/views.ts boxView): a side's box score, starters brighter. */
-.panel.box .side { display: inline-flex; align-items: center; gap: 5px; padding: 4px 10px; border-radius: 8px; border: 1px solid var(--border);
+.panel.box .side, .panel.standings .side { display: inline-flex; align-items: center; gap: 5px; padding: 4px 10px; border-radius: 8px; border: 1px solid var(--border);
   background: var(--panel); color: var(--muted); font: 600 13px var(--label); letter-spacing: .06em; }
-.panel.box .side.on { color: var(--text); border-color: var(--accent); }
+.panel.box .side.on, .panel.standings .side.on { color: var(--text); border-color: var(--accent); }
 /* Room for the switch beside them in a narrow window: the tabs stay on one line each, a little tighter. */
-.panel.box .side { white-space: nowrap; }
-@media (max-width: 330px) { .panel.box .side { padding: 4px 7px; } }
+.panel.box .side, .panel.standings .side { white-space: nowrap; }
+@media (max-width: 330px) { .panel.box .side, .panel.standings .side { padding: 4px 7px; } }
 .panel.box .table { display: flex; flex-direction: column; min-height: 0; flex: 1; }
 .panel.box .row { display: flex; align-items: center; height: 23px; padding: 0 4px;
   font: 600 13px var(--label); font-variant-numeric: tabular-nums; color: var(--muted); }
@@ -613,3 +636,64 @@ html.stack-up .scard.live.lit .strip .when { color: var(--live); }
 html.dev-room #app { top: var(--dev-room); }
 html.dev-room .edge { top: var(--dev-room); }
 .dev-stack { position: fixed; inset: 0; width: 100%; height: 100%; border: 0; z-index: 5; pointer-events: none; background: transparent; color-scheme: normal; }
+
+/* ---- Player card ------------------------------------------------------------------------------------ */
+/* A name in the box score opens the player's card (src/ui/players.ts): it lights on hover, starters (already
+   bright) included. */
+.panel.box .names .name[data-player] { cursor: pointer; }
+.panel.box .names .name[data-player]:hover { font-weight: 700; text-decoration-line: underline; text-decoration-thickness: 1px; text-underline-offset: 3px; }
+
+/* Over the whole window, cut to its rounded corners so the transparent ones stay clear; the card inside, scrolling
+   when the window is short, its head (✕ in it) staying at the top. */
+.pcard-layer { position: fixed; inset: 0; z-index: 10; border-radius: 14px; overflow: hidden; background: rgba(0, 0, 0, .45);
+  animation: pcard-fade 200ms ease-out both; }
+.pcard { position: absolute; inset: 6px; overflow-y: auto; border-radius: 12px; border: 1px solid var(--border);
+  background: var(--surface); box-shadow: 0 12px 32px -8px rgba(0, 0, 0, .6);
+  animation: pcard-in 260ms cubic-bezier(.16, 1, .3, 1) both; }
+/* Leaving: CARD_LEAVE_MS (src/ui/player-card.ts) is this 180ms. It also leaves with the window's fold. */
+.pcard-layer.leaving { pointer-events: none; animation: pcard-fade-out 180ms ease-in both; }
+.pcard-layer.leaving .pcard, .players-page:has(#app.leaving) .pcard { animation: pcard-out 180ms ease-in both; }
+.players-page:has(#app.leaving) .pcard-layer { animation: pcard-fade-out 180ms ease-in both; }
+@keyframes pcard-fade { from { opacity: 0; } }
+@keyframes pcard-fade-out { to { opacity: 0; } }
+@keyframes pcard-in { from { opacity: 0; transform: translateY(14px) scale(.96); filter: blur(4px); } }
+@keyframes pcard-out { to { opacity: 0; transform: translateY(8px) scale(.97); } }
+@media (prefers-reduced-motion: reduce) { .pcard-layer, .pcard { animation-duration: .01s !important; } }
+
+.pcard-head { position: sticky; top: 0; z-index: 1; display: flex; align-items: center; gap: 10px; padding: 8px 8px 8px 10px;
+  border-bottom: 1px solid var(--border);
+  background: linear-gradient(135deg, color-mix(in srgb, var(--team) 35%, var(--surface)) 0%, var(--surface) 100%); }
+.pcard-face { width: 40px; height: 40px; flex: none; border-radius: 50%; object-fit: cover; object-position: 50% 15%;
+  background: color-mix(in srgb, var(--team) 35%, transparent); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .12); }
+.pcard-face.initials { display: inline-grid; place-items: center; font: 700 15px var(--label); font-style: normal; letter-spacing: .04em; color: #fff; }
+.pcard-who { display: flex; flex-direction: column; min-width: 0; flex: 1; }
+.pcard-name { font: 600 15px var(--font); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pcard-team { display: inline-flex; align-items: center; gap: 5px; font: 600 12px var(--label); letter-spacing: .08em; color: var(--muted); }
+.pcard-team .logo { width: 18px; height: 18px; flex: 0 0 18px; object-fit: contain; }
+.pcard-team .logo.badge { font-size: 10px; letter-spacing: 0; }
+.pcard-close { width: 24px; height: 24px; flex: none; margin-left: auto; display: inline-grid; place-items: center; align-self: flex-start;
+  border-radius: 6px; color: var(--muted); font-size: 13px; }
+.pcard-close:hover { color: var(--text); background: var(--panel); }
+.pcard-close:focus:not(:focus-visible) { outline: none; }
+
+.pcard-body { padding: 8px 10px 10px; display: flex; flex-direction: column; gap: 10px; }
+.pcard-body h4 { margin: 0 0 6px; font: 600 12px var(--label); letter-spacing: .1em; color: var(--muted); }
+.pcard-msg { margin: 4px 0; font-size: 12px; }
+.pcard-retry { align-self: flex-start; padding: 4px 10px; border-radius: 8px; border: 1px solid var(--border); font: 600 12px var(--label); letter-spacing: .06em; }
+.pcard-retry:hover { border-color: var(--muted); }
+/* The season: ten tiles, six to a row: the counts, points first, then time and the three percentages. */
+.pcard-tiles { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 4px; }
+.pcard-tiles .tile { display: flex; flex-direction: column; align-items: center; padding: 4px 0; border-radius: 6px; background: var(--panel); }
+.pcard-tiles .tile b { font: 800 17px/1.05 var(--display); font-variant-numeric: tabular-nums; }
+.pcard-tiles .tile span { font: 600 10px var(--label); letter-spacing: .06em; color: var(--muted); }
+/* The recent games: the game at the left stays while the numbers scroll sideways under it. */
+/* The game column as wide as its longest line: an earlier season's dates carry the year. */
+.pcard-table { display: grid; grid-template-columns: max-content repeat(10, 42px); overflow-x: auto; }
+.pcard-table .pr { display: contents; }
+.pcard-table .pr > span { height: 24px; display: flex; align-items: center; justify-content: center; white-space: nowrap;
+  font: 600 13px var(--label); font-variant-numeric: tabular-nums; border-bottom: 1px solid color-mix(in srgb, var(--border) 60%, transparent); }
+.pcard-table .pr.head > span { font-size: 11px; letter-spacing: .06em; color: var(--faint); }
+.pcard-table .g { position: sticky; left: 0; z-index: 1; justify-content: flex-start !important; gap: 4px; padding-right: 6px; background: var(--surface); color: var(--muted); }
+.pcard-table .g i { font-style: normal; }
+.pcard-table .g .w { color: var(--live); }
+.pcard-table .g .l { color: var(--paused); }

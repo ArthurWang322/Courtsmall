@@ -66,9 +66,38 @@ export interface Summary {
       team: { id: string };
       statistics: {
         names: string[];
-        athletes: { athlete: { id: string; displayName: string; shortName: string }; stats: string[]; starter?: boolean; didNotPlay?: boolean; reason?: string }[];
+        athletes: { athlete: { id: string; displayName: string; shortName: string; headshot?: { href?: string } }; stats: string[]; starter?: boolean; didNotPlay?: boolean; reason?: string }[];
       }[];
     }[];
+  };
+}
+
+/** `apis/v2/.../standings`: a child per conference, each team with its stats by name (src/data/espn/standings.ts). */
+export interface StandingsFeed {
+  children?: {
+    name?: string;
+    abbreviation?: string;
+    standings?: {
+      seasonDisplayName?: string;
+      entries?: {
+        team?: { id?: string; abbreviation?: string; displayName?: string };
+        stats?: { name?: string; type?: string; value?: number; displayValue?: string }[];
+      }[];
+    };
+  }[];
+}
+
+/** The common API's `athletes/{id}/overview`: season splits and the recent game log (src/data/espn/athlete.ts). */
+export interface AthleteOverview {
+  statistics?: { names?: string[]; splits?: { displayName?: string; stats?: string[] }[] };
+  gameLog?: {
+    statistics?: { names?: string[]; events?: { eventId?: string; stats?: string[] }[] }[];
+    /** Keyed by event id; the keys are not in date order. */
+    events?: Record<string, {
+      id?: string; gameDate?: string; atVs?: string; gameResult?: string;
+      opponent?: { id?: string; abbreviation?: string }; team?: { id?: string };
+      homeTeamId?: string; awayTeamId?: string; homeTeamScore?: string; awayTeamScore?: string;
+    }>;
   };
 }
 

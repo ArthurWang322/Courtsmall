@@ -2,7 +2,7 @@
 // What a glance needs (docs/PLAN.md Q3): score, period and clock, possession, the last basket,
 // and a run once it is worth noticing.
 
-import { STAT_KEYS, type BoxLine, type StatKey, type MadeOf, type TeamStats, type GameCard, type GameState, type PlayLine, type Side, type TeamRef } from '../model/types.ts';
+import { STAT_KEYS, type BoxLine, type StatKey, type MadeOf, type TeamStats, type GameCard, type GameState, type PlayLine, type PlayerCard, type RecentGame, type Side, type TeamRef, type Conference, type StandingRow, type Standings } from '../model/types.ts';
 import type { Settings } from '../settings/store.ts';
 import type { Tier } from '../render/tiers.ts';
 import { gameColours, visibleColour } from '../render/colour.ts';
@@ -13,6 +13,8 @@ import { keyLabel, SHORTCUTS, type ShortcutAction } from './shortcuts.ts';
 import type { UpdateState } from './update.ts';
 import type { NoticeTest } from '../notify/notifier.ts';
 import { dayOrder } from './day-order.ts';
+import type { CardLoad, CardWho } from './player-card.ts';
+import type { StandingsLoad } from './standings-load.ts';
 
 /** How long a score that just changed keeps its jump, ms (app.css `.jump`). */
 export const JUMP_MS = 600;
@@ -302,10 +304,12 @@ function updateRow(version: string, u: UpdateState, T: Strings): string {
 // ---- Hover toolbar and the games list ------------------------------------------------------------
 
 /** Icons in basic shapes, 14 px, drawn in the current text colour. */
-const ICON: Record<Tier | 'games' | 'box' | 'settings' | 'corner', string> = {
+const ICON: Record<Tier | 'games' | 'standings' | 'box' | 'settings' | 'corner', string> = {
   bar: '<rect x="1.5" y="3" width="11" height="8" rx="1.5"/><path d="M3.5 6.5h7"/>',
   court: '<path d="M3 3.5h8l1.5 7.5h-11z"/><path d="M5.2 3.5v3h3.6v-3"/>',
   games: '<path d="M2.5 4h9M2.5 7h9M2.5 10h9"/>',
+  // A podium: the standings (not lines, which are the games list beside it).
+  standings: '<path d="M1.5 12h11"/><rect x="5" y="3" width="4" height="9"/><rect x="1.5" y="6.5" width="3.5" height="5.5"/><rect x="9" y="8.5" width="3.5" height="3.5"/>',
   // A small table: the players' lines.
   box: '<rect x="2" y="2.5" width="10" height="9" rx="1.5"/><path d="M2 5.5h10M5.5 5.5v6"/>',
   // The screen, and a small window in its bottom-right corner.
@@ -316,7 +320,7 @@ const icon = (k: keyof typeof ICON) => `<svg width="14" height="14" viewBox="0 0
 
 /**
  * The toolbar along the bottom of the window: the two sizes (the current one
- * lit), the games list and the settings. Buttons carry data-* attributes; src/ui/main.ts handles them.
+ * lit), the standings, the games list, the stats and the settings. Buttons carry data-* attributes; src/ui/main.ts handles them.
  */
 export function controlsView(tier: Tier, T: Strings, playersOpen = false, moved = false): string {
   // Each button's tip is drawn by app.css from data-tip (a native title shows late and plain).
@@ -325,6 +329,7 @@ export function controlsView(tier: Tier, T: Strings, playersOpen = false, moved 
   // from the others, which stay put.
   const corner = moved ? `<button class="icon corner" data-corner data-tip="${esc(T.tip.corner)}" aria-label="${esc(T.tip.corner)}">${icon('corner')}</button>` : '';
   return `<div class="controls">${corner}${size('bar')}${size('court')}<span class="sep"></span>`
+    + `<button class="icon" data-open="standings" data-tip="${esc(T.tip.standings)}" aria-label="${esc(T.tip.standings)}">${icon('standings')}</button>`
     + `<button class="icon" data-open="games" data-tip="${esc(T.tip.games)}" aria-label="${esc(T.tip.games)}">${icon('games')}</button>`
     + `<button class="icon${playersOpen ? ' on' : ''}" data-players data-tip="${esc(T.tip.box)}" aria-label="${esc(T.tip.box)}">${icon('box')}</button>`
     + `<button class="icon" data-open="settings" data-tip="${esc(T.tip.settings)}" aria-label="${esc(T.tip.settings)}">${icon('settings')}</button></div>`;
@@ -371,6 +376,50 @@ export function gamesView(day: string, games: readonly GameCard[], T: Strings, t
       <div class="head"><button class="icon" data-day="-1" title="${esc(T.prevDay)}">‹</button><b>${esc(day)}</b><button class="icon" data-day="1" title="${esc(T.nextDay)}">›</button><span class="grow"></span><button class="icon close" data-done aria-label="${esc(T.close)}">✕</button></div>
       <div class="list">${sorted.length ? sorted.map(row).join('') : `<span class="muted">${esc(T.noGames)}</span>`}</div>
     </div>`;
+}
+
+/** The conference the standings open on: the first favourite's (in the order they were picked) found in either
+ *  table, else the East. */
+export function defaultConference(s: Standings, favs: readonly string[]): Conference {
+  for (const id of favs) {
+    if (s.west.some((r) => r.team.id === id)) return 'west';
+    if (s.east.some((r) => r.team.id === id)) return 'east';
+  }
+  return 'east';
+}
+
+/**
+ * The standings panel (src/ui/main.ts): a conference's teams ranked by playoff seed (src/data/espn/standings.ts),
+ * each with its record, win %, games behind and streak; lines under the 6th and the 10th. The East / West switch only once the table is in, so the lit side never jumps from the East to the
+ * favourite's. The rows sit in a `.list`, which scrolls instead of moving the window (main.ts dragFrom).
+ */
+export function standingsView(load: StandingsLoad, conf: Conference, T: Strings, favs: readonly string[] = []): string {
+  const S = T.standings;
+  const season = load.kind === 'ready' ? load.standings.season : undefined;
+  const head = `<div class="head"><b>${esc(S.title)}${season ? ` · ${esc(season)}` : ''}</b><span class="grow"></span>`
+    + `<button class="icon close" data-done aria-label="${esc(T.close)}">✕</button></div>`;
+  const msg = (text: string) => `<p class="st-msg muted">${esc(text)}</p>`;
+  let body: string;
+  if (load.kind === 'loading') body = msg(T.loading);
+  else if (load.kind === 'error') body = `${msg(S.failed)}<button class="retry" data-standings-retry>${esc(S.retry)}</button>`;
+  else {
+    const tab = (c: Conference) => `<button class="side${c === conf ? ' on' : ''}" data-conf="${c}">${esc(c === 'east' ? S.east : S.west)}</button>`;
+    const rows = load.standings[conf];
+    const cell = (v: string | undefined) => `<span>${esc(v === undefined || v === '-' ? '–' : v)}</span>`;
+    // The line under the 6th (the last straight into the playoffs, dashed) and under the 10th (the last in the play-in).
+    const cut = (rank: number) => (rank === 6 ? ' cut-playoff' : rank === 10 ? ' cut-playin' : '');
+    const row = (r: StandingRow) => `<div class="srow${favs.includes(r.team.id) ? ' fav' : ''}${cut(r.rank)}"><span class="rk">${r.rank}</span>`
+      + `<span class="tm">${logo(r.team, visibleColour(r.team))}<span>${esc(r.team.abbr)}${star(r.team, favs)}</span></span>`
+      + cell(r.wins !== undefined && r.losses !== undefined ? `${r.wins}-${r.losses}` : undefined)
+      + cell(r.pct) + cell(r.gb) + cell(r.streak) + '</div>';
+    const table = rows.length
+      ? `<div class="srow head-row"><span class="rk">#</span><span class="tm">${esc(S.team)}</span><span>${esc(S.wl)}</span>`
+        + `<span>${esc(S.pct)}</span><span>${esc(S.gb)}</span><span>${esc(S.streak)}</span></div>`
+        + `<div class="list">${rows.map(row).join('')}</div>`
+      : msg(S.none);
+    body = `<div class="confs">${tab('east')}${tab('west')}</div>${table}`;
+  }
+  return `<div class="panel standings">${head}${body}</div>`;
 }
 
 /**
@@ -474,7 +523,8 @@ export function boxView(teams: Record<Side, TeamRef> | undefined, box: Record<Si
   const toggle = `<button class="mode${full ? ' on' : ''}" data-box-full role="switch" aria-checked="${full}">${esc(T.box.full)}<i class="track t-toggle" data-on="${full}"><i class="t-toggle-thumb"></i></i></button>`;
   const label = (k: BoxCol) => (k === 'min' ? T.box.min : k in T.boxFull ? T.boxFull[k as keyof Strings['boxFull']] : T.stat(k as StatKey));
   const labels = BOX_COLS.map((k) => `<span${FULL_ONLY.has(k) ? ' class="x"' : ''}>${esc(label(k))}</span>`).join('');
-  const name = (l: BoxLine) => `<span class="name">${onCourt.has(l.player.id) ? '<b class="on-court">*</b>' : ''}${esc(l.player.short)}</span>`;
+  // A name opens the player's card (src/ui/players.ts).
+  const name = (l: BoxLine) => `<span class="name" data-player="${esc(l.player.id)}">${onCourt.has(l.player.id) ? '<b class="on-court">*</b>' : ''}${esc(l.player.short)}</span>`;
   const why = `<span class="why">${esc(T.box.dnp)}</span>`;
   const cls = (l: BoxLine) => `row${l.dnp ? ' dnp' : l.starter ? ' starter' : ''}`;
   // A line between the starters and the bench.
@@ -489,6 +539,62 @@ export function boxView(teams: Record<Side, TeamRef> | undefined, box: Record<Si
       + `<div class="cols" data-box-cols>${each((l) => `<div class="${cls(l)}"><div class="nums">${l.dnp ? why : BOX_COLS.map((k) => boxCell(l, k)).join('')}</div></div>`)}</div>`
     : `<span class="muted">${esc(T.loading)}</span>`;
   return `<div class="panel box"><div class="head">${tabs}${toggle}</div><div class="table${full ? ' full' : ''}">${head}<div class="list">${body}</div></div></div>`;
+}
+
+/** A player's initials, for a card without a headshot: the first and last names' first letters, a suffix
+ *  ("Jr.", "II") left out. "Shai Gilgeous-Alexander" → "SG", "Jaren Jackson Jr." → "JJ". */
+export function initials(name: string): string {
+  const words = name.trim().split(/\s+/).filter(Boolean);
+  while (words.length > 1 && /^(jr\.?|sr\.?|ii|iii|iv|v)$/i.test(words.at(-1)!)) words.pop();
+  const first = words[0]?.charAt(0) ?? '', last = words.length > 1 ? words.at(-1)!.charAt(0) : '';
+  return (first + last).toUpperCase();
+}
+
+/** The player card's head: the headshot (or initials), the name, the team; ✕ on the right. Drawn once per open. */
+export function playerCardHead(who: CardWho, T: Strings): string {
+  const face = who.headshot
+    ? `<img class="pcard-face" src="${esc(who.headshot)}" alt="" data-face>`
+    : `<i class="pcard-face initials">${esc(initials(who.name))}</i>`;
+  return `${face}<div class="pcard-who"><b class="pcard-name">${esc(who.name)}</b><span class="pcard-team">${logo(who.team, who.colour)}${esc(who.team.abbr)}</span></div>`
+    + `<button class="pcard-close" data-card-close aria-label="${esc(T.close)}">✕</button>`;
+}
+
+/** The card's columns, in order: the season's tiles and the recent games' columns alike. Six counts fill the
+ * tiles' first row, so time and the percentages make the second. */
+const CARD_COLS = ['pts', 'reb', 'ast', 'stl', 'blk', 'to', 'min', 'fgPct', 'threePct', 'ftPct'] as const;
+type CardCol = (typeof CARD_COLS)[number];
+const PCT: ReadonlySet<CardCol> = new Set(['fgPct', 'threePct', 'ftPct']);
+
+/** The player card's body: loading, a failure with a way to ask again, or this season's averages and the
+ *  recent games. Averages and percentages with one decimal, a game's counts whole; nothing known is "–". */
+export function playerCardBody(load: CardLoad, T: Strings): string {
+  if (load.kind === 'loading') return `<p class="pcard-msg muted">${esc(T.loading)}</p>`;
+  if (load.kind === 'error') return `<p class="pcard-msg muted">${esc(T.card.failed)}</p><button class="pcard-retry" data-card-retry>${esc(T.card.retry)}</button>`;
+  const { card } = load;
+  const label = (k: CardCol) => (k === 'min' ? T.box.min : PCT.has(k) ? T.card[k as 'fgPct' | 'threePct' | 'ftPct'] : T.stat(k as StatKey));
+  const fixed = (v: number | undefined) => (v === undefined ? '–' : v.toFixed(1));
+  const whole = (k: CardCol, v: number | undefined) => (v === undefined ? '–' : PCT.has(k) ? v.toFixed(1) : String(Math.round(v)));
+  const s = card.season;
+  const season = s
+    ? `<h4>${esc(T.card.season)} · ${esc(T.card.games(s.gp))}</h4><div class="pcard-tiles">${CARD_COLS.map((k) => `<div class="tile"><b>${fixed(s[k])}</b><span>${esc(label(k))}</span></div>`).join('')}</div>`
+    // Games this season but no averages from ESPN yet (its split can lag the game log): not "no games".
+    : `<h4>${esc(T.card.season)}</h4><p class="pcard-msg muted">${esc(card.games.length && !card.stale ? T.card.noAverages : T.card.noSeason)}</p>`;
+  const recent = card.games.length
+    ? `<div class="pcard-table" data-card-cols><div class="pr head"><span class="g">${esc(T.card.game)}</span>${CARD_COLS.map((k) => `<span>${esc(label(k))}</span>`).join('')}</div>`
+      + card.games.map((g) => `<div class="pr"><span class="g">${gameCell(g, card)}</span>${CARD_COLS.map((k) => `<span>${whole(k, g[k])}</span>`).join('')}</div>`).join('')
+      + '</div>'
+    : `<p class="pcard-msg muted">${esc(T.card.noGames)}</p>`;
+  return `<section class="pcard-season">${season}</section><section class="pcard-recent"><h4>${esc(T.card.recent)}</h4>${recent}</section>`;
+}
+
+/** "11/10 @ HOU L 100-110": the date where the viewer is (the year too for an earlier season's games), where it
+ *  was played as ESPN says, the result and the score, the player's team first. */
+function gameCell(g: RecentGame, card: PlayerCard): string {
+  const d = new Date(g.date);
+  const date = `${card.stale ? `${d.getFullYear()}/` : ''}${d.getMonth() + 1}/${d.getDate()}`;
+  const result = g.result ? `<i class="${g.result === 'W' ? 'w' : 'l'}">${g.result}</i>` : '<i>–</i>';
+  const score = g.own !== undefined && g.oppScore !== undefined ? ` ${g.own}-${g.oppScore}` : '';
+  return `${date} ${g.at} ${esc(g.opp || '–')} ${result}${score}`;
 }
 
 /** A player's columns: the simple view's, in its order, and the full view's own among them, the shots after the points, fouls and plus-minus last. */

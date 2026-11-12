@@ -103,7 +103,54 @@ export interface BoxLine {
   pf: number;
   /** Plus-minus: the side's points less the other side's while the player was on the court. */
   pm: number;
+  /** The player's headshot at ESPN, when the league has one (the player card, src/ui/players.ts). */
+  headshot?: string;
 }
+
+/** A player's averages over this regular season (the player card). Percentages 0–100, as ESPN gives them. */
+export interface SeasonAverages {
+  gp: number;
+  min?: number; pts?: number; reb?: number; ast?: number; stl?: number; blk?: number; to?: number;
+  fgPct?: number; threePct?: number; ftPct?: number;
+}
+
+/** One of a player's recent finished games, his line in it. */
+export interface RecentGame {
+  id: string;
+  /** Tip-off, ms since the epoch. */
+  date: number;
+  /** As ESPN writes it: '@' away, 'vs' home or a neutral site. */
+  at: '@' | 'vs';
+  /** The opponent's abbreviation, '' when ESPN gives none. */
+  opp: string;
+  result?: 'W' | 'L';
+  /** His team's points and the opponent's. */
+  own?: number;
+  oppScore?: number;
+  min?: number; pts?: number; reb?: number; ast?: number; stl?: number; blk?: number; to?: number;
+  fgPct?: number; threePct?: number; ftPct?: number;
+}
+
+/** What the player card shows: this season's averages (none if no finished game this season) and his recent games,
+ *  newest first, at most 5. `stale`: the recent games are from an earlier season (their dates show the year). */
+export interface PlayerCard { season?: SeasonAverages; games: RecentGame[]; stale: boolean }
+
+export type Conference = 'east' | 'west';
+/** A team's line in its conference's standings (the standings panel), as ESPN writes the values. */
+export interface StandingRow {
+  team: TeamRef;
+  /** 1.. in the conference, after sorting. */
+  rank: number;
+  wins?: number; losses?: number;
+  /** ".818" */
+  pct?: string;
+  /** "2.5"; the leader's is "-". */
+  gb?: string;
+  /** "W4", "L7" */
+  streak?: string;
+}
+/** This regular season's standings by conference; `season` as "2026-27". */
+export interface Standings { season?: string; east: StandingRow[]; west: StandingRow[] }
 
 /** Made and attempted. */
 export interface MadeOf { made: number; att: number }

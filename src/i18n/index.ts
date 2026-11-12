@@ -75,9 +75,17 @@ export interface Strings {
   /** The line score's total column. */
   lineTotal: string;
   /** The toolbar's tips, one per button. */
-  tip: { bar: string; court: string; games: string; box: string; settings: string; corner: string };
+  tip: { bar: string; court: string; games: string; standings: string; box: string; settings: string; corner: string };
+  /** The standings panel (src/ui/views.ts standingsView). */
+  standings: { title: string; east: string; west: string; team: string; wl: string; pct: string; gb: string; streak: string; failed: string; retry: string; none: string };
   /** The players' panel. */
   box: { player: string; min: string; dnp: string; noGame: string; team: string; full: string };
+  /** The player card (src/ui/views.ts playerCardBody). */
+  card: {
+    season: string; games(n: number): string; recent: string; game: string;
+    fgPct: string; threePct: string; ftPct: string;
+    noSeason: string; noAverages: string; noGames: string; failed: string; retry: string;
+  };
   /** The full view's own columns' labels (the others are T.box.min and T.stat). */
   boxFull: { two: string; three: string; ft: string; pf: string; pm: string };
   /** Team stats' labels. */
@@ -148,8 +156,17 @@ export const STRINGS: Record<Lang, Strings> = {
     close: 'Close',
     watching: 'Watching',
     lineTotal: 'T',
-    tip: { bar: 'Simple', court: 'Court', games: 'Games', box: 'Stats', settings: 'Settings', corner: 'Back to the corner' },
+    tip: { bar: 'Simple', court: 'Court', games: 'Games', standings: 'Standings', box: 'Stats', settings: 'Settings', corner: 'Back to the corner' },
+    standings: {
+      title: 'Standings', east: 'East', west: 'West', team: 'Team', wl: 'W-L', pct: 'PCT', gb: 'GB', streak: 'STRK',
+      failed: "Couldn't load the standings", retry: 'Try again', none: 'No standings yet',
+    },
     box: { player: 'PLAYER', min: 'MIN', dnp: 'DNP', noGame: 'No game on screen', team: 'Team stats', full: 'Full' },
+    card: {
+      season: 'Season averages', games: (n) => (n === 1 ? '1 game' : `${n} games`), recent: 'Recent games', game: 'Game',
+      fgPct: 'FG%', threePct: '3P%', ftPct: 'FT%',
+      noSeason: 'No finished games this season', noAverages: 'Season averages not available yet', noGames: 'No recent games', failed: "Couldn't load this player", retry: 'Try again',
+    },
     boxFull: { two: '2PT', three: '3PT', ft: 'FT', pf: 'PF', pm: '+/-' },
     teamStat: { fg: 'Field goals', two: '2-pointers', three: '3-pointers', ft: 'Free throws', reb: 'Rebounds', ast: 'Assists', stl: 'Steals', blk: 'Blocks', to: 'Turnovers', fouls: 'Fouls', fastBreak: 'Fast break pts', paint: 'Points in paint', largestLead: 'Largest lead' },
     noGames: 'No games this day',
@@ -214,8 +231,17 @@ export const STRINGS: Record<Lang, Strings> = {
     close: '關閉',
     watching: '觀看中',
     lineTotal: '總分',
-    tip: { bar: '簡易模式', court: '球場模式', games: '比賽列表', box: '數據', settings: '設定', corner: '回到右下角' },
+    tip: { bar: '簡易模式', court: '球場模式', games: '比賽列表', standings: '戰績', box: '數據', settings: '設定', corner: '回到右下角' },
+    standings: {
+      title: '戰績', east: '東區', west: '西區', team: '球隊', wl: '勝-敗', pct: '勝率', gb: '勝差', streak: '連勝敗',
+      failed: '讀不到戰績', retry: '再試一次', none: '還沒有戰績',
+    },
     box: { player: '球員', min: '時間', dnp: '未上場', noGame: '目前沒有正在看的比賽', team: '團隊數據', full: '詳細' },
+    card: {
+      season: '本季場均', games: (n) => `${n} 場`, recent: '最近比賽', game: '比賽',
+      fgPct: '投籃%', threePct: '三分%', ftPct: '罰球%',
+      noSeason: '本季尚無完賽紀錄', noAverages: '本季場均暫無資料', noGames: '沒有最近的比賽', failed: '讀不到球員資料', retry: '再試一次',
+    },
     boxFull: { two: '兩分', three: '三分', ft: '罰球', pf: '犯規', pm: '+/-' },
     teamStat: { fg: '投籃', two: '兩分', three: '三分', ft: '罰球', reb: '籃板', ast: '助攻', stl: '抄截', blk: '火鍋', to: '失誤', fouls: '犯規', fastBreak: '快攻得分', paint: '禁區得分', largestLead: '最大領先' },
     noGames: '這天沒有比賽',

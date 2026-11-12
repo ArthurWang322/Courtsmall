@@ -1,6 +1,7 @@
 // Saves the test fixtures: for each game in tests/fixtures.ts, the site summary plus the core
-// API's plays, as fixtures/nba/game-{id}.json, the team list as fixtures/nba/teams.json and one
-// day's scoreboard as fixtures/nba/scoreboard.json. Not committed.
+// API's plays, as fixtures/nba/game-{id}.json, the team list as fixtures/nba/teams.json, one
+// day's scoreboard as fixtures/nba/scoreboard.json and today's standings as fixtures/nba/standings.json.
+// Not committed.
 import { writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { get, CACHE_DIR } from './lib.mjs';
@@ -11,6 +12,8 @@ const SITE = 'https://site.api.espn.com/apis/site/v2/sports/basketball/nba';
 writeFileSync(join(CACHE_DIR, '..', 'teams.json'), JSON.stringify((await get(`${SITE}/groups`)).json));
 // A day's scoreboard with overtime games in it, for the games list under `npm run dev` with &fixture.
 writeFileSync(join(CACHE_DIR, '..', 'scoreboard.json'), JSON.stringify((await get(`${SITE}/scoreboard?dates=20260107`)).json));
+// Today's standings, for the standings panel under `npm run dev` with &fixture (not from the cache: they change).
+writeFileSync(join(CACHE_DIR, '..', 'standings.json'), JSON.stringify((await get('https://site.api.espn.com/apis/v2/sports/basketball/nba/standings?seasontype=2', { noCache: true })).json));
 for (const { id, note } of FIXTURES) {
   const summary = (await get(`${SITE}/summary?event=${id}`)).json;
   const core = `https://sports.core.api.espn.com/v2/sports/basketball/leagues/nba/events/${id}/competitions/${id}/plays?limit=1000`;
