@@ -668,7 +668,8 @@ html.dev-room .edge { top: var(--dev-room); }
 /* A name in the box score opens the player's card (src/ui/players.ts): it lights on hover, starters (already
    bright) included. */
 .panel.box .names .name[data-player] { cursor: pointer; }
-.panel.box .names .name[data-player]:hover { font-weight: 700; text-decoration-line: underline; text-decoration-thickness: 1px; text-underline-offset: 3px; }
+.panel.box .names .name[data-player] { transition: color .12s; }
+.panel.box .names .name[data-player]:hover { font-weight: 700; color: var(--accent); }
 
 /* Over the whole window, cut to its rounded corners so the transparent ones stay clear; the card inside, scrolling
    when the window is short, its head (✕ in it) staying at the top. */
